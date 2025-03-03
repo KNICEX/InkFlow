@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:17
-    container_name: postgres
+    container_name: ink-flow-postgres
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
@@ -9,3 +9,8 @@ services:
       - ./script/postgres/:/docker-entrypoint-initdb.d/
     ports:
       - "15432:5432"
+  redis:
+    image: redis:7
+    container_name: ink-flow-redis
+    ports:
+      - "16379:6379"
