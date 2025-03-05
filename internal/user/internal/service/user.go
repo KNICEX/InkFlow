@@ -7,7 +7,6 @@ import (
 	"github.com/KNICEX/InkFlow/internal/user/internal/repo"
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/KNICEX/InkFlow/pkg/uuidx"
-	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -19,7 +18,7 @@ var (
 type UserService interface {
 	LoginEmailPwd(ctx context.Context, email, password string) (domain.User, error)
 	LoginPhonePwd(ctx context.Context, phone, password string) (domain.User, error)
-	LoginAccountPwd(ctx context.Context, accountName string, password string) (domain.User, error)
+	LoginAccountPwd(ctx context.Context, account string, password string) (domain.User, error)
 	Profile(ctx context.Context, uid int64) (domain.User, error)
 	FindOrCreateByPhone(ctx context.Context, phone string) (domain.User, error)
 	FindOrCreateByEmail(ctx context.Context, email string) (domain.User, error)
@@ -29,7 +28,6 @@ type UserService interface {
 
 	ResetPwd(ctx context.Context, uid int64, newPwd string) error
 	ChangePwd(ctx context.Context, uid int64, oldPwd, newPwd string) error
-	LoginAccountNamePwd(ctx *gin.Context, accountName string, password string) (domain.User, error)
 }
 
 type userService struct {
@@ -84,7 +82,7 @@ func (svc *userService) LoginPhonePwd(ctx context.Context, phone, password strin
 	return user, nil
 }
 func (svc *userService) LoginAccountPwd(ctx context.Context, accountName string, password string) (domain.User, error) {
-	user, err := svc.repo.FindByAccountName(ctx, accountName)
+	user, err := svc.repo.FindByAccount(ctx, accountName)
 	if err != nil {
 		return domain.User{}, err
 	}
@@ -188,18 +186,4 @@ func (svc *userService) ChangePwd(ctx context.Context, uid int64, oldPwd, newPwd
 		Id:       uid,
 		Password: newPwd,
 	})
-}
-
-func (svc *userService) LoginAccountNamePwd(ctx *gin.Context, accountName string, password string) (domain.User, error) {
-	u, err := svc.repo.FindByAccountName(ctx, accountName)
-	if errors.Is(err, repo.ErrUserNotFound) {
-		return domain.User{}, ErrInvalidAccountOrPwd
-	}
-	if err != nil {
-		return domain.User{}, err
-	}
-	if !svc.checkPwd(u.Password, password) {
-		return domain.User{}, ErrInvalidAccountOrPwd
-	}
-	return u, nil
 }

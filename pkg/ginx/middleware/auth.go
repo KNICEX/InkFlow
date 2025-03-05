@@ -17,6 +17,13 @@ type JwtLoginBuilder struct {
 	l logx.Logger
 }
 
+func NewJwtLoginBuilder(handler ijwt.Handler, l logx.Logger) Authentication {
+	return &JwtLoginBuilder{
+		Handler: handler,
+		l:       l,
+	}
+}
+
 func (b *JwtLoginBuilder) CheckLogin() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		tokenStr := b.Handler.ExtractToken(ctx)

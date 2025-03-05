@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	web2 "github.com/KNICEX/InkFlow/internal/biff/internal/web"
 	"github.com/KNICEX/InkFlow/internal/user/internal/domain"
 	"github.com/KNICEX/InkFlow/internal/user/internal/service/oauth2"
 	"github.com/KNICEX/InkFlow/pkg/ginx"
@@ -86,7 +87,7 @@ func (o *oAuth2Handler[T]) verifyState(ctx *gin.Context) error {
 
 }
 
-func (o *oAuth2Handler[T]) Callback(ctx *gin.Context, callback Oauth2Callback) (ginx.Result, error) {
+func (o *oAuth2Handler[T]) Callback(ctx *gin.Context, callback web2.Oauth2Callback) (ginx.Result, error) {
 	if callback.Code == "" {
 		return ginx.InvalidParam(), nil
 	}

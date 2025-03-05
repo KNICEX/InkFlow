@@ -19,7 +19,7 @@ type UserRepo interface {
 	Create(ctx context.Context, u domain.User) error
 	FindByEmail(ctx context.Context, email string) (domain.User, error)
 	FindByPhone(ctx context.Context, phone string) (domain.User, error)
-	FindByAccountName(ctx context.Context, accountName string) (domain.User, error)
+	FindByAccount(ctx context.Context, accountName string) (domain.User, error)
 
 	FindById(ctx context.Context, id int64) (domain.User, error)
 	FindByGithubId(ctx context.Context, id int64) (domain.User, error)
@@ -119,7 +119,7 @@ func (r *CachedUserRepo) UpdateNonZeroFields(ctx context.Context, u domain.User)
 	return nil
 }
 
-func (r *CachedUserRepo) FindByAccountName(ctx context.Context, accountName string) (domain.User, error) {
+func (r *CachedUserRepo) FindByAccount(ctx context.Context, accountName string) (domain.User, error) {
 	u, err := r.dao.FindByAccountName(ctx, accountName)
 	if err != nil {
 		return domain.User{}, err

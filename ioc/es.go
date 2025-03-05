@@ -1,11 +1,24 @@
 package ioc
 
-import "github.com/elastic/go-elasticsearch/v8"
+import (
+	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/spf13/viper"
+)
 
 func InitEs() *elasticsearch.Client {
 	type Config struct {
-		Url   string `yaml:"url"`
+		Addr  string `yaml:"addr"`
 		Sniff bool   `yaml:"sniff"`
 	}
-	return nil
+	var cfg Config
+	if err := viper.UnmarshalKey("es", &cfg); err != nil {
+		panic(err)
+	}
+	client, err := elasticsearch.NewClient(elasticsearch.Config{
+		Addresses: []string{cfg.Addr},
+	})
+	if err != nil {
+		panic(err)
+	}
+	return client
 }

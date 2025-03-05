@@ -1,0 +1,17 @@
+postgres:
+  dsn: "host=localhost user=root password=root dbname=ink_flow port=15432"
+redis:
+  addr: 127.0.0.1:16379
+  password: 123456
+
+es:
+  addr: 127.0.0.1:9200
+  sniff: false
+
+email:
+  smtp:
+    username: example@gmail.com
+    password: password
+    port: 587
+    host: smtp.gmail.com
+    from_name: InkFlow

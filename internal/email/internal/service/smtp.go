@@ -1,4 +1,4 @@
-package email
+package service
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"github.com/wneessen/go-mail"
 )
 
-type LocalService struct {
+type SmtpService struct {
 	host     string
 	port     int
 	authType mail.SMTPAuthType
@@ -17,10 +17,10 @@ type LocalService struct {
 	client *mail.Client
 }
 
-type LocalServiceOption func(*LocalService)
+type SmtpServiceOption func(*SmtpService)
 
-func NewLocalService(host string, port int, username, password, fromName string) (Service, error) {
-	svc := &LocalService{
+func NewSmtpService(host string, port int, username, password, fromName string) (Service, error) {
+	svc := &SmtpService{
 		host:     host,
 		port:     port,
 		authType: mail.SMTPAuthPlain,
@@ -42,7 +42,7 @@ func NewLocalService(host string, port int, username, password, fromName string)
 	return svc, nil
 }
 
-func (svc *LocalService) send(ctx context.Context, email, title, body string, contentType mail.ContentType) error {
+func (svc *SmtpService) send(ctx context.Context, email, title, body string, contentType mail.ContentType) error {
 	var err error
 	msg := mail.NewMsg()
 	if err = msg.From(fmt.Sprintf("%s<%s>", svc.from, svc.username)); err != nil {
@@ -59,14 +59,14 @@ func (svc *LocalService) send(ctx context.Context, email, title, body string, co
 	return nil
 }
 
-func (svc *LocalService) SendString(ctx context.Context, email, title, body string) error {
+func (svc *SmtpService) SendString(ctx context.Context, email, title, body string) error {
 	return svc.send(ctx, email, title, body, mail.TypeTextPlain)
 }
 
-func (svc *LocalService) SendHTML(ctx context.Context, email, title, body string) error {
+func (svc *SmtpService) SendHTML(ctx context.Context, email, title, body string) error {
 	return svc.send(ctx, email, title, body, mail.TypeTextHTML)
 }
 
-func (svc *LocalService) Ping(ctx context.Context) error {
+func (svc *SmtpService) Ping(ctx context.Context) error {
 	return svc.send(ctx, svc.username, "hello", "server is starting", mail.TypeTextPlain)
 }

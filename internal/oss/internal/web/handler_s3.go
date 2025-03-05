@@ -12,7 +12,7 @@ type S3Handler struct {
 	client *s3.Client
 }
 
-func (s S3Handler) RegisterRoutes(server *gin.RouterGroup) {
+func (s S3Handler) RegisterRoutes(server *gin.Engine) {
 	//TODO implement me
 	panic("implement me")
 }

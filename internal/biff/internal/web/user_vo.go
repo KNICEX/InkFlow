@@ -7,19 +7,9 @@ type SendCodeReq struct {
 	Email string `json:"email"`
 }
 
-type LoginSmsReq struct {
-	Phone string `json:"phone" binding:"required"`
-	Code  string `json:"code" binding:"required"`
-}
-
-type LoginPhonePwdReq struct {
-	Phone    string `json:"phone" binding:"required"`
+type LoginAccountPwdReq struct {
+	Account  string `json:"account" binding:"required,min=1,max=30"`
 	Password string `json:"password" binding:"required,min=6,max=30"`
-}
-
-type LoginAccountNamePwdReq struct {
-	AccountName string `json:"accountName" binding:"required,min=1,max=30"`
-	Password    string `json:"password" binding:"required,min=6,max=30"`
 }
 
 type LoginEmailReq struct {

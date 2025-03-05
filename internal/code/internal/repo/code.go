@@ -2,7 +2,7 @@ package repo
 
 import (
 	"context"
-	"github.com/KNICEX/InkFlow/internal/user/internal/repo/cache"
+	"github.com/KNICEX/InkFlow/internal/code/internal/repo/cache"
 	"time"
 )
 

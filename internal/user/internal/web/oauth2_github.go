@@ -34,7 +34,7 @@ func NewGithubOAuth2Handler(svc oauth2.Service[domain.GithubInfo], userSvc servi
 	}
 }
 
-func (o *GithubOAuth2Handler) RegisterRoutes(g *gin.RouterGroup) {
+func (o *GithubOAuth2Handler) RegisterRoutes(g *gin.Engine) {
 	g.GET("/authUrl", ginx.Wrap(o.logger, o.AuthUrl))
 	g.GET("/callback", ginx.WrapBody(o.logger, o.Callback))
 }

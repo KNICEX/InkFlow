@@ -27,3 +27,10 @@ services:
       "ES_JAVA_OPTS": "-Xms84m -Xmx512m"
       "xpack.security.enabled": false
     entrypoint: ["/bin/bash", "/entrypoint.sh"]
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    container_name: ink-flow-prometheus
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"

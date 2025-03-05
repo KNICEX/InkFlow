@@ -1,0 +1,7 @@
+scrape_configs:
+  - job_name: "ink-flow"
+    scrape_interval: 5s
+    scrape_timeout: 3s
+    static_configs:
+#      访问webook采集数据
+      - targets: ["host.docker.internal:8081"]
