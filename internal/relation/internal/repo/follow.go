@@ -1,0 +1,114 @@
+package repo
+
+import (
+	"context"
+	"errors"
+	"github.com/KNICEX/InkFlow/internal/relation/internal/domain"
+	"github.com/KNICEX/InkFlow/internal/relation/internal/repo/cache"
+	"github.com/KNICEX/InkFlow/internal/relation/internal/repo/dao"
+	"github.com/KNICEX/InkFlow/pkg/logx"
+	"github.com/samber/lo"
+	"golang.org/x/sync/errgroup"
+)
+
+type FollowRepo interface {
+	AddFollowRelation(ctx context.Context, c domain.FollowRelation) error
+	RemoveFollowRelation(ctx context.Context, c domain.FollowRelation) error
+	FindFollowList(ctx context.Context, uid int64, maxId int64, limit int) ([]domain.FollowRelation, error)
+	GetFollowStatistic(ctx context.Context, uid int64) (domain.FollowStatistic, error)
+}
+
+type CachedFollowRepo struct {
+	dao   dao.FollowRelationDAO
+	cache cache.FollowCache
+	l     logx.Logger
+}
+
+func (repo *CachedFollowRepo) AddFollowRelation(ctx context.Context, c domain.FollowRelation) error {
+	err := repo.dao.CreateFollowRelation(ctx, repo.toEntity(c))
+	if err != nil {
+		return err
+	}
+	err = repo.cache.Follow(ctx, c.Follower, c.Followee)
+	if err != nil {
+		repo.l.Error("add follow cache error", logx.Error(err), logx.Int64("UserId", c.Follower))
+	}
+	return err
+}
+
+func (repo *CachedFollowRepo) RemoveFollowRelation(ctx context.Context, c domain.FollowRelation) error {
+	err := repo.dao.CancelFollow(ctx, repo.toEntity(c))
+	if err != nil {
+		return err
+	}
+	err = repo.cache.CancelFollow(ctx, c.Follower, c.Followee)
+	if err != nil {
+		repo.l.Error("cancel follow cache error", logx.Error(err), logx.Int64("UserId", c.Follower))
+	}
+	return err
+}
+
+func (repo *CachedFollowRepo) FindFollowList(ctx context.Context, uid int64, maxId int64, limit int) ([]domain.FollowRelation, error) {
+	res, err := repo.dao.FollowList(ctx, uid, maxId, limit)
+	if err != nil {
+		return nil, err
+	}
+	return lo.Map(res, func(item dao.UserFollow, index int) domain.FollowRelation {
+		return repo.toDomain(item)
+	}), nil
+}
+
+func (repo *CachedFollowRepo) GetFollowStatistic(ctx context.Context, uid int64) (domain.FollowStatistic, error) {
+	res, err := repo.cache.GetStatisticInfo(ctx, uid)
+	if err == nil {
+		return res, nil
+	}
+
+	if !errors.Is(err, cache.ErrKeyNotFound) {
+		repo.l.Error("get follow statistic cache error", logx.Error(err), logx.Int64("UserId", uid))
+	}
+
+	var followerCount, followeeCount int64
+	eg := errgroup.Group{}
+	eg.Go(func() error {
+		var er error
+		followerCount, er = repo.dao.CntFollower(ctx, uid)
+		return er
+	})
+	eg.Go(func() error {
+		var er error
+		followeeCount, er = repo.dao.CntFollowee(ctx, uid)
+		return er
+	})
+	if err = eg.Wait(); err != nil {
+		return domain.FollowStatistic{}, err
+	}
+
+	go func() {
+		if er := repo.cache.SetStatisticInfo(ctx, uid, domain.FollowStatistic{
+			Followers:  followerCount,
+			Followings: followeeCount,
+		}); er != nil {
+			repo.l.Error("set follow statistic cache error", logx.Error(err), logx.Int64("UserId", uid))
+		}
+	}()
+	return domain.FollowStatistic{
+		Followers:  followerCount,
+		Followings: followeeCount,
+	}, nil
+}
+
+func (repo *CachedFollowRepo) toDomain(follow dao.UserFollow) domain.FollowRelation {
+	return domain.FollowRelation{
+		Follower:  follow.Follower,
+		Followee:  follow.Followee,
+		CreatedAt: follow.CreatedAt,
+	}
+}
+func (repo *CachedFollowRepo) toEntity(follow domain.FollowRelation) dao.UserFollow {
+	return dao.UserFollow{
+		Follower:  follow.Follower,
+		Followee:  follow.Followee,
+		CreatedAt: follow.CreatedAt,
+	}
+}

@@ -14,3 +14,16 @@ services:
     container_name: ink-flow-redis
     ports:
       - "16379:6379"
+  elasticsearch:
+    image: elasticsearch:8.17.2
+    container_name: ink-flow-elasticsearch
+    ports:
+      - "9200:9200"
+    volumes:
+      - ./script/es/es-ik.sh:/entrypoint.sh
+    environment:
+      "discovery.type": "single-node"
+#      -Xms 初始内存， -Xmx 最大内存
+      "ES_JAVA_OPTS": "-Xms84m -Xmx512m"
+      "xpack.security.enabled": false
+    entrypoint: ["/bin/bash", "/entrypoint.sh"]

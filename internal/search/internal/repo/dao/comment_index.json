@@ -1,0 +1,10 @@
+{
+  "mapping": {
+    "id": {
+      "type": "long"
+    },
+    "content": {
+      "type": "text"
+    }
+  }
+}

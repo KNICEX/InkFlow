@@ -1,0 +1,15 @@
+{
+  "mapping": {
+    "properties": {
+      "id": {
+        "type": "long"
+      },
+      "follower": {
+        "type": "long"
+      },
+      "followee": {
+        "type": "long"
+      }
+    }
+  }
+}

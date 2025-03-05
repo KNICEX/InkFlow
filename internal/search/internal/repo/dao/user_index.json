@@ -1,0 +1,25 @@
+{
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "long"
+      },
+      "account": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
+      },
+      "username":  {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
+      },
+      "email": {
+        "type": "text"
+      },
+      "phone": {
+        "type": "keyword"
+      }
+    }
+  }
+}

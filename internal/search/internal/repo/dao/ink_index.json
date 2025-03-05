@@ -1,0 +1,25 @@
+{
+  "mapping": {
+    "properties": {
+      "id": {
+        "type": "long"
+      },
+      "author_id" : {
+        "type": "long"
+      },
+      "title": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
+      },
+      "content": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
+      },
+      "tags": {
+        "type": "keyword"
+      }
+    }
+  }
+}

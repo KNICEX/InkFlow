@@ -13,6 +13,7 @@ type User struct {
 	Password string
 	Link     []string
 	AboutMe  string
+	Level    int
 
 	// oauth2
 	GithubInfo GithubInfo

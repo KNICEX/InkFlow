@@ -33,6 +33,8 @@ type User struct {
 	Account  string         `gorm:"unique"`
 	Username string         `gorm:"type:varchar(60)"`
 	AboutMe  string         `gorm:"type:varchar(500)"`
+	Exp      int64          `gorm:"default:0"`
+	Level    int            `gorm:"default:1"`
 	// 逗号分隔
 	Links      string            `gorm:"type:varchar(500)"`
 	Birthday   sql.NullTime      `gorm:"type:date"`
