@@ -22,11 +22,12 @@ func InitApp() *App {
 	universalClient := InitRedisUniversalClient()
 	cmdable := InitRedisCmdable(universalClient)
 	userService := user.InitUserService(db, cmdable, logger)
+	oAuth2Service := user.InitGithubOAuth2Service(logger)
 	service := email.InitService()
 	serviceService := code.InitEmailCodeService(cmdable, service)
 	handler := InitJwtHandler(cmdable)
 	authentication := InitAuthMiddleware(handler, logger)
-	v := bff.InitBff(userService, serviceService, handler, authentication, logger)
+	v := bff.InitBff(userService, oAuth2Service, serviceService, handler, authentication, logger)
 	engine := InitGin(v)
 	app := &App{
 		Server: engine,

@@ -104,6 +104,7 @@ func (o *OAuth2Handler[T]) Callback(ctx *gin.Context, callback Oauth2Callback) (
 
 	// 通过wechat/GitHub Info 获取domain.User
 	u, err := o.getDomain(ctx, info)
+
 	if err != nil {
 		o.l.WithCtx(ctx).Error("oauth2 get domain user failed", logx.Error(err))
 		return ginx.InternalError(), err

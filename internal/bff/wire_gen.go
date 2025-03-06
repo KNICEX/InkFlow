@@ -19,9 +19,10 @@ import (
 
 // Injectors from wire.go:
 
-func InitBff(userSvc user.Service, codeSvc code.Service, jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
+func InitBff(userSvc user.Service, service3 user.OAuth2Service[user.GithubInfo], codeSvc code.Service, jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
 	userHandler := web.NewUserHandler(userSvc, codeSvc, jwtHandler, auth, log)
-	v := InitHandlers(userHandler)
+	githubOAuth2Handler := web.NewGithubOAuth2Handler(service3, userSvc, jwtHandler, log)
+	v := InitHandlers(userHandler, githubOAuth2Handler)
 	return v
 }
 
@@ -29,6 +30,6 @@ func InitBff(userSvc user.Service, codeSvc code.Service, jwtHandler jwt.Handler,
 
 var handlers = wire.NewSet(web.NewUserHandler)
 
-func InitHandlers(uh *web.UserHandler) []ginx.Handler {
-	return []ginx.Handler{uh}
+func InitHandlers(uh *web.UserHandler, goh *web.GithubOAuth2Handler) []ginx.Handler {
+	return []ginx.Handler{uh, goh}
 }

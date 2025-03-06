@@ -28,6 +28,7 @@ func InitApp() *App {
 		thirdPartSet,
 		webSet,
 		user.InitUserService,
+		user.InitGithubOAuth2Service,
 		email.InitService,
 		code.InitEmailCodeService,
 		bff.InitBff,

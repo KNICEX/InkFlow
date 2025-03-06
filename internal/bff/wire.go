@@ -17,13 +17,14 @@ var handlers = wire.NewSet(
 	web.NewUserHandler,
 )
 
-func InitHandlers(uh *web.UserHandler) []ginx.Handler {
-	return []ginx.Handler{uh}
+func InitHandlers(uh *web.UserHandler, goh *web.GithubOAuth2Handler) []ginx.Handler {
+	return []ginx.Handler{uh, goh}
 }
 
-func InitBff(userSvc user.Service, codeSvc code.Service, jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
+func InitBff(userSvc user.Service, service user.OAuth2Service[user.GithubInfo], codeSvc code.Service, jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
 	wire.Build(
 		web.NewUserHandler,
+		web.NewGithubOAuth2Handler,
 		InitHandlers,
 	)
 	return []ginx.Handler{}
