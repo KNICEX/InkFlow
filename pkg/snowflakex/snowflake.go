@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+var (
+	DefaultStartTime = time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+)
+
 type Node interface {
 	NextID() int64
 }

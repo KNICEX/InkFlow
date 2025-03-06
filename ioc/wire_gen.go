@@ -7,7 +7,7 @@
 package ioc
 
 import (
-	"github.com/KNICEX/InkFlow/internal/biff"
+	"github.com/KNICEX/InkFlow/internal/bff"
 	"github.com/KNICEX/InkFlow/internal/code"
 	"github.com/KNICEX/InkFlow/internal/email"
 	"github.com/KNICEX/InkFlow/internal/user"
@@ -26,7 +26,7 @@ func InitApp() *App {
 	serviceService := code.InitEmailCodeService(cmdable, service)
 	handler := InitJwtHandler(cmdable)
 	authentication := InitAuthMiddleware(handler, logger)
-	v := biff.InitBiff(userService, serviceService, handler, authentication, logger)
+	v := bff.InitBff(userService, serviceService, handler, authentication, logger)
 	engine := InitGin(v)
 	app := &App{
 		Server: engine,

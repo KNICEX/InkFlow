@@ -2,9 +2,7 @@ package web
 
 import (
 	"context"
-	web2 "github.com/KNICEX/InkFlow/internal/biff/internal/web"
-	"github.com/KNICEX/InkFlow/internal/user/internal/domain"
-	"github.com/KNICEX/InkFlow/internal/user/internal/service/oauth2"
+	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/KNICEX/InkFlow/pkg/ginx"
 	ijwt "github.com/KNICEX/InkFlow/pkg/ginx/jwt"
 	"github.com/KNICEX/InkFlow/pkg/logx"
@@ -17,30 +15,30 @@ import (
 
 const oauth2CookieName = "jwt-state"
 
-type oAuth2Handler[T any] struct {
-	svc          oauth2.Service[T]
+type OAuth2Handler[T any] struct {
+	svc          user.OAuth2Service[T]
 	stateKey     string
 	callBackPath string
-	getDomain    func(ctx context.Context, I T) (domain.User, error)
-	logger       logx.Logger
+	getDomain    func(ctx context.Context, t T) (user.User, error)
+	l            logx.Logger
 	ijwt.Handler
 }
 
-func (o *oAuth2Handler[T]) AuthUrl(ctx *gin.Context) (ginx.Result, error) {
+func (o *OAuth2Handler[T]) AuthUrl(ctx *gin.Context) (ginx.Result, error) {
 	state := uuidx.NewShort()
 	url, err := o.svc.AuthURL(ctx, state)
 	if err != nil {
-		o.logger.WithCtx(ctx).Error("oauth get auth url failed", logx.Error(err))
+		o.l.WithCtx(ctx).Error("oauth get auth url failed", logx.Error(err))
 		return ginx.InternalError(), err
 	}
 	if err = o.setStatCookie(ctx, state); err != nil {
-		o.logger.WithCtx(ctx).Error("oauth set state cookie failed", logx.Error(err))
+		o.l.WithCtx(ctx).Error("oauth set state cookie failed", logx.Error(err))
 		return ginx.InternalError(), err
 	}
 	return ginx.SuccessWithData(url), nil
 }
 
-func (o *oAuth2Handler[T]) setStatCookie(ctx *gin.Context, state string) error {
+func (o *OAuth2Handler[T]) setStatCookie(ctx *gin.Context, state string) error {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, StateClaims{
 		State: state,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -66,7 +64,7 @@ func (o *oAuth2Handler[T]) setStatCookie(ctx *gin.Context, state string) error {
 	return nil
 }
 
-func (o *oAuth2Handler[T]) verifyState(ctx *gin.Context) error {
+func (o *OAuth2Handler[T]) verifyState(ctx *gin.Context) error {
 	//state := ctx.Query("state")
 	//// 验证state
 	//cookieState, err := ctx.Cookie(oauth2CookieName)
@@ -87,31 +85,31 @@ func (o *oAuth2Handler[T]) verifyState(ctx *gin.Context) error {
 
 }
 
-func (o *oAuth2Handler[T]) Callback(ctx *gin.Context, callback web2.Oauth2Callback) (ginx.Result, error) {
+func (o *OAuth2Handler[T]) Callback(ctx *gin.Context, callback Oauth2Callback) (ginx.Result, error) {
 	if callback.Code == "" {
 		return ginx.InvalidParam(), nil
 	}
 
 	err := o.verifyState(ctx)
 	if err != nil {
-		o.logger.WithCtx(ctx).Error("oauth2 verify state failed", logx.Error(err))
+		o.l.WithCtx(ctx).Error("oauth2 verify state failed", logx.Error(err))
 		return ginx.InvalidParamWithMsg("登录失败"), err
 	}
 
 	info, err := o.svc.VerifyCode(ctx, callback.Code)
 	if err != nil {
-		o.logger.WithCtx(ctx).Error("oauth2 verify code failed", logx.Error(err))
+		o.l.WithCtx(ctx).Error("oauth2 verify code failed", logx.Error(err))
 		return ginx.InternalError(), err
 	}
 
 	// 通过wechat/GitHub Info 获取domain.User
 	u, err := o.getDomain(ctx, info)
 	if err != nil {
-		o.logger.WithCtx(ctx).Error("oauth2 get domain user failed", logx.Error(err))
+		o.l.WithCtx(ctx).Error("oauth2 get domain user failed", logx.Error(err))
 		return ginx.InternalError(), err
 	}
 	if err = o.SetLoginToken(ctx, u.Id); err != nil {
-		o.logger.WithCtx(ctx).Error("oauth2 set login token failed", logx.Error(err))
+		o.l.WithCtx(ctx).Error("oauth2 set login token failed", logx.Error(err))
 		return ginx.InternalError(), err
 	}
 	return ginx.SuccessWithMsg("登录成功"), nil

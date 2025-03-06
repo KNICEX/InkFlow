@@ -1,9 +1,9 @@
 //go:build wireinject
 
-package biff
+package bff
 
 import (
-	"github.com/KNICEX/InkFlow/internal/biff/internal/web"
+	"github.com/KNICEX/InkFlow/internal/bff/internal/web"
 	"github.com/KNICEX/InkFlow/internal/code"
 	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/KNICEX/InkFlow/pkg/ginx"
@@ -21,7 +21,7 @@ func InitHandlers(uh *web.UserHandler) []ginx.Handler {
 	return []ginx.Handler{uh}
 }
 
-func InitBiff(userSvc user.Service, codeSvc code.Service, jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
+func InitBff(userSvc user.Service, codeSvc code.Service, jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
 	wire.Build(
 		web.NewUserHandler,
 		InitHandlers,

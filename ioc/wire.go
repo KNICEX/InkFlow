@@ -3,7 +3,7 @@
 package ioc
 
 import (
-	"github.com/KNICEX/InkFlow/internal/biff"
+	"github.com/KNICEX/InkFlow/internal/bff"
 	"github.com/KNICEX/InkFlow/internal/code"
 	"github.com/KNICEX/InkFlow/internal/email"
 	"github.com/KNICEX/InkFlow/internal/user"
@@ -30,7 +30,7 @@ func InitApp() *App {
 		user.InitUserService,
 		email.InitService,
 		code.InitEmailCodeService,
-		biff.InitBiff,
+		bff.InitBff,
 		InitGin,
 		wire.Struct(new(App), "*"),
 	)
