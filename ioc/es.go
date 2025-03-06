@@ -7,8 +7,8 @@ import (
 
 func InitEs() *elasticsearch.Client {
 	type Config struct {
-		Addr  string `yaml:"addr"`
-		Sniff bool   `yaml:"sniff"`
+		Addr  string `mapstructure:"addr"`
+		Sniff bool   `mapstructure:"sniff"`
 	}
 	var cfg Config
 	if err := viper.UnmarshalKey("es", &cfg); err != nil {

@@ -23,9 +23,9 @@ func InitUserService(db *gorm.DB, cmd redis.Cmdable, l logx.Logger) Service {
 
 func InitGithubOAuth2Service(l logx.Logger) OAuth2Service[GithubInfo] {
 	type Config struct {
-		ClientId       string `yaml:"client_id"`
-		ClientSecret   string `yaml:"client_secret"`
-		RedirectDomain string `yaml:"redirect_domain"`
+		ClientId       string `mapstructure:"client_id"`
+		ClientSecret   string `mapstructure:"client_secret"`
+		RedirectDomain string `mapstructure:"redirect_domain"`
 	}
 
 	var cfg Config

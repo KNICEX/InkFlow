@@ -23,7 +23,7 @@ func InitApp() *App {
 	cmdable := InitRedisCmdable(universalClient)
 	userService := user.InitUserService(db, cmdable, logger)
 	oAuth2Service := user.InitGithubOAuth2Service(logger)
-	service := email.InitService()
+	service := email.InitService(logger)
 	serviceService := code.InitEmailCodeService(cmdable, service)
 	handler := InitJwtHandler(cmdable)
 	authentication := InitAuthMiddleware(handler, logger)

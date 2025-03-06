@@ -3,19 +3,20 @@ package email
 import (
 	"context"
 	"github.com/KNICEX/InkFlow/internal/email/internal/service"
+	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/spf13/viper"
 	"time"
 )
 
 type Service = service.Service
 
-func InitService() Service {
+func InitService(l logx.Logger) Service {
 	type Config struct {
-		Username string `yaml:"username"`
-		Password string `yaml:"password"`
-		Host     string `yaml:"host"`
-		Port     int    `yaml:"port"`
-		FromName string `yaml:"from_ame"`
+		Username string `mapstructure:"username"`
+		Password string `mapstructure:"password"`
+		Host     string `mapstructure:"host"`
+		Port     int    `mapstructure:"port"`
+		FromName string `mapstructure:"from_name"`
 	}
 
 	var cfg Config
@@ -31,5 +32,5 @@ func InitService() Service {
 	if err = svc.Ping(ctx); err != nil {
 		panic(err)
 	}
-	return svc
+	return service.NewAsyncService(svc, l)
 }
