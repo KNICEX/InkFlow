@@ -21,7 +21,7 @@ func NewAsyncService(svc Service, l logx.Logger) Service {
 func (a *AsyncService) SendString(ctx context.Context, email, title string, body string) error {
 	go func() {
 		if err := a.svc.SendString(ctx, email, title, body); err != nil {
-			a.l.Error("failed to async send string email",
+			a.l.WithCtx(ctx).Error("failed to async send string email",
 				logx.Error(err),
 				logx.String("email", email))
 		}

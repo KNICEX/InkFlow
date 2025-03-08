@@ -58,9 +58,16 @@ func (h *BatchHandler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 		batch := make([]*sarama.ConsumerMessage, 0, h.batchSize)
 		ts := make([]T, 0, h.batchSize)
 		ctx, cancel := context.WithTimeout(context.Background(), h.maxWait)
+		batchDone := false
+		var last *sarama.ConsumerMessage
 		for _ = range h.batchSize {
+			if batchDone {
+				break
+			}
 			select {
 			case <-ctx.Done():
+				// 达到一批次的最大等待时间
+				batchDone = true
 			case msg, ok := <-msgs:
 				if !ok {
 					// chan关闭
@@ -68,31 +75,37 @@ func (h *BatchHandler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 					return nil
 				}
 
-				batch = append(batch, msg)
+				last = msg
 				var t T
 				err := json.Unmarshal(msg.Value, &t)
 				if err != nil {
-					h.l.Error("batch handler: failed to unmarshal message",
+					h.l.WithCtx(ctx).Error("batch handler: failed to unmarshal message",
 						logx.Error(err),
 						logx.String("topic", msg.Topic),
 						logx.Int32("partition", msg.Partition),
 						logx.Int64("offset", msg.Offset))
+					// TODO 考虑丢死信队列
 					continue
 				}
+				batch = append(batch, msg)
 				ts = append(ts, t)
 			}
 		}
 		cancel()
+		if len(batch) == 0 {
+			continue
+		}
 
 		err := h.fn(batch, ts)
 		if err != nil {
 			h.l.Error("batch handler: failed to handle message",
+				logx.String("topic", last.Topic),
 				logx.Error(err),
 			)
 			// TODO 重试 还是丢到死信队列
 		}
-		for _, msg := range batch {
-			session.MarkMessage(msg, "")
+		if last != nil {
+			session.MarkMessage(last, "")
 		}
 	}
 }

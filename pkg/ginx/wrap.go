@@ -11,6 +11,8 @@ import (
 
 var vector *prometheus.CounterVec
 
+// InitErrCodeMetrics 初始化错误码统计
+// 注意：要使用wrap功能，必须调用该方法初始化vector
 func InitErrCodeMetrics(opt prometheus.CounterOpts) {
 	vector = prometheus.NewCounterVec(opt, []string{"code"})
 	prometheus.MustRegister(vector)

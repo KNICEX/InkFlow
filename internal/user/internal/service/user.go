@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/KNICEX/InkFlow/internal/user/internal/domain"
 	"github.com/KNICEX/InkFlow/internal/user/internal/repo"
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/KNICEX/InkFlow/pkg/uuidx"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -31,8 +33,9 @@ type UserService interface {
 }
 
 type userService struct {
-	repo repo.UserRepo
-	l    logx.Logger
+	repo   repo.UserRepo
+	l      logx.Logger
+	tracer trace.Tracer
 }
 
 func NewUserService(repo repo.UserRepo, l logx.Logger) UserService {
@@ -58,7 +61,7 @@ func (svc *userService) encryptPwd(password string) (string, error) {
 }
 
 func (svc *userService) newDefaultAccountName() string {
-	return uuidx.NewShortN(12)
+	return fmt.Sprintf("inker_%s", uuidx.NewShort())
 }
 func (svc *userService) LoginEmailPwd(ctx context.Context, email, password string) (domain.User, error) {
 	user, err := svc.repo.FindByEmail(ctx, email)
@@ -99,64 +102,64 @@ func (svc *userService) UpdateNonSensitiveInfo(ctx context.Context, user domain.
 }
 func (svc *userService) FindOrCreateByPhone(ctx context.Context, phone string) (domain.User, error) {
 	user, err := svc.repo.FindByPhone(ctx, phone)
-	if err != nil {
-		if errors.Is(err, repo.ErrUserNotFound) {
-			user = domain.User{
-				Account: svc.newDefaultAccountName(),
-				Phone:   phone,
-			}
-			if err := svc.repo.Create(ctx, user); err != nil {
-				return domain.User{}, err
-			}
-		} else {
-			return domain.User{}, err
-		}
+	if err == nil {
+		return user, nil
 	}
-	return svc.repo.FindByPhone(ctx, phone)
+	if !errors.Is(err, repo.ErrUserNotFound) {
+		// 其他错误，直接返回
+		return domain.User{}, err
+	}
+	user = domain.User{
+		Account: svc.newDefaultAccountName(),
+		Phone:   phone,
+	}
+	if user.Id, err = svc.repo.Create(ctx, user); err != nil {
+		return domain.User{}, err
+	}
+	return user, nil
 }
 
 func (svc *userService) FindOrCreateByEmail(ctx context.Context, email string) (domain.User, error) {
 	user, err := svc.repo.FindByEmail(ctx, email)
-	if err != nil {
-		if errors.Is(err, repo.ErrUserNotFound) {
-			user = domain.User{
-				Account: svc.newDefaultAccountName(),
-				Email:   email,
-			}
-			if err := svc.repo.Create(ctx, user); err != nil {
-				return domain.User{}, err
-			}
-		} else {
-			return domain.User{}, err
-		}
+	if err == nil {
+		return user, nil
 	}
-	return svc.repo.FindById(ctx, user.Id)
+	if !errors.Is(err, repo.ErrUserNotFound) {
+		return domain.User{}, err
+	}
+	user = domain.User{
+		Account: svc.newDefaultAccountName(),
+		Email:   email,
+	}
+	if user.Id, err = svc.repo.Create(ctx, user); err != nil {
+		return domain.User{}, err
+	}
+	return user, nil
 }
 
+func (svc *userService) FindOrCreateByGithub(ctx context.Context, i domain.GithubInfo) (domain.User, error) {
+	user, err := svc.repo.FindByGithubId(ctx, i.Id)
+	if err == nil {
+		return user, nil
+	}
+	if !errors.Is(err, repo.ErrUserNotFound) {
+		return domain.User{}, err
+	}
+	user = domain.User{
+		Account:    svc.newDefaultAccountName(),
+		GithubInfo: i,
+	}
+	if user.Id, err = svc.repo.Create(ctx, user); err != nil {
+		return domain.User{}, err
+	}
+	return user, nil
+}
 func (svc *userService) UpdateAccountName(ctx context.Context, uid int64, accountName string) error {
 	// TODO 这个接口也许要做频率限制，不应当频繁修改
 	return svc.repo.UpdateNonZeroFields(ctx, domain.User{
 		Id:      uid,
 		Account: accountName,
 	})
-}
-
-func (svc *userService) FindOrCreateByGithub(ctx context.Context, i domain.GithubInfo) (domain.User, error) {
-	user, err := svc.repo.FindByGithubId(ctx, i.Id)
-	if err != nil {
-		if errors.Is(err, repo.ErrUserNotFound) {
-			user = domain.User{
-				Account:    svc.newDefaultAccountName(),
-				GithubInfo: i,
-			}
-			if err := svc.repo.Create(ctx, user); err != nil {
-				return domain.User{}, err
-			}
-		} else {
-			return domain.User{}, err
-		}
-	}
-	return svc.repo.FindByGithubId(ctx, i.Id)
 }
 
 func (svc *userService) ResetPwd(ctx context.Context, uid int64, newPwd string) error {

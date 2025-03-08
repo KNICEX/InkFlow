@@ -103,6 +103,7 @@ func (o *OAuth2Handler[T]) Callback(ctx *gin.Context, callback Oauth2Callback) (
 	}
 
 	// 通过wechat/GitHub Info 获取domain.User
+	// golang新特性，编辑器会报错
 	u, err := o.getDomain(ctx, info)
 
 	if err != nil {

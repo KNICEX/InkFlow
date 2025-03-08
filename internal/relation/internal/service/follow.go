@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/KNICEX/InkFlow/internal/relation/internal/domain"
 	"github.com/KNICEX/InkFlow/internal/relation/internal/repo"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // FollowService TODO 增加关注分组
@@ -17,7 +18,8 @@ type FollowService interface {
 }
 
 type followService struct {
-	repo repo.FollowRepo
+	repo   repo.FollowRepo
+	tracer trace.Tracer
 }
 
 func (svc *followService) Follow(ctx context.Context, uid, followeeId int64) error {

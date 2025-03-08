@@ -45,6 +45,7 @@ func (z *ZapLogger) WithCtx(ctx context.Context) Logger {
 	// TODO 后续整合trace
 	return &ZapLogger{l: z.l, ctx: ctx}
 }
+
 func (z *ZapLogger) WithField(field ...Field) Logger {
 	return &ZapLogger{l: z.l.With(z.toZapFields(field)...)}
 }

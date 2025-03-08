@@ -31,7 +31,7 @@ func (repo *CachedFollowRepo) AddFollowRelation(ctx context.Context, c domain.Fo
 	}
 	err = repo.cache.Follow(ctx, c.Follower, c.Followee)
 	if err != nil {
-		repo.l.Error("add follow cache error", logx.Error(err), logx.Int64("UserId", c.Follower))
+		repo.l.WithCtx(ctx).Error("add follow cache error", logx.Error(err), logx.Int64("UserId", c.Follower))
 	}
 	return err
 }
@@ -43,7 +43,7 @@ func (repo *CachedFollowRepo) RemoveFollowRelation(ctx context.Context, c domain
 	}
 	err = repo.cache.CancelFollow(ctx, c.Follower, c.Followee)
 	if err != nil {
-		repo.l.Error("cancel follow cache error", logx.Error(err), logx.Int64("UserId", c.Follower))
+		repo.l.WithCtx(ctx).Error("cancel follow cache error", logx.Error(err), logx.Int64("UserId", c.Follower))
 	}
 	return err
 }

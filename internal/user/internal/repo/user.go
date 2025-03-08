@@ -16,7 +16,7 @@ var (
 )
 
 type UserRepo interface {
-	Create(ctx context.Context, u domain.User) error
+	Create(ctx context.Context, u domain.User) (int64, error)
 	FindByEmail(ctx context.Context, email string) (domain.User, error)
 	FindByPhone(ctx context.Context, phone string) (domain.User, error)
 	FindByAccount(ctx context.Context, accountName string) (domain.User, error)
@@ -42,7 +42,7 @@ func NewCachedUserRepo(dao dao.UserDAO, cache cache.UserCache, l logx.Logger) Us
 	}
 }
 
-func (r *CachedUserRepo) Create(ctx context.Context, u domain.User) error {
+func (r *CachedUserRepo) Create(ctx context.Context, u domain.User) (int64, error) {
 	return r.dao.Insert(ctx, r.domainToEntity(u))
 }
 

@@ -15,3 +15,7 @@ email:
     port: 587
     host: smtp.gmail.com
     from_name: InkFlow
+
+llm:
+  gemini:
+    key: key

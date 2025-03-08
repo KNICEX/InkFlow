@@ -195,13 +195,19 @@ func (h *UserHandler) LoginAccountPwd(ctx *gin.Context, req LoginAccountPwdReq) 
 
 func (h *UserHandler) Profile(ctx *gin.Context) (ginx.Result, error) {
 	type Profile struct {
-		Email       string `json:"email"`
-		Phone       string `json:"phone"`
-		AccountName string `json:"accountName"`
-		Username    string `json:"nickname"`
-		Birthday    string `json:"birthday"`
-		AboutMe     string `json:"aboutMe"`
+		Email     string    `json:"email"`
+		Phone     string    `json:"phone"`
+		Account   string    `json:"account"`
+		Username  string    `json:"username"`
+		Birthday  string    `json:"birthday"`
+		AboutMe   string    `json:"aboutMe"`
+		Followers int       `json:"followers"`
+		Following int       `json:"following"`
+		Followed  bool      `json:"followed"`
+		Links     []string  `json:"links"`
+		CreatedAt time.Time `json:"createdAt"`
 	}
+	// TODO 聚合关注信息
 
 	uc := jwt.MustGetUserClaims(ctx)
 
@@ -215,12 +221,12 @@ func (h *UserHandler) Profile(ctx *gin.Context) (ginx.Result, error) {
 		birthday = u.Birthday.Format(time.DateOnly)
 	}
 	return ginx.SuccessWithData(Profile{
-		Email:       u.Email,
-		Phone:       u.Phone,
-		Username:    u.Username,
-		AccountName: u.Account,
-		Birthday:    birthday,
-		AboutMe:     u.AboutMe,
+		Email:    u.Email,
+		Phone:    u.Phone,
+		Username: u.Username,
+		Account:  u.Account,
+		Birthday: birthday,
+		AboutMe:  u.AboutMe,
 	}), nil
 }
 

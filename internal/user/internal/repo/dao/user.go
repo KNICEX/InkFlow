@@ -15,7 +15,7 @@ var (
 )
 
 type UserDAO interface {
-	Insert(ctx context.Context, u User) error
+	Insert(ctx context.Context, u User) (int64, error)
 	FindByEmail(ctx context.Context, email string) (User, error)
 	FindByPhone(ctx context.Context, phone string) (User, error)
 	FindById(ctx context.Context, id int64) (User, error)
@@ -56,16 +56,16 @@ func NewGormUserDAO(db *gorm.DB) UserDAO {
 	}
 }
 
-func (dao *GormUserDAO) Insert(ctx context.Context, u User) error {
+func (dao *GormUserDAO) Insert(ctx context.Context, u User) (int64, error) {
 	now := time.Now()
 	u.CreatedAt = now
 	u.UpdatedAt = now
 	err := dao.db.WithContext(ctx).Create(&u).Error
 	if errors.Is(err, gorm.ErrDuplicatedKey) {
-		return ErrDuplicateKey
+		return 0, ErrDuplicateKey
 	}
 
-	return err
+	return u.Id, err
 }
 
 func (dao *GormUserDAO) FindByEmail(ctx context.Context, email string) (User, error) {
