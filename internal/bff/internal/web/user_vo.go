@@ -1,5 +1,10 @@
 package web
 
+import (
+	"github.com/KNICEX/InkFlow/internal/user"
+	"time"
+)
+
 // SendCodeReq 发送验证码请求
 // 手机号和邮箱二选一，都没有则返回参数错误
 type SendCodeReq struct {
@@ -17,19 +22,29 @@ type LoginEmailReq struct {
 	Code  string `json:"code" binding:"required"`
 }
 
+type RegisterByEmailReq struct {
+	Account  string `json:"account" binding:"required,min=1,max=30"`
+	Username string `json:"username" binding:"required,min=1,max=30"`
+	Email    string `json:"email" binding:"required,email"`
+	Token    string `json:"token" binding:"required"`
+	Password string `json:"password" binding:"required,min=6,max=30"`
+}
+
 type LoginEmailPwdReq struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,min=6,max=30"`
 }
 
-type EditAccountNameReq struct {
-	AccountName string `json:"accountName" binding:"required,min=1,max=30"`
+type EditProfileReq struct {
+	Username string   `json:"username" binding:"required,min=1,max=30"`
+	Birthday string   `json:"birthday"`
+	Links    []string `json:"links" `
+	AboutMe  string   `json:"aboutMe" binding:"max=1024"`
 }
 
-type EditProfileReq struct {
-	Nickname string `json:"nickname" binding:"required,min=1,max=30"`
-	Birthday string `json:"birthday"`
-	AboutMe  string `json:"aboutMe" binding:"max=1024"`
+type ProfileReq struct {
+	Uid     int64  `json:"uid"`
+	Account string `json:"account" binding:"max=30"`
 }
 
 type SmsResetPwdReq struct {
@@ -50,4 +65,38 @@ type ChangePwdReq struct {
 type Oauth2Callback struct {
 	Code  string `json:"code" binding:"required"`
 	State string `json:"state" binding:"required"`
+}
+
+type UserProfile struct {
+	Id int64 `json:"id"`
+	//Email     string    `json:"email"`
+	//Phone     string    `json:"phone"`
+	Account   string    `json:"account"`
+	Username  string    `json:"username"`
+	Birthday  string    `json:"birthday"`
+	AboutMe   string    `json:"aboutMe"`
+	Followers int       `json:"followers"`
+	Following int       `json:"following"`
+	Followed  bool      `json:"followed"`
+	Links     []string  `json:"links"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+func UserProfileFromDomain(u user.User) UserProfile {
+	birthday := ""
+	if !u.Birthday.IsZero() {
+		birthday = u.Birthday.Format(time.DateOnly)
+	}
+	return UserProfile{
+		Id:       u.Id,
+		Account:  u.Account,
+		Username: u.Username,
+		Birthday: birthday,
+		AboutMe:  u.AboutMe,
+		//Followers: u.Followers,
+		//Following: u.Following,
+		//Followed:  u.Followed,
+		Links:     u.Links,
+		CreatedAt: u.CreatedAt,
+	}
 }

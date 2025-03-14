@@ -19,6 +19,7 @@ type RedisUserCache struct {
 type UserCache interface {
 	Get(ctx context.Context, uid int64) (domain.User, error)
 	Set(ctx context.Context, uid int64, user domain.User) error
+	GetByIds(ctx context.Context, uids []int64) (map[int64]domain.User, error)
 	Delete(ctx context.Context, uid int64) error
 }
 
@@ -47,6 +48,30 @@ func (cache *RedisUserCache) Get(ctx context.Context, uid int64) (domain.User, e
 	err = json.Unmarshal(val, &u)
 	return u, err
 
+}
+
+func (cache *RedisUserCache) GetByIds(ctx context.Context, uids []int64) (map[int64]domain.User, error) {
+	keys := make([]string, len(uids))
+	for i, uid := range uids {
+		keys[i] = cache.key(uid)
+	}
+	vals, err := cache.client.MGet(ctx, keys...).Result()
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[int64]domain.User)
+	for i, val := range vals {
+		if val == "" {
+			continue
+		}
+		var u domain.User
+		err = json.Unmarshal([]byte(val.(string)), &u)
+		if err != nil {
+			return nil, err
+		}
+		res[uids[i]] = u
+	}
+	return res, nil
 }
 
 func (cache *RedisUserCache) Set(ctx context.Context, uid int64, user domain.User) error {

@@ -6,6 +6,8 @@ import (
 	"github.com/KNICEX/InkFlow/internal/bff"
 	"github.com/KNICEX/InkFlow/internal/code"
 	"github.com/KNICEX/InkFlow/internal/email"
+	"github.com/KNICEX/InkFlow/internal/ink"
+	"github.com/KNICEX/InkFlow/internal/interactive"
 	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/google/wire"
 )
@@ -28,9 +30,10 @@ func InitApp() *App {
 		thirdPartSet,
 		webSet,
 		user.InitUserService,
-		user.InitGithubOAuth2Service,
-		email.InitService,
+		email.InitMemoryService,
 		code.InitEmailCodeService,
+		ink.InitInkService,
+		interactive.InitInteractiveService,
 		bff.InitBff,
 		InitGin,
 		wire.Struct(new(App), "*"),

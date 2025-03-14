@@ -38,7 +38,10 @@ func WrapBody[T any](l logx.Logger, bizFn func(ctx *gin.Context, req T) (Result,
 				logx.String("route", fmt.Sprintf("%s %s", ctx.Request.Method, ctx.FullPath())),
 			)
 		}
-		ctx.JSON(http.StatusOK, res)
+		// 判断是否已经设置了http响应码
+		if ctx.Writer.Status() == http.StatusOK {
+			ctx.JSON(http.StatusOK, res)
+		}
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 var (
 	ErrInvalidAccountOrPwd = service.ErrInvalidAccountOrPwd
 	ErrUserDuplicate       = service.ErrUserDuplicate
+	ErrUserNotFound        = service.ErrUserNotFound
 )
 
 type Service = service.UserService

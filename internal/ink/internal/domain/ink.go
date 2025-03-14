@@ -1,24 +1,99 @@
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type Ink struct {
 	Id          int64
 	Title       string
+	Cover       string
 	Summary     string
+	Category    Category
+	ContentType ContentType
 	ContentHtml string
 	// 可能引入块编辑器
 	ContentMeta string
-	Status      InkStatus
-	Author      Author
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	// 手动添加的标签
+	Tags Tags
+	// ai生成的标签
+	AiTags    Tags
+	Status    Status
+	Author    Author
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
-type InkStatus int
+// Abstract 返回摘要(大约前50个字符)
+func (i Ink) Abstract() string {
+	if len(i.ContentHtml) > 50 {
+		// TODO 这里需要一个转换函数只提取文字内容
+		return i.ContentMeta[:50]
+	}
+	return i.ContentHtml
+}
+
+type Status int
+
+func (s Status) ToInt() int {
+	return int(s)
+}
+func StatusFromInt(i int) Status {
+	return Status(i)
+}
+
+const (
+	InkStatusUnKnown Status = iota
+	InkStatusUnPublished
+	InkStatusPending
+	InkStatusPublished
+	InkStatusPrivate
+)
+
+type Tags []string
+
+func (tags Tags) ToString() string {
+	// 逗号分隔
+	str := strings.Builder{}
+	for i, tag := range tags {
+		if i != 0 {
+			str.WriteString(",")
+		}
+		str.WriteString(tag)
+	}
+	return str.String()
+}
+
+func TagsFromString(str string) Tags {
+	// 逗号分隔
+	return strings.Split(str, ",")
+
+}
 
 type Author struct {
 	Id      int64
 	Name    string
 	Account string
+}
+
+type Category struct {
+	Id int64
+}
+
+type ContentType int
+
+const (
+	ContentTypeUnknown  ContentType = iota
+	ContentTypeShare                // 图文分享
+	ContentTypeLongForm             // 长文
+	ContentTypeHelp                 // 求助
+)
+
+func ContentTypeFromInt(i int) ContentType {
+	return ContentType(i)
+}
+
+func (c ContentType) ToInt() int {
+	return int(c)
 }

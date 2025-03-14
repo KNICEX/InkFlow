@@ -80,14 +80,12 @@ func (b *LoggerBuilder) Build() gin.HandlerFunc {
 			}
 			ctx.Writer = w
 		}
-
-		ctx.Next()
-
 		defer func() {
 			al.Duration = time.Since(start).String()
 			al.Status = ctx.Writer.Status()
 			b.loggerFunc(ctx.Request.Context(), al)
 		}()
+		ctx.Next()
 
 	}
 }

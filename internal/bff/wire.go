@@ -5,6 +5,8 @@ package bff
 import (
 	"github.com/KNICEX/InkFlow/internal/bff/internal/web"
 	"github.com/KNICEX/InkFlow/internal/code"
+	"github.com/KNICEX/InkFlow/internal/ink"
+	"github.com/KNICEX/InkFlow/internal/interactive"
 	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/KNICEX/InkFlow/pkg/ginx"
 	"github.com/KNICEX/InkFlow/pkg/ginx/jwt"
@@ -17,14 +19,16 @@ var handlers = wire.NewSet(
 	web.NewUserHandler,
 )
 
-func InitHandlers(uh *web.UserHandler, goh *web.GithubOAuth2Handler) []ginx.Handler {
-	return []ginx.Handler{uh, goh}
+func InitHandlers(uh *web.UserHandler, ih *web.InkHandler) []ginx.Handler {
+	return []ginx.Handler{uh, ih}
 }
 
-func InitBff(userSvc user.Service, service user.OAuth2Service[user.GithubInfo], codeSvc code.Service, jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
+func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
+	interactiveSvc interactive.Service,
+	jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
 	wire.Build(
 		web.NewUserHandler,
-		web.NewGithubOAuth2Handler,
+		web.NewInkHandler,
 		InitHandlers,
 	)
 	return []ginx.Handler{}

@@ -1,0 +1,209 @@
+package repo
+
+import (
+	"context"
+	"github.com/KNICEX/InkFlow/internal/interactive/internal/domain"
+	"github.com/KNICEX/InkFlow/internal/interactive/internal/repo/cache"
+	"github.com/KNICEX/InkFlow/internal/interactive/internal/repo/dao"
+	"github.com/KNICEX/InkFlow/pkg/logx"
+	"github.com/samber/lo"
+)
+
+type InteractiveRepo interface {
+	IncrView(ctx context.Context, biz string, bizId, uid int64) error
+	IncrViewBatch(ctx context.Context, biz string, bizIds, uid []int64) error
+	IncrLike(ctx context.Context, biz string, bizId, uid int64) error
+	DecrLike(ctx context.Context, biz string, bizId, uid int64) error
+
+	ListView(ctx context.Context, biz string, uid int64, maxId int64, limit int) ([]domain.ViewRecord, error)
+	ListLike(ctx context.Context, biz string, uid int64, maxId int64, limit int) ([]domain.LikeRecord, error)
+
+	AddCollection(ctx context.Context, biz string, bizId, cid, uid int64) error
+	Liked(ctx context.Context, biz string, bizId, uid int64) (bool, error)
+	Collected(ctx context.Context, biz string, bizId, uid int64) (bool, error)
+	Get(ctx context.Context, biz string, bizId int64) (domain.Interactive, error)
+	GetMulti(ctx context.Context, biz string, bizIds []int64) (map[int64]domain.Interactive, error)
+}
+
+type CachedInteractiveRepo struct {
+	cache cache.InteractiveCache
+	dao   dao.InteractiveDAO
+	l     logx.Logger
+}
+
+func NewCachedInteractiveRepo(cache cache.InteractiveCache, dao dao.InteractiveDAO, l logx.Logger) InteractiveRepo {
+	return &CachedInteractiveRepo{
+		cache: cache,
+		dao:   dao,
+		l:     l,
+	}
+}
+
+func (repo *CachedInteractiveRepo) IncrView(ctx context.Context, biz string, bizId, uid int64) error {
+	if err := repo.dao.InsertView(ctx, biz, bizId, uid); err != nil {
+		return err
+	}
+	go func() {
+		if err := repo.cache.IncrViewCnt(ctx, biz, bizId); err != nil {
+			repo.l.WithCtx(ctx).Error("incr read cnt cache error", logx.Error(err),
+				logx.String("biz", biz),
+				logx.Int64("bizId", bizId),
+				logx.Int64("uid", uid))
+		}
+	}()
+	return nil
+}
+
+func (repo *CachedInteractiveRepo) IncrViewBatch(ctx context.Context, biz string, bizIds, uids []int64) error {
+	if err := repo.dao.InsertViewBatch(ctx, biz, bizIds, uids); err != nil {
+		return err
+	}
+	go func() {
+		if err := repo.cache.IncrViewCntBatch(ctx, biz, bizIds); err != nil {
+			repo.l.WithCtx(ctx).Error("incr read cnt cache error", logx.Error(err),
+				logx.String("biz", biz),
+				logx.Any("bizIds", bizIds),
+				logx.Any("uids", uids))
+		}
+	}()
+	return nil
+}
+
+func (repo *CachedInteractiveRepo) IncrLike(ctx context.Context, biz string, bizId, uid int64) error {
+	if err := repo.dao.InsertLike(ctx, biz, bizId, uid); err != nil {
+		return err
+	}
+	go func() {
+		if err := repo.cache.IncrLikeCnt(ctx, biz, bizId); err != nil {
+			repo.l.WithCtx(ctx).Error("incr like cnt cache error", logx.Error(err),
+				logx.String("biz", biz),
+				logx.Int64("bizId", bizId),
+				logx.Int64("uid", uid))
+		}
+	}()
+	return nil
+}
+
+func (repo *CachedInteractiveRepo) DecrLike(ctx context.Context, biz string, bizId, uid int64) error {
+	if err := repo.dao.DeleteLike(ctx, biz, bizId, uid); err != nil {
+		return err
+	}
+	go func() {
+		if err := repo.cache.DecrLikeCnt(ctx, biz, bizId); err != nil {
+			repo.l.WithCtx(ctx).Error("decr like cnt cache error", logx.Error(err),
+				logx.String("biz", biz),
+				logx.Int64("bizId", bizId),
+				logx.Int64("uid", uid))
+		}
+	}()
+	return nil
+}
+
+func (repo *CachedInteractiveRepo) ListView(ctx context.Context, biz string, uid int64, maxId int64, limit int) ([]domain.ViewRecord, error) {
+	records, err := repo.dao.ListViewRecord(ctx, biz, uid, maxId, limit)
+	if err != nil {
+		return nil, err
+	}
+	return lo.Map(records, func(item dao.UserView, index int) domain.ViewRecord {
+		return repo.readToDomain(item)
+	}), nil
+}
+
+func (repo *CachedInteractiveRepo) ListLike(ctx context.Context, biz string, uid int64, maxId int64, limit int) ([]domain.LikeRecord, error) {
+	records, err := repo.dao.ListLikeRecord(ctx, biz, uid, maxId, limit)
+	if err != nil {
+		return nil, err
+	}
+	return lo.Map(records, func(item dao.UserLike, index int) domain.LikeRecord {
+		return repo.likeToDomain(item)
+	}), nil
+}
+
+func (repo *CachedInteractiveRepo) AddCollection(ctx context.Context, biz string, bizId, cid, uid int64) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (repo *CachedInteractiveRepo) Liked(ctx context.Context, biz string, bizId, uid int64) (bool, error) {
+	liked, err := repo.dao.GetLikeInfo(ctx, biz, bizId, uid)
+	if err != nil {
+		return false, err
+	}
+	return liked.Id != 0, nil
+}
+
+func (repo *CachedInteractiveRepo) Collected(ctx context.Context, biz string, bizId, uid int64) (bool, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (repo *CachedInteractiveRepo) Get(ctx context.Context, biz string, bizId int64) (domain.Interactive, error) {
+	intr, err := repo.cache.Get(ctx, biz, bizId)
+	if err == nil {
+		return intr, nil
+	}
+
+	entity, err := repo.dao.Get(ctx, biz, bizId)
+	if err != nil {
+		return domain.Interactive{}, err
+	}
+	intr = repo.interToDomain(entity)
+	go func() {
+		if er := repo.cache.Set(ctx, biz, bizId, intr); er != nil {
+			repo.l.WithCtx(ctx).Error("set interactive cache error", logx.Error(er),
+				logx.String("biz", biz),
+				logx.Int64("bizId", bizId))
+		}
+	}()
+	return intr, nil
+}
+
+func (repo *CachedInteractiveRepo) GetMulti(ctx context.Context, biz string, bizIds []int64) (map[int64]domain.Interactive, error) {
+	intrMap, err := repo.cache.GetMulti(ctx, biz, bizIds)
+	if err == nil {
+		return intrMap, nil
+	}
+
+	entities, err := repo.dao.GetByIds(ctx, biz, bizIds)
+	if err != nil {
+		return nil, err
+	}
+	intrMap = make(map[int64]domain.Interactive)
+	for _, entity := range entities {
+		intrMap[entity.BizId] = repo.interToDomain(entity)
+	}
+	go func() {
+		if er := repo.cache.SetMulti(ctx, lo.MapToSlice(intrMap, func(key int64, value domain.Interactive) domain.Interactive {
+			return value
+		})); er != nil {
+			repo.l.WithCtx(ctx).Error("set interactive cache error", logx.Error(er),
+				logx.String("biz", biz),
+				logx.Any("bizIds", bizIds))
+		}
+	}()
+	return intrMap, nil
+}
+
+func (repo *CachedInteractiveRepo) interToDomain(entity dao.Interactive) domain.Interactive {
+	return domain.Interactive{
+		Biz:     entity.Biz,
+		BizId:   entity.BizId,
+		ViewCnt: entity.ReadCnt,
+		LikeCnt: entity.LikeCnt,
+	}
+}
+
+func (repo *CachedInteractiveRepo) readToDomain(entity dao.UserView) domain.ViewRecord {
+	return domain.ViewRecord{
+		Biz:    entity.Biz,
+		BizId:  entity.BizId,
+		UserId: entity.UserId,
+	}
+}
+func (repo *CachedInteractiveRepo) likeToDomain(entity dao.UserLike) domain.LikeRecord {
+	return domain.LikeRecord{
+		Biz:    entity.Biz,
+		BizId:  entity.BizId,
+		UserId: entity.UserId,
+	}
+}

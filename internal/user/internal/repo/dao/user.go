@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/KNICEX/InkFlow/internal/user/internal/domain"
+	"github.com/KNICEX/InkFlow/pkg/snowflakex"
 	"gorm.io/gorm"
 	"time"
 )
@@ -19,10 +20,11 @@ type UserDAO interface {
 	FindByEmail(ctx context.Context, email string) (User, error)
 	FindByPhone(ctx context.Context, phone string) (User, error)
 	FindById(ctx context.Context, id int64) (User, error)
+	FindByIds(ctx context.Context, ids []int64) (map[int64]User, error)
 	FindByWechatOpenId(ctx context.Context, openId string) (User, error)
 	UpdateById(ctx context.Context, u User) error
 	FindByGithubId(ctx context.Context, id int64) (User, error)
-	FindByAccountName(ctx context.Context, accountName string) (User, error)
+	FindByAccountName(ctx context.Context, account string) (User, error)
 }
 
 type User struct {
@@ -47,12 +49,14 @@ type User struct {
 }
 
 type GormUserDAO struct {
-	db *gorm.DB
+	node snowflakex.Node
+	db   *gorm.DB
 }
 
-func NewGormUserDAO(db *gorm.DB) UserDAO {
+func NewGormUserDAO(db *gorm.DB, node snowflakex.Node) UserDAO {
 	return &GormUserDAO{
-		db: db,
+		node: node,
+		db:   db,
 	}
 }
 
@@ -60,6 +64,7 @@ func (dao *GormUserDAO) Insert(ctx context.Context, u User) (int64, error) {
 	now := time.Now()
 	u.CreatedAt = now
 	u.UpdatedAt = now
+	u.Id = dao.node.NextID()
 	err := dao.db.WithContext(ctx).Create(&u).Error
 	if errors.Is(err, gorm.ErrDuplicatedKey) {
 		return 0, ErrDuplicateKey
@@ -95,6 +100,19 @@ func (dao *GormUserDAO) FindById(ctx context.Context, id int64) (User, error) {
 	return u, nil
 }
 
+func (dao *GormUserDAO) FindByIds(ctx context.Context, ids []int64) (map[int64]User, error) {
+	var users []User
+	err := dao.db.WithContext(ctx).Where("id IN ?", ids).Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+	userMap := make(map[int64]User)
+	for _, u := range users {
+		userMap[u.Id] = u
+	}
+	return userMap, nil
+}
+
 func (dao *GormUserDAO) FindByWechatOpenId(ctx context.Context, openId string) (User, error) {
 	var u User
 	err := dao.db.WithContext(ctx).Where("wechat_open_id = ?", openId).First(&u).Error
@@ -122,9 +140,9 @@ func (dao *GormUserDAO) UpdateById(ctx context.Context, u User) error {
 	return err
 }
 
-func (dao *GormUserDAO) FindByAccountName(ctx context.Context, accountName string) (User, error) {
+func (dao *GormUserDAO) FindByAccountName(ctx context.Context, account string) (User, error) {
 	var u User
-	err := dao.db.WithContext(ctx).Where("account_name = ?", accountName).First(&u).Error
+	err := dao.db.WithContext(ctx).Where("account = ?", account).First(&u).Error
 	if err != nil {
 		return u, err
 	}

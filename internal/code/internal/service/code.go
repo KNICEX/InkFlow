@@ -29,7 +29,7 @@ type CachedEmailCodeService struct {
 	emailSvc email.Service
 
 	title    string
-	template string // 密码将使用%s替换
+	template string // 密码将使用{code}替换
 
 	effectiveTime  time.Duration
 	resendInterval time.Duration

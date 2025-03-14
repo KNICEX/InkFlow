@@ -49,3 +49,6 @@ func (z *ZapLogger) WithCtx(ctx context.Context) Logger {
 func (z *ZapLogger) WithField(field ...Field) Logger {
 	return &ZapLogger{l: z.l.With(z.toZapFields(field)...)}
 }
+func (z *ZapLogger) WithSkip(skip int) Logger {
+	return &ZapLogger{l: z.l.WithOptions(zap.AddCallerSkip(skip))}
+}

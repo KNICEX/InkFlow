@@ -27,3 +27,7 @@ func (l *NopLogger) Fatal(msg string, fields ...Field) {}
 func (l *NopLogger) WithCtx(ctx context.Context) Logger {
 	return l
 }
+
+func (l *NopLogger) WithSkip(skip int) Logger {
+	return l
+}

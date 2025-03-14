@@ -3,10 +3,12 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"github.com/KNICEX/InkFlow/internal/user/internal/domain"
 	"github.com/KNICEX/InkFlow/internal/user/internal/repo/cache"
 	"github.com/KNICEX/InkFlow/internal/user/internal/repo/dao"
 	"github.com/KNICEX/InkFlow/pkg/logx"
+	"github.com/samber/lo"
 	"time"
 )
 
@@ -22,6 +24,7 @@ type UserRepo interface {
 	FindByAccount(ctx context.Context, accountName string) (domain.User, error)
 
 	FindById(ctx context.Context, id int64) (domain.User, error)
+	FindByIds(ctx context.Context, ids []int64) (map[int64]domain.User, error)
 	FindByGithubId(ctx context.Context, id int64) (domain.User, error)
 	UpdateNonZeroFields(ctx context.Context, u domain.User) error
 }
@@ -84,6 +87,36 @@ func (r *CachedUserRepo) FindById(ctx context.Context, id int64) (domain.User, e
 	return u, err
 }
 
+func (r *CachedUserRepo) FindByIds(ctx context.Context, ids []int64) (map[int64]domain.User, error) {
+	users, err := r.cache.GetByIds(ctx, ids)
+	if err != nil && !errors.Is(err, cache.ErrKeyNotExist) {
+		r.l.WithCtx(ctx).Error("get user cache by ids error", logx.Error(err), logx.Any("UserIds", ids))
+	}
+
+	if len(users) == len(ids) {
+		return users, nil
+	}
+
+	if len(users) > 0 {
+		// 去除缓存命中的
+		ids = lo.WithoutBy(ids, func(item int64) bool {
+			_, ok := users[item]
+			return ok
+		})
+	}
+
+	// 从数据库中获取
+	us, err := r.dao.FindByIds(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, u := range us {
+		users[u.Id] = r.entityToDomain(u)
+	}
+
+	return users, nil
+}
+
 func (r *CachedUserRepo) FindByWechatOpenId(ctx context.Context, openId string) (domain.User, error) {
 	u, err := r.dao.FindByWechatOpenId(ctx, openId)
 	if err != nil {
@@ -136,6 +169,7 @@ func (r *CachedUserRepo) entityToDomain(u dao.User) domain.User {
 		Username:   u.Username,
 		Account:    u.Account,
 		AboutMe:    u.AboutMe,
+		Links:      domain.LinksFromString(u.Links),
 		GithubInfo: u.GithubInfo,
 		Birthday:   u.Birthday.Time,
 		CreatedAt:  u.CreatedAt,
@@ -157,6 +191,7 @@ func (r *CachedUserRepo) domainToEntity(u domain.User) dao.User {
 		Account:  u.Account,
 		Username: u.Username,
 		AboutMe:  u.AboutMe,
+		Links:    u.Links.ToString(),
 		Password: sql.NullString{
 			String: u.Password,
 			Valid:  u.Password != "",

@@ -33,6 +33,20 @@ func ParseClaims(tokenStr string) (UserClaims, error) {
 	return res, nil
 }
 
+func ParseRefreshClaims(tokenStr string) (RefreshClaims, error) {
+	res := RefreshClaims{}
+	token, err := jwt.ParseWithClaims(tokenStr, &res, func(token *jwt.Token) (any, error) {
+		return RefreshClaimsKey, nil
+	})
+	if err != nil {
+		return res, err
+	}
+	if !token.Valid {
+		return res, errors.New("token invalid")
+	}
+	return res, nil
+}
+
 func GetUserClaims(ctx *gin.Context) (UserClaims, bool) {
 	claims, ok := ctx.Get(UserClaimsCtxKey)
 	if !ok {

@@ -10,6 +10,8 @@ import (
 	"github.com/KNICEX/InkFlow/internal/bff"
 	"github.com/KNICEX/InkFlow/internal/code"
 	"github.com/KNICEX/InkFlow/internal/email"
+	"github.com/KNICEX/InkFlow/internal/ink"
+	"github.com/KNICEX/InkFlow/internal/interactive"
 	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/google/wire"
 )
@@ -22,13 +24,14 @@ func InitApp() *App {
 	universalClient := InitRedisUniversalClient()
 	cmdable := InitRedisCmdable(universalClient)
 	userService := user.InitUserService(db, cmdable, logger)
-	oAuth2Service := user.InitGithubOAuth2Service(logger)
-	service := email.InitService(logger)
+	service := email.InitMemoryService()
 	serviceService := code.InitEmailCodeService(cmdable, service)
+	inkService := ink.InitInkService(cmdable, db, logger)
+	interactiveService := interactive.InitInteractiveService(cmdable, db, logger)
 	handler := InitJwtHandler(cmdable)
 	authentication := InitAuthMiddleware(handler, logger)
-	v := bff.InitBff(userService, oAuth2Service, serviceService, handler, authentication, logger)
-	engine := InitGin(v)
+	v := bff.InitBff(userService, serviceService, inkService, interactiveService, handler, authentication, logger)
+	engine := InitGin(v, logger)
 	app := &App{
 		Server: engine,
 	}

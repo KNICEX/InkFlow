@@ -7,6 +7,7 @@ import (
 	"github.com/KNICEX/InkFlow/pkg/ginx"
 	"github.com/KNICEX/InkFlow/pkg/ginx/jwt"
 	"github.com/KNICEX/InkFlow/pkg/ginx/middleware"
+	"github.com/KNICEX/InkFlow/pkg/jwtx"
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -17,6 +18,10 @@ import (
 const (
 	loginBiz    = "login"
 	resetPwdBiz = "reset_pwd"
+)
+
+const (
+	registerJwtKey = "register"
 )
 
 var _ ginx.Handler = (*UserHandler)(nil)
@@ -45,23 +50,29 @@ func NewUserHandler(svc user.Service,
 	}
 }
 
-func (h *UserHandler) RegisterRoutes(server *gin.Engine) {
+func (h *UserHandler) RegisterRoutes(server *gin.RouterGroup) {
 	userGroup := server.Group("/user")
 	// 登录验证码
 	userGroup.POST("/verify/send/login", ginx.WrapBody(h.l, h.SendLoginCode))
 
 	loginGroup := userGroup.Group("/login")
 	{
-		// 邮箱验证码登录(自动注册)
+		// 邮箱验证码登录(未注册会返回临时凭证)
 		loginGroup.POST("/email", ginx.WrapBody(h.l, h.LoginEmail))
 		// 邮箱密码登录
 		loginGroup.POST("/pwd/email", ginx.WrapBody(h.l, h.LoginEmailPwd))
 		// 账号密码登录
 		loginGroup.POST("/pwd/account", ginx.WrapBody(h.l, h.LoginAccountPwd))
 	}
+	registerGroup := userGroup.Group("/register")
+	{
+		registerGroup.POST("/email", ginx.WrapBody(h.l, h.RegisterByEmail))
+	}
 
 	// 刷新token
 	userGroup.POST("/refresh_token", h.RefreshToken)
+	// 获取用户基础信息
+	userGroup.POST("/profile", h.auth.ExtractPayload(), ginx.WrapBody(h.l, h.Profile))
 
 	// 需要登录
 	checkGroup := userGroup.Group("")
@@ -70,10 +81,8 @@ func (h *UserHandler) RegisterRoutes(server *gin.Engine) {
 	{
 		checkGroup.GET("/logout", ginx.Wrap(h.l, h.Logout))
 
-		checkGroup.GET("/profile", ginx.Wrap(h.l, h.Profile))
+		// 修改个人信息
 		checkGroup.PUT("/profile", ginx.WrapBody(h.l, h.EditProfile))
-		// 修改账号名
-		checkGroup.PUT("/account_name", ginx.WrapBody(h.l, h.EditAccountName))
 
 		// 发送重置密码验证码
 		//checkGroup.POST("/verify/send/reset/sms", ginx.Wrap(h.l, h.SendResetPwdCodeSms))
@@ -92,7 +101,9 @@ func (h *UserHandler) sendCodeWithSvc(ctx *gin.Context, biz, recipient string) (
 	case err == nil:
 		return ginx.SuccessWithMsg("验证码发送成功"), nil
 	case errors.Is(err, code.ErrCodeSendTooMany):
-		return ginx.BizError("验证码发送太频繁"), err
+		// 这里warn一下就可以了
+		h.l.WithCtx(ctx).Warn("验证码发送太频繁", logx.String("recipient", recipient))
+		return ginx.BizError("验证码发送太频繁"), nil
 	default:
 		return ginx.InternalError(), err
 	}
@@ -107,19 +118,23 @@ func (h *UserHandler) sendCode(ctx *gin.Context, biz string, req SendCodeReq) (g
 
 func (h *UserHandler) verifyCode(ctx *gin.Context, biz, recipient, verifyCode string) (ginx.Result, error) {
 	ok, err := h.codeSvc.Verify(ctx, biz, recipient, verifyCode)
-	switch {
-	case err != nil && !errors.Is(err, code.ErrCodeVerifyLimit):
-		return ginx.InternalError(), err
-	case !ok:
-		return ginx.BizError("验证码错误"), nil
-	default:
-		return ginx.Success(), nil
+	if err != nil {
+		if errors.Is(err, code.ErrCodeVerifyLimit) {
+			h.l.WithCtx(ctx).Warn("验证码验证太频繁", logx.String("recipient", recipient))
+			return ginx.BizError("验证码验证太频繁"), nil
+		} else {
+			return ginx.InternalError(), err
+		}
 	}
+	if !ok {
+		return ginx.BizError("验证码错误"), nil
+	}
+	return ginx.Success(), nil
 }
 
 func (h *UserHandler) SendResetPwdCodeEmail(ctx *gin.Context) (ginx.Result, error) {
 	uc := jwt.MustGetUserClaims(ctx)
-	u, err := h.svc.Profile(ctx, uc.UserId)
+	u, err := h.svc.FindById(ctx, uc.UserId)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
@@ -144,8 +159,18 @@ func (h *UserHandler) LoginEmail(ctx *gin.Context, req LoginEmailReq) (ginx.Resu
 		return ginx.BizError("验证码错误"), nil
 	}
 
-	u, err = h.svc.FindOrCreateByEmail(ctx, req.Email)
+	u, err = h.svc.FindByEmail(ctx, req.Email)
 	if err != nil {
+		if errors.Is(err, user.ErrUserNotFound) {
+			// 进入两步注册,
+			// TODO 潜在的并发可能，同时存在两个凭证，可能需要借助redis做唯一验证
+			token, er := jwtx.Generate(req.Email, time.Minute*10, registerJwtKey)
+			if er != nil {
+				h.l.WithCtx(ctx).Error("生成注册token失败", logx.Error(er))
+				return ginx.InternalError(), er
+			}
+			return ginx.SuccessWithData(token), nil
+		}
 		return ginx.InternalError(), err
 	}
 
@@ -155,10 +180,37 @@ func (h *UserHandler) LoginEmail(ctx *gin.Context, req LoginEmailReq) (ginx.Resu
 	return ginx.SuccessWithMsg("登录成功"), nil
 }
 
+func (h *UserHandler) RegisterByEmail(ctx *gin.Context, req RegisterByEmailReq) (ginx.Result, error) {
+	email, err := jwtx.Parse[string](req.Token, registerJwtKey)
+	if err != nil {
+		return ginx.BizError("无效的凭证"), nil
+	}
+	if email != req.Email {
+		return ginx.BizError("邮箱不匹配"), nil
+	}
+	u, err := h.svc.Create(ctx, user.User{
+		Email:    req.Email,
+		Username: req.Username,
+		Account:  req.Account,
+		Password: req.Password,
+	})
+	if err != nil {
+		if errors.Is(err, user.ErrUserDuplicate) {
+			// TODO 当然也可能是邮箱重复 (概率很低，前端会预检账号名)
+			return ginx.BizError("账户名重复"), nil
+		}
+		return ginx.InternalError(), err
+	}
+	if err = h.SetLoginToken(ctx, u.Id); err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.SuccessWithMsg("注册成功"), nil
+}
+
 // LoginEmailPwd 邮箱密码登录
 func (h *UserHandler) LoginEmailPwd(ctx *gin.Context, req LoginEmailPwdReq) (ginx.Result, error) {
 	u, err := h.svc.LoginEmailPwd(ctx, req.Email, req.Password)
-	if errors.Is(err, user.ErrInvalidAccountOrPwd) {
+	if errors.Is(err, user.ErrInvalidAccountOrPwd) || errors.Is(err, user.ErrUserNotFound) {
 		return ginx.BizError("邮箱或密码错误"), nil
 	}
 	if err != nil {
@@ -193,53 +245,35 @@ func (h *UserHandler) LoginAccountPwd(ctx *gin.Context, req LoginAccountPwdReq) 
 	return ginx.SuccessWithMsg("登录成功"), nil
 }
 
-func (h *UserHandler) Profile(ctx *gin.Context) (ginx.Result, error) {
-	type Profile struct {
-		Email     string    `json:"email"`
-		Phone     string    `json:"phone"`
-		Account   string    `json:"account"`
-		Username  string    `json:"username"`
-		Birthday  string    `json:"birthday"`
-		AboutMe   string    `json:"aboutMe"`
-		Followers int       `json:"followers"`
-		Following int       `json:"following"`
-		Followed  bool      `json:"followed"`
-		Links     []string  `json:"links"`
-		CreatedAt time.Time `json:"createdAt"`
-	}
+func (h *UserHandler) Profile(ctx *gin.Context, req ProfileReq) (ginx.Result, error) {
 	// TODO 聚合关注信息
 
-	uc := jwt.MustGetUserClaims(ctx)
+	uc, logined := jwt.GetUserClaims(ctx)
 
-	u, err := h.svc.Profile(ctx, uc.UserId)
+	var u user.User
+	var err error
+	if req.Uid > 0 {
+		u, err = h.svc.FindById(ctx, req.Uid)
+
+	} else if req.Account != "" {
+		u, err = h.svc.FindByAccount(ctx, req.Account)
+	} else if !logined {
+		// 未登录查询自己的信息
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return ginx.BizError("未登录"), nil
+	} else {
+		u, err = h.svc.FindById(ctx, uc.UserId)
+	}
+
 	if err != nil {
+		if errors.Is(err, user.ErrUserNotFound) {
+			return ginx.BizError("用户不存在"), nil
+		}
 		return ginx.InternalError(), err
 	}
 
-	var birthday string
-	if !u.Birthday.IsZero() {
-		birthday = u.Birthday.Format(time.DateOnly)
-	}
-	return ginx.SuccessWithData(Profile{
-		Email:    u.Email,
-		Phone:    u.Phone,
-		Username: u.Username,
-		Account:  u.Account,
-		Birthday: birthday,
-		AboutMe:  u.AboutMe,
-	}), nil
-}
-
-func (h *UserHandler) EditAccountName(ctx *gin.Context, req EditAccountNameReq) (ginx.Result, error) {
-	uc := jwt.MustGetUserClaims(ctx)
-	err := h.svc.UpdateAccountName(ctx, uc.UserId, req.AccountName)
-	if errors.Is(err, user.ErrUserDuplicate) {
-		return ginx.BizError("账号名已存在"), nil
-	}
-	if err != nil {
-		return ginx.InternalError(), err
-	}
-	return ginx.SuccessWithMsg("修改成功"), nil
+	// TODO 聚合关注信息
+	return ginx.SuccessWithData(UserProfileFromDomain(u)), nil
 }
 
 func (h *UserHandler) EditProfile(ctx *gin.Context, req EditProfileReq) (ginx.Result, error) {
@@ -254,7 +288,7 @@ func (h *UserHandler) EditProfile(ctx *gin.Context, req EditProfileReq) (ginx.Re
 	uc := jwt.MustGetUserClaims(ctx)
 	err = h.svc.UpdateNonSensitiveInfo(ctx, user.User{
 		Id:       uc.UserId,
-		Username: req.Nickname,
+		Username: req.Username,
 		Birthday: birthday,
 		AboutMe:  req.AboutMe,
 	})
@@ -273,8 +307,20 @@ func (h *UserHandler) RefreshToken(ctx *gin.Context) {
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
-	rc, err := jwt.ParseClaims(req.RefreshToken)
+	rc, err := jwt.ParseRefreshClaims(req.RefreshToken)
 	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	ok, err := h.CheckSession(ctx, rc.Ssid)
+	if err != nil {
+		h.l.WithCtx(ctx).Error("RefreshToken", logx.Error(err))
+		ctx.JSON(http.StatusOK, ginx.InternalError())
+		return
+	}
+
+	if !ok {
+		// refresh token 过期了
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
@@ -300,7 +346,7 @@ func (h *UserHandler) RefreshToken(ctx *gin.Context) {
 
 func (h *UserHandler) resetPwdByCode(ctx *gin.Context, verify func(user user.User) (bool, error)) (ginx.Result, error) {
 	uc := jwt.MustGetUserClaims(ctx)
-	u, err := h.svc.Profile(ctx, uc.UserId)
+	u, err := h.svc.FindById(ctx, uc.UserId)
 	if err != nil {
 		return ginx.InternalError(), err
 	}

@@ -15,6 +15,7 @@ type Logger interface {
 	// highly recommended
 	WithCtx(ctx context.Context) Logger
 	WithField(field ...Field) Logger
+	WithSkip(skip int) Logger
 }
 
 type Field struct {

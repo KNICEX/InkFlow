@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type User struct {
 	Id int64
@@ -11,7 +14,7 @@ type User struct {
 	Email    string
 	Phone    string
 	Password string
-	Link     []string
+	Links    Links
 	AboutMe  string
 	Level    int
 
@@ -21,4 +24,19 @@ type User struct {
 	Birthday  time.Time
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type Links []string
+
+func (links Links) ToString() string {
+	sb := strings.Builder{}
+	for _, link := range links {
+		sb.WriteString(link)
+		sb.WriteString(",")
+	}
+	return sb.String()
+}
+
+func LinksFromString(s string) Links {
+	return strings.Split(s, ",")
 }
