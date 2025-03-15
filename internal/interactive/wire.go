@@ -3,6 +3,8 @@
 package interactive
 
 import (
+	"github.com/IBM/sarama"
+	"github.com/KNICEX/InkFlow/internal/interactive/internal/events"
 	"github.com/KNICEX/InkFlow/internal/interactive/internal/repo"
 	"github.com/KNICEX/InkFlow/internal/interactive/internal/repo/cache"
 	"github.com/KNICEX/InkFlow/internal/interactive/internal/repo/dao"
@@ -25,13 +27,32 @@ func initDAO(db *gorm.DB, node snowflakex.Node, l logx.Logger) dao.InteractiveDA
 	return dao.NewGormInteractiveDAO(db, node, l)
 }
 
-func InitInteractiveService(cmd redis.Cmdable, db *gorm.DB, l logx.Logger) Service {
+// 为了初始化consumer,不得已使用一个包变量实现单例
+var r repo.InteractiveRepo
+
+func initRepo(d dao.InteractiveDAO, c cache.InteractiveCache, l logx.Logger) repo.InteractiveRepo {
+	if r != nil {
+		return r
+	}
+	r = repo.NewCachedInteractiveRepo(c, d, l)
+	return r
+}
+func initProducer(p sarama.SyncProducer) events.InteractiveProducer {
+	return events.NewKafkaInteractiveProducer(p)
+}
+
+func InitInteractiveService(cmd redis.Cmdable, p sarama.SyncProducer, db *gorm.DB, l logx.Logger) Service {
 	wire.Build(
 		initSnowflakeNode,
 		dao.NewGormInteractiveDAO,
 		cache.NewRedisInteractiveCache,
-		repo.NewCachedInteractiveRepo,
+		initProducer,
+		initRepo,
 		service.NewInteractiveService,
 	)
 	return nil
+}
+
+func InitInteractiveInkReadConsumer(client sarama.Client, l logx.Logger) *events.InkViewConsumer {
+	return events.NewInkViewConsumer(client, r, l)
 }

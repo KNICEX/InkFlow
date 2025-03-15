@@ -19,8 +19,9 @@ type LiveInkRepo interface {
 	UpdateStatus(ctx context.Context, ink domain.Ink) error
 	FindById(ctx context.Context, id int64) (domain.Ink, error)
 	FindByIdAndStatus(ctx context.Context, id int64, status domain.Status) (domain.Ink, error)
-	ListByAuthorId(ctx context.Context, authorId int64, offset int, limit int) ([]domain.Ink, error)
+	ListByAuthorIdAndStatus(ctx context.Context, authorId int64, status domain.Status, offset, limit int) ([]domain.Ink, error)
 	FindAll(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
+	FindAllByStatus(ctx context.Context, status domain.Status, maxId int64, limit int) ([]domain.Ink, error)
 	FindByIds(ctx context.Context, ids []int64) (map[int64]domain.Ink, error)
 }
 
@@ -73,15 +74,6 @@ func (repo *CachedLiveInkRepo) UpdateStatus(ctx context.Context, ink domain.Ink)
 	if err != nil {
 		return err
 	}
-	go func() {
-		// 更新了文章，删除首页缓存
-		er := repo.cache.DelFirstPage(ctx, ink.Author.Id)
-		if er != nil {
-			repo.l.WithCtx(ctx).Error("del first page cache error", logx.Error(er),
-				logx.Int64("inkId", ink.Id),
-				logx.Int64("authorId", ink.Author.Id))
-		}
-	}()
 	switch ink.Status {
 	case domain.InkStatusPrivate, domain.InkStatusUnPublished:
 		// 如果是隐藏了文章或者退回到草稿，删除缓存
@@ -92,15 +84,38 @@ func (repo *CachedLiveInkRepo) UpdateStatus(ctx context.Context, ink domain.Ink)
 					logx.Int64("inkId", ink.Id),
 					logx.Int64("authorId", ink.Author.Id))
 			}
+			// 删除首页缓存
+			er = repo.cache.DelFirstPage(ctx, ink.Author.Id)
+			if er != nil {
+				repo.l.WithCtx(ctx).Error("del first page cache error", logx.Error(er),
+					logx.Int64("inkId", ink.Id),
+					logx.Int64("authorId", ink.Author.Id))
+			}
 		}()
 	case domain.InkStatusPublished:
 		go func() {
-			er := repo.cache.Set(ctx, ink)
+			// 文章发布成功，设置预缓存，并且删除首页缓存
+			// 删除首页缓存
+			if er := repo.cache.DelFirstPage(ctx, ink.Author.Id); er != nil {
+				repo.l.WithCtx(ctx).Error("del first page cache error", logx.Error(er),
+					logx.Int64("inkId", ink.Id),
+					logx.Int64("authorId", ink.Author.Id))
+			}
+			// 设置预缓存
+			entity, er := repo.dao.FindById(ctx, ink.Id)
+			if er != nil {
+				repo.l.WithCtx(ctx).Error("published pre cache find ink by id error", logx.Error(er),
+					logx.Int64("inkId", ink.Id),
+					logx.Int64("authorId", ink.Author.Id))
+				return
+			}
+			er = repo.cache.Set(ctx, repo.entityToDomain(entity))
 			if err != nil {
 				repo.l.WithCtx(ctx).Error("set ink cache error", logx.Error(er),
 					logx.Int64("inkId", ink.Id),
 					logx.Int64("authorId", ink.Author.Id))
 			}
+
 		}()
 	default:
 
@@ -159,9 +174,8 @@ func (repo *CachedLiveInkRepo) FindByIdAndStatus(ctx context.Context, id int64, 
 	return ink, nil
 }
 
-func (repo *CachedLiveInkRepo) ListByAuthorId(ctx context.Context, authorId int64, offset int, limit int) ([]domain.Ink, error) {
-	// TODO 这里要不要添加缓存
-	inks, err := repo.dao.FindByAuthorId(ctx, authorId, offset, limit)
+func (repo *CachedLiveInkRepo) ListByAuthorIdAndStatus(ctx context.Context, authorId int64, status domain.Status, offset, limit int) ([]domain.Ink, error) {
+	inks, err := repo.dao.FindByAuthorIdAndStatus(ctx, authorId, status.ToInt(), offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -174,6 +188,18 @@ func (repo *CachedLiveInkRepo) ListByAuthorId(ctx context.Context, authorId int6
 
 func (repo *CachedLiveInkRepo) FindAll(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error) {
 	inks, err := repo.dao.FindAll(ctx, maxId, limit)
+	if err != nil {
+		return nil, err
+	}
+	var result []domain.Ink
+	for _, ink := range inks {
+		result = append(result, repo.entityToDomain(ink))
+	}
+	return result, nil
+}
+
+func (repo *CachedLiveInkRepo) FindAllByStatus(ctx context.Context, status domain.Status, maxId int64, limit int) ([]domain.Ink, error) {
+	inks, err := repo.dao.FindAllByStatus(ctx, status.ToInt(), maxId, limit)
 	if err != nil {
 		return nil, err
 	}

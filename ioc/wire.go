@@ -16,6 +16,8 @@ var thirdPartSet = wire.NewSet(
 	InitLogger,
 	InitDB,
 	InitEs,
+	InitKafka,
+	InitSyncProducer,
 	InitRedisUniversalClient,
 	InitRedisCmdable,
 )
@@ -34,7 +36,9 @@ func InitApp() *App {
 		code.InitEmailCodeService,
 		ink.InitInkService,
 		interactive.InitInteractiveService,
+		interactive.InitInteractiveInkReadConsumer,
 		bff.InitBff,
+		InitConsumers,
 		InitGin,
 		wire.Struct(new(App), "*"),
 	)

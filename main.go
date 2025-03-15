@@ -14,6 +14,14 @@ func main() {
 	initViper()
 	app := ioc.InitApp()
 	initPrometheus()
+
+	for _, consumer := range app.Consumers {
+		err := consumer.Start()
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	app.Server.Run(":8080")
 
 }

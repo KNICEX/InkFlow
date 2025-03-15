@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/option"
 )
@@ -46,7 +45,7 @@ func (g *GeminiService) AskOnce(ctx context.Context, msg string) (Resp, error) {
 	if err != nil {
 		return Resp{}, err
 	}
-	return Resp{Content: content}, nil
+	return Resp{Content: content, Token: int(resp.UsageMetadata.TotalTokenCount)}, nil
 }
 
 func (g *GeminiService) BeginChat(ctx context.Context, msg string) <-chan Context {
@@ -63,7 +62,7 @@ func (g *GeminiService) BeginChat(ctx context.Context, msg string) <-chan Contex
 			return err
 		}
 		ch <- Context{
-			Resp: Resp{Content: content},
+			Resp: Resp{Content: content, Token: int(resp.UsageMetadata.TotalTokenCount)},
 			Ask:  sendFunc,
 		}
 		return nil
@@ -81,23 +80,4 @@ func (g *GeminiService) BeginChat(ctx context.Context, msg string) <-chan Contex
 	}()
 
 	return ch
-}
-
-func Example() error {
-	svc, err := NewGeminiService("your-api-key")
-	if err != nil {
-		return err
-	}
-
-	ch := svc.BeginChat(context.Background(), "hello")
-	for ctx := range ch {
-		if ctx.Err != nil {
-			return ctx.Err
-		}
-		fmt.Println(ctx.Resp.Content)
-		if err := ctx.Ask(context.Background(), "world"); err != nil {
-			fmt.Println(err)
-		}
-	}
-	return nil
 }

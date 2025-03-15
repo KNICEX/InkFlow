@@ -47,6 +47,7 @@ const (
 	InkStatusUnKnown Status = iota
 	InkStatusUnPublished
 	InkStatusPending
+	InkStatusReviewFailed
 	InkStatusPublished
 	InkStatusPrivate
 )

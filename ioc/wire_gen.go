@@ -27,13 +27,18 @@ func InitApp() *App {
 	service := email.InitMemoryService()
 	serviceService := code.InitEmailCodeService(cmdable, service)
 	inkService := ink.InitInkService(cmdable, db, logger)
-	interactiveService := interactive.InitInteractiveService(cmdable, db, logger)
+	client := InitKafka()
+	syncProducer := InitSyncProducer(client)
+	interactiveService := interactive.InitInteractiveService(cmdable, syncProducer, db, logger)
 	handler := InitJwtHandler(cmdable)
 	authentication := InitAuthMiddleware(handler, logger)
 	v := bff.InitBff(userService, serviceService, inkService, interactiveService, handler, authentication, logger)
 	engine := InitGin(v, logger)
+	inkViewConsumer := interactive.InitInteractiveInkReadConsumer(client, logger)
+	v2 := InitConsumers(inkViewConsumer)
 	app := &App{
-		Server: engine,
+		Server:    engine,
+		Consumers: v2,
 	}
 	return app
 }
@@ -44,6 +49,8 @@ var thirdPartSet = wire.NewSet(
 	InitLogger,
 	InitDB,
 	InitEs,
+	InitKafka,
+	InitSyncProducer,
 	InitRedisUniversalClient,
 	InitRedisCmdable,
 )

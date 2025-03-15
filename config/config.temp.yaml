@@ -19,3 +19,7 @@ email:
 llm:
   gemini:
     key: key
+
+kafka:
+  addrs:
+    - localhost:9094

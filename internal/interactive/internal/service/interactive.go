@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"github.com/KNICEX/InkFlow/internal/interactive/internal/domain"
+	"github.com/KNICEX/InkFlow/internal/interactive/internal/events"
 	"github.com/KNICEX/InkFlow/internal/interactive/internal/repo"
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"golang.org/x/sync/errgroup"
@@ -20,28 +21,65 @@ type InteractiveService interface {
 }
 
 type interactiveService struct {
-	repo repo.InteractiveRepo
-	l    logx.Logger
+	repo     repo.InteractiveRepo
+	producer events.InteractiveProducer
+	l        logx.Logger
 }
 
-func NewInteractiveService(repo repo.InteractiveRepo, l logx.Logger) InteractiveService {
+func NewInteractiveService(repo repo.InteractiveRepo, producer events.InteractiveProducer, l logx.Logger) InteractiveService {
 	return &interactiveService{
-		repo: repo,
-		l:    l,
+		repo:     repo,
+		producer: producer,
+		l:        l,
 	}
 }
 
 func (svc *interactiveService) View(ctx context.Context, biz string, bizId int64, uid int64) error {
+	if biz == domain.BizInk {
+		return svc.producer.ProduceInkView(ctx, events.InkViewEvent{
+			InkId:  bizId,
+			UserId: uid,
+		})
+	}
 	return svc.repo.IncrView(ctx, biz, bizId, uid)
 }
 
 func (svc *interactiveService) Like(ctx context.Context, biz string, bizId int64, uid int64) error {
-	// TODO 要向创作者发送点赞通知
-	return svc.repo.IncrLike(ctx, biz, bizId, uid)
+	if err := svc.repo.IncrLike(ctx, biz, bizId, uid); err != nil {
+		return err
+	}
+
+	if biz == domain.BizInk {
+		if err := svc.producer.ProduceInkLike(ctx, events.InkLikeEvent{
+			InkId:  bizId,
+			UserId: uid,
+		}); err != nil {
+			svc.l.WithCtx(ctx).Error("produce ink like event error", logx.Error(err),
+				logx.String("biz", biz),
+				logx.Int64("bizId", bizId),
+				logx.Int64("uid", uid))
+		}
+	}
+	return nil
 }
 
 func (svc *interactiveService) CancelLike(ctx context.Context, biz string, bizId int64, uid int64) error {
-	return svc.repo.DecrLike(ctx, biz, bizId, uid)
+	if err := svc.repo.DecrLike(ctx, biz, bizId, uid); err != nil {
+		return err
+	}
+
+	if biz == domain.BizInk {
+		if err := svc.producer.ProduceInkCancelLike(ctx, events.InkCancelLikeEvent{
+			InkId:  bizId,
+			UserId: uid,
+		}); err != nil {
+			svc.l.WithCtx(ctx).Error("produce ink cancel like event error", logx.Error(err),
+				logx.String("biz", biz),
+				logx.Int64("bizId", bizId),
+				logx.Int64("uid", uid))
+		}
+	}
+	return nil
 }
 func (svc *interactiveService) ListView(ctx context.Context, biz string, uid int64, maxId int64, limit int) ([]domain.ViewRecord, error) {
 	return svc.repo.ListView(ctx, biz, uid, maxId, limit)

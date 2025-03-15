@@ -32,11 +32,13 @@ type User struct {
 	Email    sql.NullString `gorm:"unique"`
 	Phone    sql.NullString `gorm:"unique"`
 	Password sql.NullString `gorm:"type:varchar(100)"`
-	Account  string         `gorm:"unique"`
+	Account  string         `gorm:"unique;type:varchar(60)"`
 	Username string         `gorm:"type:varchar(60)"`
-	AboutMe  string         `gorm:"type:varchar(500)"`
-	Exp      int64          `gorm:"default:0"`
-	Level    int            `gorm:"default:1"`
+	AboutMe  string
+	Avatar   string
+	Banner   string
+	Exp      int64 `gorm:"default:0"`
+	Level    int   `gorm:"default:1"`
 	// 逗号分隔
 	Links      string            `gorm:"type:varchar(500)"`
 	Birthday   sql.NullTime      `gorm:"type:date"`

@@ -23,6 +23,8 @@ type InkService interface {
 	GetLiveInk(ctx context.Context, id int64) (domain.Ink, error)            // 获取公开ink
 	GetDraftInk(ctx context.Context, authorId, id int64) (domain.Ink, error) // 获取草稿ink
 	ListLiveByAuthorId(ctx context.Context, authorId int64, offset int, limit int) ([]domain.Ink, error)
+	ListPendingByAuthorId(ctx context.Context, authorId int64, offset int, limit int) ([]domain.Ink, error)
+	ListReviewFailedByAuthorId(ctx context.Context, authorId int64, offset int, limit int) ([]domain.Ink, error)
 	ListDraftByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error)
 	ListAllLive(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
 	ListAllDraft(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
@@ -76,6 +78,19 @@ func (svc *inkService) Publish(ctx context.Context, ink domain.Ink) (int64, erro
 	return svc.liveRepo.Save(ctx, draft)
 }
 
+// UpdateInkStatus
+// 此方法使用权不应该交给用户，仅内部服务可以调用
+func (svc *inkService) UpdateInkStatus(ctx context.Context, id int64, authorId int64, status domain.Status) error {
+	err := svc.liveRepo.UpdateStatus(ctx, domain.Ink{
+		Id: id,
+		Author: domain.Author{
+			Id: authorId,
+		},
+		Status: status,
+	})
+	return err
+}
+
 func (svc *inkService) Withdraw(ctx context.Context, ink domain.Ink) error {
 	// TODO 暂时设置为私有，后续考虑要不要添加更多状态
 	ink.Status = domain.InkStatusPrivate
@@ -100,8 +115,15 @@ func (svc *inkService) GetDraftInk(ctx context.Context, authorId, id int64) (dom
 }
 
 func (svc *inkService) ListLiveByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error) {
+	return svc.liveRepo.ListByAuthorIdAndStatus(ctx, authorId, domain.InkStatusPublished, offset, limit)
+}
 
-	return svc.liveRepo.ListByAuthorId(ctx, authorId, offset, limit)
+func (svc *inkService) ListPendingByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error) {
+	return svc.liveRepo.ListByAuthorIdAndStatus(ctx, authorId, domain.InkStatusPending, offset, limit)
+}
+
+func (svc *inkService) ListReviewFailedByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error) {
+	return svc.liveRepo.ListByAuthorIdAndStatus(ctx, authorId, domain.InkStatusReviewFailed, offset, limit)
 }
 
 func (svc *inkService) ListDraftByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error) {
@@ -110,9 +132,13 @@ func (svc *inkService) ListDraftByAuthorId(ctx context.Context, authorId int64, 
 
 // ListAllLive 这个接口不应该让用户直接使用
 func (svc *inkService) ListAllLive(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error) {
-	return svc.liveRepo.FindAll(ctx, maxId, limit)
+	return svc.liveRepo.FindAllByStatus(ctx, domain.InkStatusPublished, maxId, limit)
 }
 
 func (svc *inkService) ListAllDraft(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error) {
 	return svc.draftRepo.ListAll(ctx, maxId, limit)
+}
+
+func (svc *inkService) ListAllReviewFailed(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error) {
+	return svc.liveRepo.FindAllByStatus(ctx, domain.InkStatusReviewFailed, maxId, limit)
 }

@@ -18,7 +18,9 @@ type LiveDAO interface {
 	FindByIdAndStatus(ctx context.Context, id int64, status int) (LiveInk, error)
 	FindByAuthorIdAndMaxId(ctx context.Context, authorId int64, maxId int64, limit int) ([]LiveInk, error)
 	FindByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]LiveInk, error)
+	FindByAuthorIdAndStatus(ctx context.Context, authorId int64, status int, offset, limit int) ([]LiveInk, error)
 	FindAll(ctx context.Context, maxId int64, limit int) ([]LiveInk, error)
+	FindAllByStatus(ctx context.Context, status int, maxId int64, limit int) ([]LiveInk, error)
 	FindByIds(ctx context.Context, ids []int64) (map[int64]LiveInk, error)
 }
 
@@ -104,9 +106,29 @@ func (dao *liveDAO) FindByAuthorId(ctx context.Context, authorId int64, offset, 
 	return inks, nil
 }
 
+func (dao *liveDAO) FindByAuthorIdAndStatus(ctx context.Context, authorId int64, status int, offset, limit int) ([]LiveInk, error) {
+	var inks []LiveInk
+	err := dao.db.WithContext(ctx).Where("author_id = ? and status = ?", authorId, status).
+		Order("updated_at desc").Offset(offset).Limit(limit).Find(&inks).Error
+	if err != nil {
+		return nil, err
+	}
+	return inks, nil
+}
+
 func (dao *liveDAO) FindAll(ctx context.Context, maxId int64, limit int) ([]LiveInk, error) {
 	var inks []LiveInk
 	err := dao.db.WithContext(ctx).Where("id < ?", maxId).
+		Order("id desc").Limit(limit).Find(&inks).Error
+	if err != nil {
+		return nil, err
+	}
+	return inks, nil
+}
+
+func (dao *liveDAO) FindAllByStatus(ctx context.Context, status int, maxId int64, limit int) ([]LiveInk, error) {
+	var inks []LiveInk
+	err := dao.db.WithContext(ctx).Where("status = ? and id < ?", status, maxId).
 		Order("id desc").Limit(limit).Find(&inks).Error
 	if err != nil {
 		return nil, err

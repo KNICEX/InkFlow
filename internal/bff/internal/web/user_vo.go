@@ -36,6 +36,8 @@ type LoginEmailPwdReq struct {
 }
 
 type EditProfileReq struct {
+	Avatar   string   `json:"avatar"`
+	Banner   string   `json:"banner"`
 	Username string   `json:"username" binding:"required,min=1,max=30"`
 	Birthday string   `json:"birthday"`
 	Links    []string `json:"links" `

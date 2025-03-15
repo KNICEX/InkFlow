@@ -4,6 +4,7 @@ import "context"
 
 type Resp struct {
 	Content string
+	Token   int
 }
 
 type Context struct {

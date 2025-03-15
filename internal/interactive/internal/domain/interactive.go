@@ -2,6 +2,10 @@ package domain
 
 import "time"
 
+const (
+	BizInk = "ink"
+)
+
 type Interactive struct {
 	Biz        string
 	BizId      int64

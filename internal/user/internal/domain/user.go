@@ -6,7 +6,9 @@ import (
 )
 
 type User struct {
-	Id int64
+	Id     int64
+	Avatar string
+	Banner string
 	// 账号名, 全局唯一， 以@开头展示
 	Account string
 	// 用户名，可重复

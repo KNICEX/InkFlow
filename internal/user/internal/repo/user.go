@@ -188,6 +188,7 @@ func (r *CachedUserRepo) domainToEntity(u domain.User) dao.User {
 			String: u.Phone,
 			Valid:  u.Phone != "",
 		},
+
 		Account:  u.Account,
 		Username: u.Username,
 		AboutMe:  u.AboutMe,

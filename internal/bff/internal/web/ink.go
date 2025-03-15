@@ -47,7 +47,7 @@ func (handler *InkHandler) RegisterRoutes(server *gin.RouterGroup) {
 		checkGroup.POST("/draft/save", ginx.WrapBody(handler.l, handler.SaveDraft))
 		checkGroup.POST("/draft/publish", ginx.WrapBody(handler.l, handler.Publish))
 		checkGroup.GET("/draft/detail/:id", ginx.Wrap(handler.l, handler.DraftDetail))
-		checkGroup.POST("/draft/list", ginx.WrapBody(handler.l, handler.List))
+		checkGroup.POST("/draft/list", ginx.WrapBody(handler.l, handler.ListDraft))
 		checkGroup.POST("/withdraw/:id", ginx.Wrap(handler.l, handler.Withdraw))
 	}
 }
@@ -187,6 +187,11 @@ func (handler *InkHandler) List(ctx *gin.Context, req ListReq) (ginx.Result, err
 	if err != nil {
 		return ginx.InternalError(), err
 	}
+
+	if len(inks) == 0 {
+		return ginx.SuccessWithData([]InkDetailResp{}), nil
+	}
+
 	uids := lo.Map(inks, func(item ink.Ink, index int) int64 {
 		return item.Author.Id
 	})
@@ -238,6 +243,32 @@ func (handler *InkHandler) List(ctx *gin.Context, req ListReq) (ginx.Result, err
 		})
 	}
 
+	return ginx.SuccessWithData(res), nil
+}
+
+func (handler *InkHandler) ListReviewing(ctx *gin.Context, req ListSelfReq) (ginx.Result, error) {
+	u := jwt.MustGetUserClaims(ctx)
+	inks, err := handler.svc.ListPendingByAuthorId(ctx, u.UserId, req.Offset, req.Limit)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	res := make([]InkBaseInfo, 0, len(inks))
+	for _, item := range inks {
+		res = append(res, InkBaseInfoFromDomain(item))
+	}
+	return ginx.SuccessWithData(res), nil
+}
+
+func (handler *InkHandler) ListReviewFailed(ctx *gin.Context, req ListSelfReq) (ginx.Result, error) {
+	u := jwt.MustGetUserClaims(ctx)
+	inks, err := handler.svc.ListReviewFailedByAuthorId(ctx, u.UserId, req.Offset, req.Limit)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	res := make([]InkBaseInfo, 0, len(inks))
+	for _, item := range inks {
+		res = append(res, InkBaseInfoFromDomain(item))
+	}
 	return ginx.SuccessWithData(res), nil
 }
 
