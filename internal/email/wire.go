@@ -23,7 +23,7 @@ func InitService(l logx.Logger) Service {
 	if err := viper.UnmarshalKey("email.smtp", &cfg); err != nil {
 		panic(err)
 	}
-	svc, err := service.NewSmtpService(cfg.Host, cfg.Port, cfg.Username, cfg.Password, cfg.FromName)
+	svc, err := service.NewMailService(cfg.Host, cfg.Port, cfg.Username, cfg.Password, cfg.FromName)
 	if err != nil {
 		panic(err)
 	}

@@ -14,6 +14,7 @@ var (
 type LiveDAO interface {
 	Upsert(ctx context.Context, d LiveInk) (int64, error)
 	UpdateStatus(ctx context.Context, inkId int64, authorId int64, status int) error
+	Delete(ctx context.Context, id int64, authorId int64, status []int) error
 	FindById(ctx context.Context, id int64) (LiveInk, error)
 	FindByIdAndStatus(ctx context.Context, id int64, status int) (LiveInk, error)
 	FindByAuthorIdAndMaxId(ctx context.Context, authorId int64, maxId int64, limit int) ([]LiveInk, error)
@@ -75,6 +76,14 @@ func (dao *liveDAO) FindById(ctx context.Context, id int64) (LiveInk, error) {
 		return LiveInk{}, err
 	}
 	return ink, nil
+}
+
+func (dao *liveDAO) Delete(ctx context.Context, id int64, authorId int64, status []int) error {
+	err := dao.db.WithContext(ctx).Where("id = ? and author_id = ? AND status in ?", id, authorId, status).Delete(&LiveInk{}).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (dao *liveDAO) FindByIdAndStatus(ctx context.Context, id int64, status int) (LiveInk, error) {

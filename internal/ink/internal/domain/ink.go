@@ -44,12 +44,14 @@ func StatusFromInt(i int) Status {
 }
 
 const (
-	InkStatusUnKnown Status = iota
-	InkStatusUnPublished
-	InkStatusPending
-	InkStatusReviewFailed
-	InkStatusPublished
-	InkStatusPrivate
+	InkStatusUnKnown        Status = iota
+	InkStatusUnPublished           // 未发布
+	InkStatusPending               // 待审核
+	InkStatusReviewRejected        // 审核拒绝
+	InkStatusPublished             // 已发布
+	InkStatusPrivate               // 私密
+
+	InKStatusDeleted // 已删除
 )
 
 type Tags []string
@@ -67,9 +69,11 @@ func (tags Tags) ToString() string {
 }
 
 func TagsFromString(str string) Tags {
-	// 逗号分隔
+	// 逗号分隔, 去除空格
+	if str == "" {
+		return []string{}
+	}
 	return strings.Split(str, ",")
-
 }
 
 type Author struct {

@@ -12,6 +12,7 @@ var (
 
 type DraftInkRepo interface {
 	Create(ctx context.Context, ink domain.Ink) (int64, error)
+	Delete(ctx context.Context, id int64, authorId int64, status domain.Status) error
 	FindByIdAndAuthorId(ctx context.Context, id, authorId int64) (domain.Ink, error)
 	Update(ctx context.Context, ink domain.Ink) error
 	UpdateStatus(ctx context.Context, inkId int64, authorId int64, status domain.Status) error
@@ -37,6 +38,14 @@ func (repo *NoCacheDraftInkRepo) Create(ctx context.Context, ink domain.Ink) (in
 		return 0, err
 	}
 	return id, nil
+}
+
+func (repo *NoCacheDraftInkRepo) Delete(ctx context.Context, id int64, authorId int64, status domain.Status) error {
+	err := repo.dao.Delete(ctx, id, authorId, status.ToInt())
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (repo *NoCacheDraftInkRepo) FindByIdAndAuthorId(ctx context.Context, id, authorId int64) (domain.Ink, error) {

@@ -6,7 +6,7 @@ import (
 	"github.com/wneessen/go-mail"
 )
 
-type SmtpService struct {
+type MailService struct {
 	host     string
 	port     int
 	authType mail.SMTPAuthType
@@ -17,10 +17,10 @@ type SmtpService struct {
 	client *mail.Client
 }
 
-type SmtpServiceOption func(*SmtpService)
+type MailServiceOption func(*MailService)
 
-func NewSmtpService(host string, port int, username, password, fromName string) (Service, error) {
-	svc := &SmtpService{
+func NewMailService(host string, port int, username, password, fromName string) (Service, error) {
+	svc := &MailService{
 		host:     host,
 		port:     port,
 		authType: mail.SMTPAuthPlain,
@@ -30,6 +30,7 @@ func NewSmtpService(host string, port int, username, password, fromName string) 
 	}
 
 	c, err := mail.NewClient(svc.host, mail.WithPort(svc.port),
+		mail.WithSSLPort(true),
 		mail.WithSMTPAuth(svc.authType),
 		mail.WithUsername(svc.username),
 		mail.WithPassword(svc.password),
@@ -42,7 +43,7 @@ func NewSmtpService(host string, port int, username, password, fromName string) 
 	return svc, nil
 }
 
-func (svc *SmtpService) send(ctx context.Context, email, title, body string, contentType mail.ContentType) error {
+func (svc *MailService) send(ctx context.Context, email, title, body string, contentType mail.ContentType) error {
 	var err error
 	msg := mail.NewMsg()
 	if err = msg.From(fmt.Sprintf("%s<%s>", svc.from, svc.username)); err != nil {
@@ -59,14 +60,14 @@ func (svc *SmtpService) send(ctx context.Context, email, title, body string, con
 	return nil
 }
 
-func (svc *SmtpService) SendString(ctx context.Context, email, title, body string) error {
+func (svc *MailService) SendString(ctx context.Context, email, title, body string) error {
 	return svc.send(ctx, email, title, body, mail.TypeTextPlain)
 }
 
-func (svc *SmtpService) SendHTML(ctx context.Context, email, title, body string) error {
+func (svc *MailService) SendHTML(ctx context.Context, email, title, body string) error {
 	return svc.send(ctx, email, title, body, mail.TypeTextHTML)
 }
 
-func (svc *SmtpService) Ping(ctx context.Context) error {
+func (svc *MailService) Ping(ctx context.Context) error {
 	return svc.send(ctx, svc.username, "hello", "server is starting", mail.TypeTextPlain)
 }

@@ -17,6 +17,7 @@ var (
 type LiveInkRepo interface {
 	Save(ctx context.Context, ink domain.Ink) (int64, error)
 	UpdateStatus(ctx context.Context, ink domain.Ink) error
+	Delete(ctx context.Context, id int64, authorId int64, status []domain.Status) error
 	FindById(ctx context.Context, id int64) (domain.Ink, error)
 	FindByIdAndStatus(ctx context.Context, id int64, status domain.Status) (domain.Ink, error)
 	ListByAuthorIdAndStatus(ctx context.Context, authorId int64, status domain.Status, offset, limit int) ([]domain.Ink, error)
@@ -121,6 +122,31 @@ func (repo *CachedLiveInkRepo) UpdateStatus(ctx context.Context, ink domain.Ink)
 
 	}
 
+	return nil
+}
+
+func (repo *CachedLiveInkRepo) Delete(ctx context.Context, id int64, authorId int64, status []domain.Status) error {
+	err := repo.dao.Delete(ctx, id, authorId, lo.Map(status, func(item domain.Status, index int) int {
+		return item.ToInt()
+	}))
+	if err != nil {
+		return err
+	}
+	go func() {
+		er := repo.cache.Del(ctx, id)
+		if er != nil {
+			repo.l.WithCtx(ctx).Error("del ink cache error", logx.Error(er),
+				logx.Int64("inkId", id),
+				logx.Int64("authorId", authorId))
+		}
+		// 删除首页缓存
+		er = repo.cache.DelFirstPage(ctx, authorId)
+		if er != nil {
+			repo.l.WithCtx(ctx).Error("del first page cache error", logx.Error(er),
+				logx.Int64("inkId", id),
+				logx.Int64("authorId", authorId))
+		}
+	}()
 	return nil
 }
 

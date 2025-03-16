@@ -46,8 +46,12 @@ func (handler *InkHandler) RegisterRoutes(server *gin.RouterGroup) {
 	{
 		checkGroup.POST("/draft/save", ginx.WrapBody(handler.l, handler.SaveDraft))
 		checkGroup.POST("/draft/publish", ginx.WrapBody(handler.l, handler.Publish))
-		checkGroup.GET("/draft/detail/:id", ginx.Wrap(handler.l, handler.DraftDetail))
+		checkGroup.GET("/draft/detail/:id", ginx.Wrap(handler.l, handler.DetailDraft))
+		checkGroup.POST("/draft/delete/:id", ginx.Wrap(handler.l, handler.DeleteDraft))
+		checkGroup.POST("/live/delete/:id", ginx.Wrap(handler.l, handler.DeleteLive))
 		checkGroup.POST("/draft/list", ginx.WrapBody(handler.l, handler.ListDraft))
+		checkGroup.POST("/pending/list", ginx.WrapBody(handler.l, handler.ListPending))
+		checkGroup.POST("/rejected/list", ginx.WrapBody(handler.l, handler.ListReviewRejected))
 		checkGroup.POST("/withdraw/:id", ginx.Wrap(handler.l, handler.Withdraw))
 	}
 }
@@ -101,7 +105,7 @@ func (handler *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 	if err != nil {
 		return ginx.InvalidParam(), err
 	}
-	inkDetail, err := handler.svc.GetLiveInk(ctx, id)
+	inkDetail, err := handler.svc.FindLiveInk(ctx, id)
 	if err != nil {
 		return ginx.InternalError(), nil
 	}
@@ -150,14 +154,14 @@ func (handler *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 	}), nil
 }
 
-func (handler *InkHandler) DraftDetail(ctx *gin.Context) (ginx.Result, error) {
+func (handler *InkHandler) DetailDraft(ctx *gin.Context) (ginx.Result, error) {
 	idParam := ctx.Param("id")
 	id, err := strconv.ParseInt(idParam, 10, 64)
 	u := jwt.MustGetUserClaims(ctx)
 	if err != nil {
 		return ginx.InvalidParam(), err
 	}
-	draft, err := handler.svc.GetDraftInk(ctx, u.UserId, id)
+	draft, err := handler.svc.FindDraftInk(ctx, id, u.UserId)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
@@ -246,7 +250,45 @@ func (handler *InkHandler) List(ctx *gin.Context, req ListReq) (ginx.Result, err
 	return ginx.SuccessWithData(res), nil
 }
 
-func (handler *InkHandler) ListReviewing(ctx *gin.Context, req ListSelfReq) (ginx.Result, error) {
+func (handler *InkHandler) DeleteDraft(ctx *gin.Context) (ginx.Result, error) {
+	u := jwt.MustGetUserClaims(ctx)
+	idParam := ctx.Param("id")
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		return ginx.InvalidParam(), err
+	}
+	err = handler.svc.DeleteDraft(ctx, ink.Ink{
+		Id: id,
+		Author: ink.Author{
+			Id: u.UserId,
+		},
+	})
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.Success(), nil
+}
+
+func (handler *InkHandler) DeleteLive(ctx *gin.Context) (ginx.Result, error) {
+	u := jwt.MustGetUserClaims(ctx)
+	idParam := ctx.Param("id")
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		return ginx.InvalidParam(), err
+	}
+	err = handler.svc.DeleteLive(ctx, ink.Ink{
+		Id: id,
+		Author: ink.Author{
+			Id: u.UserId,
+		},
+	})
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.Success(), nil
+}
+
+func (handler *InkHandler) ListPending(ctx *gin.Context, req ListSelfReq) (ginx.Result, error) {
 	u := jwt.MustGetUserClaims(ctx)
 	inks, err := handler.svc.ListPendingByAuthorId(ctx, u.UserId, req.Offset, req.Limit)
 	if err != nil {
@@ -259,9 +301,9 @@ func (handler *InkHandler) ListReviewing(ctx *gin.Context, req ListSelfReq) (gin
 	return ginx.SuccessWithData(res), nil
 }
 
-func (handler *InkHandler) ListReviewFailed(ctx *gin.Context, req ListSelfReq) (ginx.Result, error) {
+func (handler *InkHandler) ListReviewRejected(ctx *gin.Context, req ListSelfReq) (ginx.Result, error) {
 	u := jwt.MustGetUserClaims(ctx)
-	inks, err := handler.svc.ListReviewFailedByAuthorId(ctx, u.UserId, req.Offset, req.Limit)
+	inks, err := handler.svc.ListReviewRejectedByAuthorId(ctx, u.UserId, req.Offset, req.Limit)
 	if err != nil {
 		return ginx.InternalError(), err
 	}

@@ -17,17 +17,23 @@ var (
 // 这里将Save和Publish分开，Sava只当作保存草稿，前端编辑时也会定时调用放丢失
 // 直接发布文章，前端先调用Save保存草稿，然后再调用Publish发布
 type InkService interface {
-	Save(ctx context.Context, ink domain.Ink) (int64, error)                 // 保存草稿
-	Publish(ctx context.Context, ink domain.Ink) (int64, error)              // 发布
-	Withdraw(ctx context.Context, ink domain.Ink) error                      // 撤回
-	GetLiveInk(ctx context.Context, id int64) (domain.Ink, error)            // 获取公开ink
-	GetDraftInk(ctx context.Context, authorId, id int64) (domain.Ink, error) // 获取草稿ink
+	Save(ctx context.Context, ink domain.Ink) (int64, error)    // 保存草稿
+	Publish(ctx context.Context, ink domain.Ink) (int64, error) // 发布
+	Withdraw(ctx context.Context, ink domain.Ink) error         // 撤回
+	DeleteDraft(ctx context.Context, ink domain.Ink) error      // 删除草稿
+	DeleteLive(ctx context.Context, ink domain.Ink) error       // 删除线上文章
+
+	FindById(ctx context.Context, id int64) (domain.Ink, error)               // 无论状态获取一篇文章
+	FindByIds(ctx context.Context, ids []int64) (map[int64]domain.Ink, error) // 批量获取文章
+	FindLiveInk(ctx context.Context, id int64) (domain.Ink, error)            // 获取公开ink
+	FindDraftInk(ctx context.Context, id, authorId int64) (domain.Ink, error) // 获取草稿ink
 	ListLiveByAuthorId(ctx context.Context, authorId int64, offset int, limit int) ([]domain.Ink, error)
 	ListPendingByAuthorId(ctx context.Context, authorId int64, offset int, limit int) ([]domain.Ink, error)
-	ListReviewFailedByAuthorId(ctx context.Context, authorId int64, offset int, limit int) ([]domain.Ink, error)
+	ListReviewRejectedByAuthorId(ctx context.Context, authorId int64, offset int, limit int) ([]domain.Ink, error)
 	ListDraftByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error)
 	ListAllLive(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
 	ListAllDraft(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
+	ListAllReviewRejected(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
 }
 
 type inkService struct {
@@ -74,7 +80,7 @@ func (svc *inkService) Publish(ctx context.Context, ink domain.Ink) (int64, erro
 		}
 	}()
 
-	draft.Status = domain.InkStatusPublished
+	draft.Status = domain.InkStatusPending
 	return svc.liveRepo.Save(ctx, draft)
 }
 
@@ -106,12 +112,49 @@ func (svc *inkService) Withdraw(ctx context.Context, ink domain.Ink) error {
 	return nil
 }
 
-func (svc *inkService) GetLiveInk(ctx context.Context, id int64) (domain.Ink, error) {
+func (svc *inkService) DeleteDraft(ctx context.Context, ink domain.Ink) error {
+	// 针对草稿，只能删除未发布的草稿，同时把线上库的文章(此时线上库的文章的状态应该为Unpublished)也删除
+	err := svc.draftRepo.Delete(ctx, ink.Id, ink.Author.Id, domain.InkStatusUnPublished)
+	if err != nil {
+		return err
+	}
+	err = svc.liveRepo.Delete(ctx, ink.Id, ink.Author.Id, []domain.Status{domain.InkStatusUnPublished})
+	return nil
+}
+
+func (svc *inkService) DeleteLive(ctx context.Context, ink domain.Ink) error {
+	err := svc.liveRepo.Delete(ctx, ink.Id, ink.Author.Id, []domain.Status{domain.InkStatusPublished, domain.InkStatusPrivate})
+	if err != nil {
+		return err
+	}
+	// 能够通过线上库查看的文章，草稿一定处于发布状态
+	err = svc.draftRepo.Delete(ctx, ink.Id, ink.Author.Id, domain.InkStatusPublished)
+	return err
+}
+
+// FindById 无论ink的状态如何，均可以获取到， 不要暴露给客户端
+func (svc *inkService) FindById(ctx context.Context, id int64) (domain.Ink, error) {
+	return svc.liveRepo.FindById(ctx, id)
+}
+
+func (svc *inkService) FindByIds(ctx context.Context, ids []int64) (map[int64]domain.Ink, error) {
+	inks, err := svc.liveRepo.FindByIds(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	inkMap := make(map[int64]domain.Ink)
+	for _, ink := range inks {
+		inkMap[ink.Id] = ink
+	}
+	return inkMap, nil
+}
+
+func (svc *inkService) FindLiveInk(ctx context.Context, id int64) (domain.Ink, error) {
 	return svc.liveRepo.FindByIdAndStatus(ctx, id, domain.InkStatusPublished)
 }
 
-func (svc *inkService) GetDraftInk(ctx context.Context, authorId, id int64) (domain.Ink, error) {
-	return svc.draftRepo.FindByIdAndAuthorId(ctx, authorId, id)
+func (svc *inkService) FindDraftInk(ctx context.Context, id, authorId int64) (domain.Ink, error) {
+	return svc.draftRepo.FindByIdAndAuthorId(ctx, id, authorId)
 }
 
 func (svc *inkService) ListLiveByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error) {
@@ -122,23 +165,24 @@ func (svc *inkService) ListPendingByAuthorId(ctx context.Context, authorId int64
 	return svc.liveRepo.ListByAuthorIdAndStatus(ctx, authorId, domain.InkStatusPending, offset, limit)
 }
 
-func (svc *inkService) ListReviewFailedByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error) {
-	return svc.liveRepo.ListByAuthorIdAndStatus(ctx, authorId, domain.InkStatusReviewFailed, offset, limit)
+func (svc *inkService) ListReviewRejectedByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error) {
+	return svc.liveRepo.ListByAuthorIdAndStatus(ctx, authorId, domain.InkStatusReviewRejected, offset, limit)
 }
 
 func (svc *inkService) ListDraftByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error) {
 	return svc.draftRepo.ListByAuthorId(ctx, authorId, offset, limit)
 }
 
-// ListAllLive 这个接口不应该让用户直接使用
+// ListAllLive 不要暴露给用户
 func (svc *inkService) ListAllLive(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error) {
 	return svc.liveRepo.FindAllByStatus(ctx, domain.InkStatusPublished, maxId, limit)
 }
 
+// ListAllDraft 不要暴露给用户
 func (svc *inkService) ListAllDraft(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error) {
 	return svc.draftRepo.ListAll(ctx, maxId, limit)
 }
 
-func (svc *inkService) ListAllReviewFailed(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error) {
-	return svc.liveRepo.FindAllByStatus(ctx, domain.InkStatusReviewFailed, maxId, limit)
+func (svc *inkService) ListAllReviewRejected(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error) {
+	return svc.liveRepo.FindAllByStatus(ctx, domain.InkStatusReviewRejected, maxId, limit)
 }
