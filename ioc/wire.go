@@ -8,6 +8,7 @@ import (
 	"github.com/KNICEX/InkFlow/internal/email"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/interactive"
+	"github.com/KNICEX/InkFlow/internal/relation"
 	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/google/wire"
 )
@@ -35,6 +36,7 @@ func InitApp() *App {
 		email.InitMemoryService,
 		code.InitEmailCodeService,
 		ink.InitInkService,
+		relation.InitFollowService,
 		interactive.InitInteractiveService,
 		interactive.InitInteractiveInkReadConsumer,
 		bff.InitBff,

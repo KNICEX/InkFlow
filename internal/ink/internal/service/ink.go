@@ -36,7 +36,6 @@ type InkService interface {
 	ListDraftByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error)
 	ListPrivateByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error)
 	ListAllLive(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
-	ListAllDraft(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
 	ListAllReviewRejected(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
 }
 
@@ -78,7 +77,13 @@ func (svc *inkService) Publish(ctx context.Context, ink domain.Ink) (int64, erro
 	// TODO 这里后面需要添加审核
 	go func() {
 		// 文章发布后，草稿的状态需要更新为已发布
-		if er := svc.draftRepo.UpdateStatus(ctx, draft.Id, draft.Author.Id, domain.InkStatusPublished); er != nil {
+		if er := svc.draftRepo.UpdateStatus(ctx, domain.Ink{
+			Id: draft.Id,
+			Author: domain.Author{
+				Id: draft.Author.Id,
+			},
+			Status: domain.InkStatusPublished,
+		}); er != nil {
 			svc.l.WithCtx(ctx).Error("InkService Publish  update draft status error",
 				logx.Error(er), logx.Int64("inkId", ink.Id), logx.Any("status", draft.Status))
 		}
@@ -109,7 +114,13 @@ func (svc *inkService) Withdraw(ctx context.Context, ink domain.Ink) error {
 		return err
 	}
 	// 更新草稿状态, 让草稿可以继续编辑
-	err = svc.draftRepo.UpdateStatus(ctx, ink.Author.Id, ink.Id, domain.InkStatusUnPublished)
+	err = svc.draftRepo.UpdateStatus(ctx, domain.Ink{
+		Id: ink.Id,
+		Author: domain.Author{
+			Id: ink.Author.Id,
+		},
+		Status: domain.InkStatusPublished,
+	})
 	if err != nil {
 		return err
 	}
@@ -122,17 +133,16 @@ func (svc *inkService) DeleteDraft(ctx context.Context, ink domain.Ink) error {
 	if err != nil {
 		return err
 	}
-	err = svc.liveRepo.Delete(ctx, ink.Id, ink.Author.Id, []domain.Status{domain.InkStatusUnPublished})
-	return nil
+	return svc.liveRepo.Delete(ctx, ink.Id, ink.Author.Id, domain.InkStatusUnPublished)
 }
 
 func (svc *inkService) DeleteLive(ctx context.Context, ink domain.Ink) error {
-	err := svc.liveRepo.Delete(ctx, ink.Id, ink.Author.Id, []domain.Status{domain.InkStatusPublished, domain.InkStatusPrivate})
+	err := svc.liveRepo.Delete(ctx, ink.Id, ink.Author.Id, domain.InkStatusPublished, domain.InkStatusRejected, domain.InkStatusPrivate)
 	if err != nil {
 		return err
 	}
-	// 能够通过线上库查看的文章，草稿一定处于发布状态
-	err = svc.draftRepo.Delete(ctx, ink.Id, ink.Author.Id, domain.InkStatusPublished)
+	// 删除线上，草稿直接一起删除
+	err = svc.draftRepo.Delete(ctx, ink.Id, ink.Author.Id)
 	return err
 }
 
@@ -154,7 +164,7 @@ func (svc *inkService) FindByIds(ctx context.Context, ids []int64) (map[int64]do
 }
 
 func (svc *inkService) FindLiveInk(ctx context.Context, id int64) (domain.Ink, error) {
-	return svc.liveRepo.FindByIdAndStatus(ctx, id, domain.InkStatusPublished)
+	return svc.liveRepo.FindById(ctx, id, domain.InkStatusPublished)
 }
 
 func (svc *inkService) FindDraftInk(ctx context.Context, id, authorId int64) (domain.Ink, error) {
@@ -162,7 +172,7 @@ func (svc *inkService) FindDraftInk(ctx context.Context, id, authorId int64) (do
 }
 
 func (svc *inkService) FindRejectedInk(ctx context.Context, id, authorId int64) (domain.Ink, error) {
-	ink, err := svc.liveRepo.FindByIdAndStatus(ctx, id, domain.InkStatusReviewRejected)
+	ink, err := svc.liveRepo.FindById(ctx, id, domain.InkStatusRejected)
 	if err != nil {
 		return domain.Ink{}, err
 	}
@@ -173,7 +183,7 @@ func (svc *inkService) FindRejectedInk(ctx context.Context, id, authorId int64) 
 }
 
 func (svc *inkService) FindPrivateInk(ctx context.Context, id, authorId int64) (domain.Ink, error) {
-	ink, err := svc.liveRepo.FindByIdAndStatus(ctx, id, domain.InkStatusPrivate)
+	ink, err := svc.liveRepo.FindById(ctx, id, domain.InkStatusPrivate)
 	if err != nil {
 		return domain.Ink{}, err
 	}
@@ -184,15 +194,15 @@ func (svc *inkService) FindPrivateInk(ctx context.Context, id, authorId int64) (
 }
 
 func (svc *inkService) ListLiveByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error) {
-	return svc.liveRepo.ListByAuthorIdAndStatus(ctx, authorId, domain.InkStatusPublished, offset, limit)
+	return svc.liveRepo.FindByAuthorId(ctx, authorId, offset, limit, domain.InkStatusPublished)
 }
 
 func (svc *inkService) ListPendingByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error) {
-	return svc.liveRepo.ListByAuthorIdAndStatus(ctx, authorId, domain.InkStatusPending, offset, limit)
+	return svc.liveRepo.FindByAuthorId(ctx, authorId, offset, limit, domain.InkStatusPending)
 }
 
 func (svc *inkService) ListReviewRejectedByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error) {
-	return svc.liveRepo.ListByAuthorIdAndStatus(ctx, authorId, domain.InkStatusReviewRejected, offset, limit)
+	return svc.liveRepo.FindByAuthorId(ctx, authorId, offset, limit, domain.InkStatusRejected)
 }
 
 func (svc *inkService) ListDraftByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error) {
@@ -200,19 +210,14 @@ func (svc *inkService) ListDraftByAuthorId(ctx context.Context, authorId int64, 
 }
 
 func (svc *inkService) ListPrivateByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error) {
-	return svc.liveRepo.ListByAuthorIdAndStatus(ctx, authorId, domain.InkStatusPrivate, offset, limit)
+	return svc.liveRepo.FindByAuthorId(ctx, authorId, offset, limit, domain.InkStatusPrivate)
 }
 
 // ListAllLive 不要暴露给用户
 func (svc *inkService) ListAllLive(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error) {
-	return svc.liveRepo.FindAllByStatus(ctx, domain.InkStatusPublished, maxId, limit)
-}
-
-// ListAllDraft 不要暴露给用户
-func (svc *inkService) ListAllDraft(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error) {
-	return svc.draftRepo.ListAll(ctx, maxId, limit)
+	return svc.liveRepo.FindAll(ctx, maxId, limit, domain.InkStatusPublished)
 }
 
 func (svc *inkService) ListAllReviewRejected(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error) {
-	return svc.liveRepo.FindAllByStatus(ctx, domain.InkStatusReviewRejected, maxId, limit)
+	return svc.liveRepo.FindAll(ctx, maxId, limit, domain.InkStatusRejected)
 }

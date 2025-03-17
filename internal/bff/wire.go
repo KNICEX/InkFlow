@@ -7,6 +7,7 @@ import (
 	"github.com/KNICEX/InkFlow/internal/code"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/interactive"
+	"github.com/KNICEX/InkFlow/internal/relation"
 	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/KNICEX/InkFlow/pkg/ginx"
 	"github.com/KNICEX/InkFlow/pkg/ginx/jwt"
@@ -20,6 +21,7 @@ func InitHandlers(uh *web.UserHandler, ih *web.InkHandler, fh *web.FileHandler) 
 }
 
 func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
+	followService relation.FollowService,
 	interactiveSvc interactive.Service,
 	jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
 	wire.Build(

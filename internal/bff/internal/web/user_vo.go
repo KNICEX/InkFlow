@@ -77,11 +77,17 @@ type UserProfile struct {
 	Username  string    `json:"username"`
 	Birthday  string    `json:"birthday"`
 	AboutMe   string    `json:"aboutMe"`
-	Followers int       `json:"followers"`
-	Following int       `json:"following"`
+	Followers int64     `json:"followers"`
+	Following int64     `json:"following"`
 	Followed  bool      `json:"followed"`
 	Links     []string  `json:"links"`
 	CreatedAt time.Time `json:"createdAt"`
+}
+
+type FollowInfo struct {
+	Followers int64 `json:"followers"`
+	Following int64 `json:"following"`
+	Followed  bool  `json:"followed"`
 }
 
 func UserProfileFromDomain(u user.User) UserProfile {
@@ -101,4 +107,11 @@ func UserProfileFromDomain(u user.User) UserProfile {
 		Links:     u.Links,
 		CreatedAt: u.CreatedAt,
 	}
+}
+
+type FollowListReq struct {
+	Uid   int64  `json:"uid" `
+	Type  string `json:"type" binding:"required,oneof=following follower"`
+	MaxId int64  `json:"offset" binding:"required"`
+	Limit int    `json:"limit" binding:"required"`
 }

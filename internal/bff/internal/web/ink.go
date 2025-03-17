@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/interactive"
+	"github.com/KNICEX/InkFlow/internal/relation"
 	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/KNICEX/InkFlow/pkg/ginx"
 	"github.com/KNICEX/InkFlow/pkg/ginx/jwt"
@@ -23,14 +24,17 @@ type InkHandler struct {
 	svc            ink.Service
 	userSvc        user.Service
 	interactiveSvc interactive.Service
+	followService  relation.FollowService
 	auth           middleware.Authentication
 	l              logx.Logger
 }
 
-func NewInkHandler(svc ink.Service, userSvc user.Service, interactiveSvc interactive.Service, auth middleware.Authentication, l logx.Logger) *InkHandler {
+func NewInkHandler(svc ink.Service, userSvc user.Service, interactiveSvc interactive.Service,
+	followService relation.FollowService, auth middleware.Authentication, l logx.Logger) *InkHandler {
 	return &InkHandler{
 		svc:            svc,
 		userSvc:        userSvc,
+		followService:  followService,
 		interactiveSvc: interactiveSvc,
 		auth:           auth,
 		l:              l,
@@ -124,6 +128,7 @@ func (handler *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 
 	eg := errgroup.Group{}
 	var author user.User
+	var followInfo relation.FollowStatistic
 	var intr interactive.Interactive
 	eg.Go(func() error {
 		var er error
@@ -137,8 +142,9 @@ func (handler *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 	})
 
 	eg.Go(func() error {
-		// TODO 获取用户关注信息
-		return nil
+		var er error
+		followInfo, er = handler.followService.FollowStatistic(ctx, inkDetail.Author.Id, readUserId)
+		return er
 	})
 	if err = eg.Wait(); err != nil {
 		return ginx.InternalError(), err
@@ -155,6 +161,9 @@ func (handler *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 	}()
 
 	authorProfile := UserProfileFromDomain(author)
+	authorProfile.Followers = followInfo.Followers
+	authorProfile.Following = followInfo.Following
+	authorProfile.Followed = followInfo.Followed
 	return ginx.SuccessWithData(InkDetailResp{
 		InkBaseInfo: InkBaseInfoFromDomain(inkDetail),
 		Author:      authorProfile,

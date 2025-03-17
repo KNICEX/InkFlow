@@ -3,6 +3,7 @@ package web
 import (
 	"errors"
 	"github.com/KNICEX/InkFlow/internal/code"
+	"github.com/KNICEX/InkFlow/internal/relation"
 	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/KNICEX/InkFlow/pkg/ginx"
 	"github.com/KNICEX/InkFlow/pkg/ginx/jwt"
@@ -10,8 +11,10 @@ import (
 	"github.com/KNICEX/InkFlow/pkg/jwtx"
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/sync/errgroup"
 	"net/http"
 	"regexp"
+	"strconv"
 	"time"
 )
 
@@ -27,26 +30,28 @@ const (
 var _ ginx.Handler = (*UserHandler)(nil)
 
 type UserHandler struct {
-	svc      user.Service
-	codeSvc  code.Service
-	phoneReg *regexp.Regexp
-	emailReg *regexp.Regexp
-	l        logx.Logger
-	auth     middleware.Authentication
+	svc           user.Service
+	codeSvc       code.Service
+	followService relation.FollowService
+	phoneReg      *regexp.Regexp
+	emailReg      *regexp.Regexp
+	l             logx.Logger
+	auth          middleware.Authentication
 	jwt.Handler
 }
 
 func NewUserHandler(svc user.Service,
-	codeSvc code.Service,
+	codeSvc code.Service, followService relation.FollowService,
 	jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) *UserHandler {
 	return &UserHandler{
-		svc:      svc,
-		codeSvc:  codeSvc,
-		phoneReg: regexp.MustCompile(`^1[3456789]\d{9}$`),
-		emailReg: regexp.MustCompile(`^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$`),
-		Handler:  jwtHandler,
-		l:        log,
-		auth:     auth,
+		svc:           svc,
+		codeSvc:       codeSvc,
+		followService: followService,
+		phoneReg:      regexp.MustCompile(`^1[3456789]\d{9}$`),
+		emailReg:      regexp.MustCompile(`^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$`),
+		Handler:       jwtHandler,
+		l:             log,
+		auth:          auth,
 	}
 }
 
@@ -77,7 +82,6 @@ func (h *UserHandler) RegisterRoutes(server *gin.RouterGroup) {
 	// 需要登录
 	checkGroup := userGroup.Group("")
 	checkGroup.Use(h.auth.CheckLogin())
-	checkGroup.Use()
 	{
 		checkGroup.GET("/logout", ginx.Wrap(h.l, h.Logout))
 
@@ -92,7 +96,19 @@ func (h *UserHandler) RegisterRoutes(server *gin.RouterGroup) {
 		checkGroup.POST("/pwd/reset/email", ginx.WrapBody(h.l, h.ResetPwdByEmailCode))
 		//checkGroup.POST("/pwd/reset/sms", ginx.WrapBody(h.l, h.ResetPwdBySmsCode))
 		checkGroup.POST("/pwd/reset/old", ginx.WrapBody(h.l, h.ChangePwd))
+
+		{
+			// 关注
+			checkGroup.POST("/follow/:id", ginx.Wrap(h.l, h.Follow))
+			// 取消关注
+			checkGroup.DELETE("/follow/:id", ginx.Wrap(h.l, h.CancelFollow))
+			// 关注列表
+			checkGroup.GET("/follow/:id/following", ginx.WrapBody(h.l, h.FollowList))
+			// 粉丝列表
+			checkGroup.GET("/follow/:id/follower", ginx.WrapBody(h.l, h.FollowList))
+		}
 	}
+
 }
 
 func (h *UserHandler) sendCodeWithSvc(ctx *gin.Context, biz, recipient string) (ginx.Result, error) {
@@ -246,25 +262,56 @@ func (h *UserHandler) LoginAccountPwd(ctx *gin.Context, req LoginAccountPwdReq) 
 }
 
 func (h *UserHandler) Profile(ctx *gin.Context, req ProfileReq) (ginx.Result, error) {
-	// TODO 聚合关注信息
-
 	uc, logined := jwt.GetUserClaims(ctx)
-
 	var u user.User
-	var err error
-	if req.Uid > 0 {
-		u, err = h.svc.FindById(ctx, req.Uid)
+	var follow relation.FollowStatistic
+	eg := errgroup.Group{}
 
+	if req.Uid > 0 {
+		// 根据id查询
+		eg.Go(func() error {
+			var er error
+			u, er = h.svc.FindById(ctx, req.Uid)
+			return er
+		})
+		eg.Go(func() error {
+			var er error
+			follow, er = h.followService.FollowStatistic(ctx, req.Uid, uc.UserId)
+			return er
+		})
 	} else if req.Account != "" {
-		u, err = h.svc.FindByAccount(ctx, req.Account)
+		// 根据账号查询
+		eg.Go(func() error {
+			var er error
+			u, er = h.svc.FindByAccount(ctx, req.Account)
+			if er != nil {
+				return er
+			}
+			follow, er = h.followService.FollowStatistic(ctx, u.Id, uc.UserId)
+			if er != nil {
+				return er
+			}
+			return er
+		})
 	} else if !logined {
 		// 未登录查询自己的信息
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		return ginx.BizError("未登录"), nil
 	} else {
-		u, err = h.svc.FindById(ctx, uc.UserId)
+		// 直接通过token凭证查询自己的信息
+		eg.Go(func() error {
+			var er error
+			u, er = h.svc.FindById(ctx, uc.UserId)
+			return er
+		})
+		eg.Go(func() error {
+			var er error
+			follow, er = h.followService.FollowStatistic(ctx, req.Uid, uc.UserId)
+			return er
+		})
 	}
 
+	err := eg.Wait()
 	if err != nil {
 		if errors.Is(err, user.ErrUserNotFound) {
 			return ginx.BizError("用户不存在"), nil
@@ -272,7 +319,10 @@ func (h *UserHandler) Profile(ctx *gin.Context, req ProfileReq) (ginx.Result, er
 		return ginx.InternalError(), err
 	}
 
-	// TODO 聚合关注信息
+	res := UserProfileFromDomain(u)
+	res.Followers = follow.Followers
+	res.Following = follow.Following
+	res.Followed = follow.Followed
 	return ginx.SuccessWithData(UserProfileFromDomain(u)), nil
 }
 
@@ -382,4 +432,74 @@ func (h *UserHandler) ChangePwd(ctx *gin.Context, req ChangePwdReq) (ginx.Result
 		return ginx.InternalError(), err
 	}
 	return ginx.SuccessWithMsg("密码修改成功"), nil
+}
+
+func (h *UserHandler) Follow(ctx *gin.Context) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return ginx.InvalidParam(), nil
+	}
+	err = h.followService.Follow(ctx, uc.UserId, id)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.Success(), nil
+}
+func (h *UserHandler) CancelFollow(ctx *gin.Context) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return ginx.InvalidParam(), nil
+	}
+	err = h.followService.CancelFollow(ctx, uc.UserId, id)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.Success(), nil
+}
+
+func (h *UserHandler) FollowList(ctx *gin.Context, req FollowListReq) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return ginx.InvalidParam(), nil
+	}
+
+	var follows []relation.FollowInfo
+	switch req.Type {
+	case "following":
+		follows, err = h.followService.FollowList(ctx, id, uc.UserId, req.MaxId, req.Limit)
+	case "follower":
+		follows, err = h.followService.FollowerList(ctx, id, uc.UserId, req.MaxId, req.Limit)
+	default:
+		return ginx.InvalidParam(), nil
+	}
+
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+
+	uids := make([]int64, 0, len(follows))
+	followedMap := make(map[int64]bool, len(follows))
+	for _, v := range follows {
+		uids = append(uids, v.Uid)
+		followedMap[v.Uid] = v.Followed
+	}
+	users, err := h.svc.FindByIds(ctx, uids)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	res := make([]UserProfile, 0, len(users))
+	for _, v := range follows {
+		if u, ok := users[v.Uid]; ok {
+			profile := UserProfileFromDomain(u)
+			profile.Followed = followedMap[v.Uid]
+			res = append(res, profile)
+		}
+	}
+	return ginx.SuccessWithData(res), nil
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/KNICEX/InkFlow/internal/email"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/interactive"
+	"github.com/KNICEX/InkFlow/internal/relation"
 	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/google/wire"
 )
@@ -27,12 +28,13 @@ func InitApp() *App {
 	service := email.InitMemoryService()
 	serviceService := code.InitEmailCodeService(cmdable, service)
 	inkService := ink.InitInkService(cmdable, db, logger)
+	followService := relation.InitFollowService(cmdable, db, logger)
 	client := InitKafka()
 	syncProducer := InitSyncProducer(client)
 	interactiveService := interactive.InitInteractiveService(cmdable, syncProducer, db, logger)
 	handler := InitJwtHandler(cmdable)
 	authentication := InitAuthMiddleware(handler, logger)
-	v := bff.InitBff(userService, serviceService, inkService, interactiveService, handler, authentication, logger)
+	v := bff.InitBff(userService, serviceService, inkService, followService, interactiveService, handler, authentication, logger)
 	engine := InitGin(v, logger)
 	inkViewConsumer := interactive.InitInteractiveInkReadConsumer(client, logger)
 	v2 := InitConsumers(inkViewConsumer)

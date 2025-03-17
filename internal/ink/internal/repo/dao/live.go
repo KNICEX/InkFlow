@@ -14,15 +14,11 @@ var (
 type LiveDAO interface {
 	Upsert(ctx context.Context, d LiveInk) (int64, error)
 	UpdateStatus(ctx context.Context, inkId int64, authorId int64, status int) error
-	Delete(ctx context.Context, id int64, authorId int64, status []int) error
-	FindById(ctx context.Context, id int64) (LiveInk, error)
-	FindByIdAndStatus(ctx context.Context, id int64, status int) (LiveInk, error)
-	FindByAuthorIdAndMaxId(ctx context.Context, authorId int64, maxId int64, limit int) ([]LiveInk, error)
-	FindByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]LiveInk, error)
-	FindByAuthorIdAndStatus(ctx context.Context, authorId int64, status int, offset, limit int) ([]LiveInk, error)
-	FindAll(ctx context.Context, maxId int64, limit int) ([]LiveInk, error)
-	FindAllByStatus(ctx context.Context, status int, maxId int64, limit int) ([]LiveInk, error)
-	FindByIds(ctx context.Context, ids []int64) (map[int64]LiveInk, error)
+	Delete(ctx context.Context, id int64, authorId int64, status ...int) error
+	FindById(ctx context.Context, id int64, status ...int) (LiveInk, error)
+	FindByAuthorId(ctx context.Context, authorId int64, offset, limit int, status ...int) ([]LiveInk, error)
+	FindAll(ctx context.Context, maxId int64, limit int, status ...int) ([]LiveInk, error)
+	FindByIds(ctx context.Context, ids []int64, status ...int) (map[int64]LiveInk, error)
 }
 
 var _ LiveDAO = (*liveDAO)(nil)
@@ -61,7 +57,7 @@ func (dao *liveDAO) Upsert(ctx context.Context, d LiveInk) (int64, error) {
 }
 
 func (dao *liveDAO) UpdateStatus(ctx context.Context, inkId int64, authorId int64, status int) error {
-	err := dao.db.WithContext(ctx).Model(&LiveInk{}).Where("id = ? and author_id = ?", inkId, authorId).
+	err := dao.db.WithContext(ctx).Model(&LiveInk{}).Where("id = ? AND author_id = ?", inkId, authorId).
 		Update("status", status).Error
 	if err != nil {
 		return err
@@ -69,85 +65,73 @@ func (dao *liveDAO) UpdateStatus(ctx context.Context, inkId int64, authorId int6
 	return nil
 }
 
-func (dao *liveDAO) FindById(ctx context.Context, id int64) (LiveInk, error) {
+func (dao *liveDAO) FindById(ctx context.Context, id int64, status ...int) (LiveInk, error) {
 	var ink LiveInk
-	err := dao.db.WithContext(ctx).Where("id = ?", id).First(&ink).Error
+	var err error
+	if len(status) > 0 {
+		err = dao.db.WithContext(ctx).Where("id = ? AND status IN ?", id, status).First(&ink).Error
+	} else {
+		err = dao.db.WithContext(ctx).Where("id = ?", id).First(&ink).Error
+	}
 	if err != nil {
 		return LiveInk{}, err
 	}
 	return ink, nil
 }
 
-func (dao *liveDAO) Delete(ctx context.Context, id int64, authorId int64, status []int) error {
-	err := dao.db.WithContext(ctx).Where("id = ? and author_id = ? AND status in ?", id, authorId, status).Delete(&LiveInk{}).Error
+func (dao *liveDAO) Delete(ctx context.Context, id int64, authorId int64, status ...int) error {
+	var err error
+	if len(status) > 0 {
+		err = dao.db.WithContext(ctx).Where("id = ? AND author_id = ? AND status IN ?", id, authorId, status).Delete(&LiveInk{}).Error
+	} else {
+		err = dao.db.WithContext(ctx).Where("id = ? AND author_id = ?", id, authorId).Delete(&LiveInk{}).Error
+	}
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (dao *liveDAO) FindByIdAndStatus(ctx context.Context, id int64, status int) (LiveInk, error) {
-	var ink LiveInk
-	err := dao.db.WithContext(ctx).Where("id = ? and status = ?", id, status).First(&ink).Error
-	if err != nil {
-		return LiveInk{}, err
-	}
-	return ink, nil
-}
-
-func (dao *liveDAO) FindByAuthorIdAndMaxId(ctx context.Context, authorId int64, maxId int64, limit int) ([]LiveInk, error) {
+func (dao *liveDAO) FindByAuthorId(ctx context.Context, authorId int64, offset, limit int, status ...int) ([]LiveInk, error) {
 	var inks []LiveInk
-	err := dao.db.WithContext(ctx).Where("author_id = ? and id < ?", authorId, maxId).
-		Order("id desc").Limit(limit).Find(&inks).Error
+	var err error
+	if len(status) > 0 {
+		err = dao.db.WithContext(ctx).Where("author_id = ? AND status IN ?", authorId, status).
+			Order("updated_at DESC").Offset(offset).Limit(limit).Find(&inks).Error
+	} else {
+		err = dao.db.WithContext(ctx).Where("author_id = ?", authorId).
+			Order("updated_at DESC").Offset(offset).Limit(limit).Find(&inks).Error
+	}
 	if err != nil {
 		return nil, err
 	}
 	return inks, nil
 }
 
-func (dao *liveDAO) FindByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]LiveInk, error) {
+func (dao *liveDAO) FindAll(ctx context.Context, maxId int64, limit int, status ...int) ([]LiveInk, error) {
 	var inks []LiveInk
-	err := dao.db.WithContext(ctx).Where("author_id = ?", authorId).
-		Order("updated_at desc").Offset(offset).Limit(limit).Find(&inks).Error
+	var err error
+	if len(status) > 0 {
+		err = dao.db.WithContext(ctx).Where("id < ? AND status IN ?", maxId, status).
+			Order("id DESC").Limit(limit).Find(&inks).Error
+	} else {
+		err = dao.db.WithContext(ctx).Where("id < ?", maxId).
+			Order("id DESC").Limit(limit).Find(&inks).Error
+	}
 	if err != nil {
 		return nil, err
 	}
 	return inks, nil
 }
 
-func (dao *liveDAO) FindByAuthorIdAndStatus(ctx context.Context, authorId int64, status int, offset, limit int) ([]LiveInk, error) {
+func (dao *liveDAO) FindByIds(ctx context.Context, ids []int64, status ...int) (map[int64]LiveInk, error) {
 	var inks []LiveInk
-	err := dao.db.WithContext(ctx).Where("author_id = ? and status = ?", authorId, status).
-		Order("updated_at desc").Offset(offset).Limit(limit).Find(&inks).Error
-	if err != nil {
-		return nil, err
+	var err error
+	if len(status) > 0 {
+		err = dao.db.WithContext(ctx).Where("id IN ? AND status IN ?", ids, status).Find(&inks).Error
+	} else {
+		err = dao.db.WithContext(ctx).Where("id IN ?", ids).Find(&inks).Error
 	}
-	return inks, nil
-}
-
-func (dao *liveDAO) FindAll(ctx context.Context, maxId int64, limit int) ([]LiveInk, error) {
-	var inks []LiveInk
-	err := dao.db.WithContext(ctx).Where("id < ?", maxId).
-		Order("id desc").Limit(limit).Find(&inks).Error
-	if err != nil {
-		return nil, err
-	}
-	return inks, nil
-}
-
-func (dao *liveDAO) FindAllByStatus(ctx context.Context, status int, maxId int64, limit int) ([]LiveInk, error) {
-	var inks []LiveInk
-	err := dao.db.WithContext(ctx).Where("status = ? and id < ?", status, maxId).
-		Order("updated_at desc").Limit(limit).Find(&inks).Error
-	if err != nil {
-		return nil, err
-	}
-	return inks, nil
-}
-
-func (dao *liveDAO) FindByIds(ctx context.Context, ids []int64) (map[int64]LiveInk, error) {
-	var inks []LiveInk
-	err := dao.db.WithContext(ctx).Where("id in ?", ids).Find(&inks).Error
 	if err != nil {
 		return nil, err
 	}

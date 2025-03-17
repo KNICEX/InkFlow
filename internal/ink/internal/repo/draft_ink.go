@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/KNICEX/InkFlow/internal/ink/internal/domain"
 	"github.com/KNICEX/InkFlow/internal/ink/internal/repo/dao"
+	"github.com/samber/lo"
 )
 
 var (
@@ -12,12 +13,12 @@ var (
 
 type DraftInkRepo interface {
 	Create(ctx context.Context, ink domain.Ink) (int64, error)
-	Delete(ctx context.Context, id int64, authorId int64, status domain.Status) error
+	Delete(ctx context.Context, id int64, authorId int64, status ...domain.Status) error
 	FindByIdAndAuthorId(ctx context.Context, id, authorId int64) (domain.Ink, error)
 	Update(ctx context.Context, ink domain.Ink) error
-	UpdateStatus(ctx context.Context, inkId int64, authorId int64, status domain.Status) error
+	UpdateStatus(ctx context.Context, ink domain.Ink) error
 	ListByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error)
-	ListAll(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
+	FindAll(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
 }
 
 var _ DraftInkRepo = (*NoCacheDraftInkRepo)(nil)
@@ -40,8 +41,10 @@ func (repo *NoCacheDraftInkRepo) Create(ctx context.Context, ink domain.Ink) (in
 	return id, nil
 }
 
-func (repo *NoCacheDraftInkRepo) Delete(ctx context.Context, id int64, authorId int64, status domain.Status) error {
-	err := repo.dao.Delete(ctx, id, authorId, status.ToInt())
+func (repo *NoCacheDraftInkRepo) Delete(ctx context.Context, id int64, authorId int64, status ...domain.Status) error {
+	err := repo.dao.Delete(ctx, id, authorId, lo.Map(status, func(item domain.Status, index int) int {
+		return item.ToInt()
+	})...)
 	if err != nil {
 		return err
 	}
@@ -64,8 +67,8 @@ func (repo *NoCacheDraftInkRepo) Update(ctx context.Context, ink domain.Ink) err
 	return nil
 }
 
-func (repo *NoCacheDraftInkRepo) UpdateStatus(ctx context.Context, inkId int64, authorId int64, status domain.Status) error {
-	err := repo.dao.UpdateStatus(ctx, inkId, authorId, status.ToInt())
+func (repo *NoCacheDraftInkRepo) UpdateStatus(ctx context.Context, ink domain.Ink) error {
+	err := repo.dao.UpdateStatus(ctx, ink.Id, ink.Author.Id, ink.Status.ToInt())
 	if err != nil {
 		return err
 	}
@@ -84,7 +87,7 @@ func (repo *NoCacheDraftInkRepo) ListByAuthorId(ctx context.Context, authorId in
 	return result, nil
 }
 
-func (repo *NoCacheDraftInkRepo) ListAll(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error) {
+func (repo *NoCacheDraftInkRepo) FindAll(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error) {
 	inks, err := repo.dao.FindAll(ctx, maxId, limit)
 	if err != nil {
 		return nil, err

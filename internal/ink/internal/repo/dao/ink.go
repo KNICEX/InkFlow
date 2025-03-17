@@ -26,6 +26,8 @@ type LiveInk Ink
 const (
 	InkStatusUnKnown     int = iota
 	InkStatusUnPublished     // 草稿
+	InkStatusPending         // 待审核
+	InkStatusRejected        // 审核拒绝
 	InkStatusPublished       // 公开
 	InkStatusPrivate         // 私密
 )

@@ -6,6 +6,7 @@ import (
 	"github.com/KNICEX/InkFlow/internal/relation/internal/domain"
 	"github.com/redis/go-redis/v9"
 	"strconv"
+	"time"
 )
 
 var ErrKeyNotFound = redis.Nil
@@ -19,6 +20,14 @@ type FollowCache interface {
 
 type RedisFollowCache struct {
 	cmd redis.Cmdable
+	exp time.Duration
+}
+
+func NewRedisFollowCache(cmd redis.Cmdable) FollowCache {
+	return &RedisFollowCache{
+		cmd: cmd,
+		exp: time.Minute * 10,
+	}
 }
 
 const (
@@ -39,12 +48,16 @@ func (c *RedisFollowCache) GetStatisticInfo(ctx context.Context, uid int64) (dom
 		return res, ErrKeyNotFound
 	}
 	res.Followers, _ = strconv.ParseInt(data[fieldFollowerCount], 10, 64)
-	res.Followings, _ = strconv.ParseInt(data[fieldFolloweeCount], 10, 64)
+	res.Following, _ = strconv.ParseInt(data[fieldFolloweeCount], 10, 64)
 	return res, nil
 }
 
 func (c *RedisFollowCache) SetStatisticInfo(ctx context.Context, uid int64, statistic domain.FollowStatistic) error {
-	return c.cmd.HMSet(ctx, c.statisticKey(uid), fieldFollowerCount, statistic.Followers, fieldFolloweeCount, statistic.Followings).Err()
+	pipeline := c.cmd.Pipeline()
+	pipeline.HMSet(ctx, c.statisticKey(uid), fieldFollowerCount, statistic.Followers, fieldFolloweeCount, statistic.Following)
+	pipeline.Expire(ctx, c.statisticKey(uid), c.exp)
+	_, err := pipeline.Exec(ctx)
+	return err
 }
 
 func (c *RedisFollowCache) updateStatisticInfo(ctx context.Context, followerId, followeeId, delta int64) error {

@@ -11,19 +11,19 @@ import (
 	"github.com/KNICEX/InkFlow/internal/code"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/interactive"
+	"github.com/KNICEX/InkFlow/internal/relation"
 	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/KNICEX/InkFlow/pkg/ginx"
 	"github.com/KNICEX/InkFlow/pkg/ginx/jwt"
 	"github.com/KNICEX/InkFlow/pkg/ginx/middleware"
 	"github.com/KNICEX/InkFlow/pkg/logx"
-	"github.com/google/wire"
 )
 
 // Injectors from wire.go:
 
-func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service, interactiveSvc interactive.Service, jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
-	userHandler := web.NewUserHandler(userSvc, codeSvc, jwtHandler, auth, log)
-	inkHandler := web.NewInkHandler(inkService, userSvc, interactiveSvc, auth, log)
+func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service, followService relation.FollowService, interactiveSvc interactive.Service, jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
+	userHandler := web.NewUserHandler(userSvc, codeSvc, followService, jwtHandler, auth, log)
+	inkHandler := web.NewInkHandler(inkService, userSvc, interactiveSvc, followService, auth, log)
 	cloudinary := initCloudinary()
 	fileHandler := web.NewFileHandler(cloudinary, auth, log)
 	v := InitHandlers(userHandler, inkHandler, fileHandler)
@@ -31,9 +31,6 @@ func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
 }
 
 // wire.go:
-
-var handlers = wire.NewSet(web.NewUserHandler)
-
 
 func InitHandlers(uh *web.UserHandler, ih *web.InkHandler, fh *web.FileHandler) []ginx.Handler {
 	return []ginx.Handler{uh, ih, fh}

@@ -9,6 +9,12 @@ type FollowRelation struct {
 }
 
 type FollowStatistic struct {
-	Followers  int64
-	Followings int64
+	Followers int64
+	Following int64
+	Followed  bool
+}
+
+type FollowInfo struct {
+	Uid      int64
+	Followed bool
 }
