@@ -77,7 +77,7 @@ func (dao *draftDAO) FindById(ctx context.Context, id int64) (DraftInk, error) {
 
 func (dao *draftDAO) FindByIdAndAuthorId(ctx context.Context, id int64, authorId int64) (DraftInk, error) {
 	var d DraftInk
-	err := dao.db.WithContext(ctx).Where("id = ? AND author_id = ? AND status = ?", id, authorId, InkStatusUnPublished).First(&d).Error
+	err := dao.db.WithContext(ctx).Where("id = ? AND author_id = ?", id, authorId).First(&d).Error
 	if err != nil {
 		return d, err
 	}
@@ -94,7 +94,8 @@ func (dao *draftDAO) Delete(ctx context.Context, id int64, authorId int64, statu
 
 func (dao *draftDAO) FindByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]DraftInk, error) {
 	var drafts []DraftInk
-	err := dao.db.WithContext(ctx).Where("author_id = ? AND status = ?", authorId, InkStatusUnPublished).Offset(offset).Limit(limit).Find(&drafts).Error
+	err := dao.db.WithContext(ctx).Where("author_id = ? AND status = ?", authorId, InkStatusUnPublished).
+		Order("updated_at desc").Offset(offset).Limit(limit).Find(&drafts).Error
 	if err != nil {
 		return drafts, err
 	}

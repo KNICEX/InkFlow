@@ -11,6 +11,7 @@ import (
 var (
 	ErrDraftNotFound = repo.ErrDraftNotFound
 	ErrLiveNotFound  = repo.ErrLiveInkNotFound
+	ErrNoPermission  = errors.New("no permission")
 )
 
 // InkService
@@ -23,14 +24,17 @@ type InkService interface {
 	DeleteDraft(ctx context.Context, ink domain.Ink) error      // 删除草稿
 	DeleteLive(ctx context.Context, ink domain.Ink) error       // 删除线上文章
 
-	FindById(ctx context.Context, id int64) (domain.Ink, error)               // 无论状态获取一篇文章
-	FindByIds(ctx context.Context, ids []int64) (map[int64]domain.Ink, error) // 批量获取文章
-	FindLiveInk(ctx context.Context, id int64) (domain.Ink, error)            // 获取公开ink
-	FindDraftInk(ctx context.Context, id, authorId int64) (domain.Ink, error) // 获取草稿ink
+	FindById(ctx context.Context, id int64) (domain.Ink, error)                  // 无论状态获取一篇文章
+	FindByIds(ctx context.Context, ids []int64) (map[int64]domain.Ink, error)    // 批量获取文章
+	FindLiveInk(ctx context.Context, id int64) (domain.Ink, error)               // 获取公开ink
+	FindDraftInk(ctx context.Context, id, authorId int64) (domain.Ink, error)    // 获取草稿ink
+	FindPrivateInk(ctx context.Context, id, authorId int64) (domain.Ink, error)  // 获取私有ink
+	FindRejectedInk(ctx context.Context, id, authorId int64) (domain.Ink, error) // 获取审核拒绝的ink
 	ListLiveByAuthorId(ctx context.Context, authorId int64, offset int, limit int) ([]domain.Ink, error)
 	ListPendingByAuthorId(ctx context.Context, authorId int64, offset int, limit int) ([]domain.Ink, error)
 	ListReviewRejectedByAuthorId(ctx context.Context, authorId int64, offset int, limit int) ([]domain.Ink, error)
 	ListDraftByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error)
+	ListPrivateByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error)
 	ListAllLive(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
 	ListAllDraft(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
 	ListAllReviewRejected(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
@@ -157,6 +161,28 @@ func (svc *inkService) FindDraftInk(ctx context.Context, id, authorId int64) (do
 	return svc.draftRepo.FindByIdAndAuthorId(ctx, id, authorId)
 }
 
+func (svc *inkService) FindRejectedInk(ctx context.Context, id, authorId int64) (domain.Ink, error) {
+	ink, err := svc.liveRepo.FindByIdAndStatus(ctx, id, domain.InkStatusReviewRejected)
+	if err != nil {
+		return domain.Ink{}, err
+	}
+	if ink.Author.Id != authorId {
+		return domain.Ink{}, ErrNoPermission
+	}
+	return ink, nil
+}
+
+func (svc *inkService) FindPrivateInk(ctx context.Context, id, authorId int64) (domain.Ink, error) {
+	ink, err := svc.liveRepo.FindByIdAndStatus(ctx, id, domain.InkStatusPrivate)
+	if err != nil {
+		return domain.Ink{}, err
+	}
+	if ink.Author.Id != authorId {
+		return domain.Ink{}, ErrNoPermission
+	}
+	return ink, nil
+}
+
 func (svc *inkService) ListLiveByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error) {
 	return svc.liveRepo.ListByAuthorIdAndStatus(ctx, authorId, domain.InkStatusPublished, offset, limit)
 }
@@ -171,6 +197,10 @@ func (svc *inkService) ListReviewRejectedByAuthorId(ctx context.Context, authorI
 
 func (svc *inkService) ListDraftByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error) {
 	return svc.draftRepo.ListByAuthorId(ctx, authorId, offset, limit)
+}
+
+func (svc *inkService) ListPrivateByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error) {
+	return svc.liveRepo.ListByAuthorIdAndStatus(ctx, authorId, domain.InkStatusPrivate, offset, limit)
 }
 
 // ListAllLive 不要暴露给用户

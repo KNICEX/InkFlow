@@ -1,6 +1,9 @@
 package web
 
-import "github.com/KNICEX/InkFlow/internal/ink"
+import (
+	"github.com/KNICEX/InkFlow/internal/ink"
+	"time"
+)
 
 type SaveInkReq struct {
 	Id          int64    `json:"id"`
@@ -10,10 +13,6 @@ type SaveInkReq struct {
 	ContentHtml string   `json:"contentHtml"`
 	ContentMeta string   `json:"contentMeta"`
 	Tags        []string `json:"tags"`
-}
-
-type PublishInkReq struct {
-	Id int64 `json:"id"`
 }
 
 type InkDetailResp struct {
@@ -38,8 +37,8 @@ type InkBaseInfo struct {
 	ContentHtml string      `json:"contentHtml"`
 	ContentMeta string      `json:"contentMeta"`
 	Status      int         `json:"status"`
-	CreatedAt   string      `json:"createdAt"`
-	UpdatedAt   string      `json:"updatedAt"`
+	CreatedAt   time.Time   `json:"createdAt"`
+	UpdatedAt   time.Time   `json:"updatedAt"`
 }
 
 func InkBaseInfoFromDomain(i ink.Ink) InkBaseInfo {
@@ -54,8 +53,8 @@ func InkBaseInfoFromDomain(i ink.Ink) InkBaseInfo {
 		ContentHtml: i.ContentHtml,
 		ContentMeta: i.ContentMeta,
 		Status:      i.Status.ToInt(),
-		CreatedAt:   i.CreatedAt.String(),
-		UpdatedAt:   i.UpdatedAt.String(),
+		CreatedAt:   i.CreatedAt,
+		UpdatedAt:   i.UpdatedAt,
 	}
 }
 

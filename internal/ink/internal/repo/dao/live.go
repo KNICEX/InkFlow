@@ -53,8 +53,8 @@ func (dao *liveDAO) Upsert(ctx context.Context, d LiveInk) (int64, error) {
 			"status",
 			"content_html",
 			"content_meta",
-			"tag",
-			"ai_tag",
+			"tags",
+			"ai_tags",
 			"updated_at",
 		}),
 	}).Create(&d).Error
@@ -138,7 +138,7 @@ func (dao *liveDAO) FindAll(ctx context.Context, maxId int64, limit int) ([]Live
 func (dao *liveDAO) FindAllByStatus(ctx context.Context, status int, maxId int64, limit int) ([]LiveInk, error) {
 	var inks []LiveInk
 	err := dao.db.WithContext(ctx).Where("status = ? and id < ?", status, maxId).
-		Order("id desc").Limit(limit).Find(&inks).Error
+		Order("updated_at desc").Limit(limit).Find(&inks).Error
 	if err != nil {
 		return nil, err
 	}

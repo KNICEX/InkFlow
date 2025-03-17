@@ -1,6 +1,7 @@
 package web
 
 import (
+	"errors"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/interactive"
 	"github.com/KNICEX/InkFlow/internal/user"
@@ -45,12 +46,15 @@ func (handler *InkHandler) RegisterRoutes(server *gin.RouterGroup) {
 	checkGroup := inkGroup.Use(handler.auth.CheckLogin())
 	{
 		checkGroup.POST("/draft/save", ginx.WrapBody(handler.l, handler.SaveDraft))
-		checkGroup.POST("/draft/publish", ginx.WrapBody(handler.l, handler.Publish))
+		checkGroup.POST("/draft/publish/:id", ginx.Wrap(handler.l, handler.Publish))
 		checkGroup.GET("/draft/detail/:id", ginx.Wrap(handler.l, handler.DetailDraft))
 		checkGroup.POST("/draft/delete/:id", ginx.Wrap(handler.l, handler.DeleteDraft))
+		checkGroup.GET("/private/detail/:id", ginx.Wrap(handler.l, handler.DetailPrivate))
+		checkGroup.GET("/review/detail/:id", ginx.Wrap(handler.l, handler.Detail))
 		checkGroup.POST("/live/delete/:id", ginx.Wrap(handler.l, handler.DeleteLive))
 		checkGroup.POST("/draft/list", ginx.WrapBody(handler.l, handler.ListDraft))
 		checkGroup.POST("/pending/list", ginx.WrapBody(handler.l, handler.ListPending))
+		checkGroup.POST("/private/list", ginx.WrapBody(handler.l, handler.ListPrivate))
 		checkGroup.POST("/rejected/list", ginx.WrapBody(handler.l, handler.ListReviewRejected))
 		checkGroup.POST("/withdraw/:id", ginx.Wrap(handler.l, handler.Withdraw))
 	}
@@ -61,6 +65,7 @@ func (handler *InkHandler) SaveDraft(ctx *gin.Context, req SaveInkReq) (ginx.Res
 	id, err := handler.svc.Save(ctx, ink.Ink{
 		Id:          req.Id,
 		Title:       req.Title,
+		Cover:       req.Cover,
 		Summary:     req.Summary,
 		ContentHtml: req.ContentHtml,
 		ContentMeta: req.ContentMeta,
@@ -80,10 +85,13 @@ func (handler *InkHandler) SaveDraft(ctx *gin.Context, req SaveInkReq) (ginx.Res
 	}), nil
 }
 
-func (handler *InkHandler) Publish(ctx *gin.Context, req PublishInkReq) (ginx.Result, error) {
+func (handler *InkHandler) Publish(ctx *gin.Context) (ginx.Result, error) {
 	u := jwt.MustGetUserClaims(ctx)
-	id, err := handler.svc.Publish(ctx, ink.Ink{
-		Id: req.Id,
+	idParam := ctx.Param("id")
+	id, err := strconv.ParseInt(idParam, 10, 64)
+
+	id, err = handler.svc.Publish(ctx, ink.Ink{
+		Id: id,
 		Author: ink.Author{
 			Id: u.UserId,
 		},
@@ -163,6 +171,40 @@ func (handler *InkHandler) DetailDraft(ctx *gin.Context) (ginx.Result, error) {
 	}
 	draft, err := handler.svc.FindDraftInk(ctx, id, u.UserId)
 	if err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.SuccessWithData(InkBaseInfoFromDomain(draft)), nil
+}
+
+func (handler *InkHandler) DetailPrivate(ctx *gin.Context) (ginx.Result, error) {
+	idParam := ctx.Param("id")
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	u := jwt.MustGetUserClaims(ctx)
+	if err != nil {
+		return ginx.InvalidParam(), err
+	}
+	draft, err := handler.svc.FindPrivateInk(ctx, id, u.UserId)
+	if err != nil {
+		if errors.Is(err, ink.ErrNoPermission) {
+			return ginx.NoPermission(), err
+		}
+		return ginx.InternalError(), err
+	}
+	return ginx.SuccessWithData(InkBaseInfoFromDomain(draft)), nil
+}
+
+func (handler *InkHandler) DetailRejected(ctx *gin.Context) (ginx.Result, error) {
+	idParam := ctx.Param("id")
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	u := jwt.MustGetUserClaims(ctx)
+	if err != nil {
+		return ginx.InvalidParam(), err
+	}
+	draft, err := handler.svc.FindRejectedInk(ctx, id, u.UserId)
+	if err != nil {
+		if errors.Is(err, ink.ErrNoPermission) {
+			return ginx.NoPermission(), err
+		}
 		return ginx.InternalError(), err
 	}
 	return ginx.SuccessWithData(InkBaseInfoFromDomain(draft)), nil
@@ -317,6 +359,19 @@ func (handler *InkHandler) ListReviewRejected(ctx *gin.Context, req ListSelfReq)
 func (handler *InkHandler) ListDraft(ctx *gin.Context, req ListDraftReq) (ginx.Result, error) {
 	u := jwt.MustGetUserClaims(ctx)
 	inks, err := handler.svc.ListDraftByAuthorId(ctx, u.UserId, req.Offset, req.Limit)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	res := make([]InkBaseInfo, 0, len(inks))
+	for _, item := range inks {
+		res = append(res, InkBaseInfoFromDomain(item))
+	}
+	return ginx.SuccessWithData(res), nil
+}
+
+func (handler *InkHandler) ListPrivate(ctx *gin.Context, req ListSelfReq) (ginx.Result, error) {
+	u := jwt.MustGetUserClaims(ctx)
+	inks, err := handler.svc.ListPrivateByAuthorId(ctx, u.UserId, req.Offset, req.Limit)
 	if err != nil {
 		return ginx.InternalError(), err
 	}

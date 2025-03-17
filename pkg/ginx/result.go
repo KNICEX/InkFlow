@@ -34,6 +34,13 @@ func InvalidParamWithMsg(msg string) Result {
 	}
 }
 
+func NoPermission() Result {
+	return Result{
+		Code: 5,
+		Msg:  "越权操作",
+	}
+}
+
 func SuccessWithData(data any) Result {
 	return Result{
 		Code: 0,

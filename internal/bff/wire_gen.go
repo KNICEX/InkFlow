@@ -24,7 +24,9 @@ import (
 func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service, interactiveSvc interactive.Service, jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
 	userHandler := web.NewUserHandler(userSvc, codeSvc, jwtHandler, auth, log)
 	inkHandler := web.NewInkHandler(inkService, userSvc, interactiveSvc, auth, log)
-	v := InitHandlers(userHandler, inkHandler)
+	cloudinary := initCloudinary()
+	fileHandler := web.NewFileHandler(cloudinary, auth, log)
+	v := InitHandlers(userHandler, inkHandler, fileHandler)
 	return v
 }
 
@@ -32,6 +34,7 @@ func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
 
 var handlers = wire.NewSet(web.NewUserHandler)
 
-func InitHandlers(uh *web.UserHandler, ih *web.InkHandler) []ginx.Handler {
-	return []ginx.Handler{uh, ih}
+
+func InitHandlers(uh *web.UserHandler, ih *web.InkHandler, fh *web.FileHandler) []ginx.Handler {
+	return []ginx.Handler{uh, ih, fh}
 }

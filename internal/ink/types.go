@@ -13,3 +13,5 @@ type Category = domain.Category
 type Ink = domain.Ink
 
 type Service = service.InkService
+
+var ErrNoPermission = service.ErrNoPermission

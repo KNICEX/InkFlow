@@ -15,12 +15,8 @@ import (
 	"github.com/google/wire"
 )
 
-var handlers = wire.NewSet(
-	web.NewUserHandler,
-)
-
-func InitHandlers(uh *web.UserHandler, ih *web.InkHandler) []ginx.Handler {
-	return []ginx.Handler{uh, ih}
+func InitHandlers(uh *web.UserHandler, ih *web.InkHandler, fh *web.FileHandler) []ginx.Handler {
+	return []ginx.Handler{uh, ih, fh}
 }
 
 func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
@@ -29,6 +25,8 @@ func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
 	wire.Build(
 		web.NewUserHandler,
 		web.NewInkHandler,
+		initCloudinary,
+		web.NewFileHandler,
 		InitHandlers,
 	)
 	return []ginx.Handler{}
