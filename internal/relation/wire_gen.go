@@ -7,6 +7,8 @@
 package relation
 
 import (
+	"github.com/IBM/sarama"
+	"github.com/KNICEX/InkFlow/internal/relation/internal/event"
 	"github.com/KNICEX/InkFlow/internal/relation/internal/repo"
 	"github.com/KNICEX/InkFlow/internal/relation/internal/repo/cache"
 	"github.com/KNICEX/InkFlow/internal/relation/internal/repo/dao"
@@ -19,12 +21,13 @@ import (
 
 // Injectors from wire.go:
 
-func InitFollowService(cmd redis.Cmdable, db *gorm.DB, l logx.Logger) service.FollowService {
+func InitFollowService(cmd redis.Cmdable, db *gorm.DB, producer sarama.SyncProducer, l logx.Logger) service.FollowService {
 	node := initSnowflake()
 	followRelationDAO := initFollowDAO(db, node, l)
 	followCache := cache.NewRedisFollowCache(cmd)
 	followRepo := repo.NewCachedFollowRepo(followRelationDAO, followCache, l)
-	followService := service.NewFollowService(followRepo)
+	followProducer := event.NewKafkaFollowProducer(producer)
+	followService := service.NewFollowService(followRepo, followProducer, l)
 	return followService
 }
 

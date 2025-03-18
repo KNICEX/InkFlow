@@ -11,6 +11,10 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var (
+	ErrAlreadyFollowed = errors.New("already followed")
+)
+
 type FollowRepo interface {
 	AddFollowRelation(ctx context.Context, c domain.FollowRelation) error
 	RemoveFollowRelation(ctx context.Context, c domain.FollowRelation) error
@@ -36,11 +40,14 @@ func NewCachedFollowRepo(dao dao.FollowRelationDAO, cache cache.FollowCache, l l
 func (repo *CachedFollowRepo) AddFollowRelation(ctx context.Context, c domain.FollowRelation) error {
 	err := repo.dao.CreateFollowRelation(ctx, repo.toEntity(c))
 	if err != nil {
+		if errors.Is(err, dao.ErrFollowExist) {
+			return ErrAlreadyFollowed
+		}
 		return err
 	}
-	err = repo.cache.Follow(ctx, c.Follower, c.Followee)
+	err = repo.cache.Follow(ctx, c.FollowerId, c.FolloweeId)
 	if err != nil {
-		repo.l.WithCtx(ctx).Error("add follow cache error", logx.Error(err), logx.Int64("UserId", c.Follower))
+		repo.l.WithCtx(ctx).Error("add follow cache error", logx.Error(err), logx.Int64("UserId", c.FollowerId))
 	}
 	return err
 }
@@ -50,9 +57,9 @@ func (repo *CachedFollowRepo) RemoveFollowRelation(ctx context.Context, c domain
 	if err != nil {
 		return err
 	}
-	err = repo.cache.CancelFollow(ctx, c.Follower, c.Followee)
+	err = repo.cache.CancelFollow(ctx, c.FollowerId, c.FolloweeId)
 	if err != nil {
-		repo.l.WithCtx(ctx).Error("cancel follow cache error", logx.Error(err), logx.Int64("UserId", c.Follower))
+		repo.l.WithCtx(ctx).Error("cancel follow cache error", logx.Error(err), logx.Int64("UserId", c.FollowerId))
 	}
 	return err
 }
@@ -142,15 +149,15 @@ func (repo *CachedFollowRepo) GetFollowStatistic(ctx context.Context, uid, viewU
 
 func (repo *CachedFollowRepo) toDomain(follow dao.UserFollow) domain.FollowRelation {
 	return domain.FollowRelation{
-		Follower:  follow.FollowerId,
-		Followee:  follow.FolloweeId,
-		CreatedAt: follow.CreatedAt,
+		FollowerId: follow.FollowerId,
+		FolloweeId: follow.FolloweeId,
+		CreatedAt:  follow.CreatedAt,
 	}
 }
 func (repo *CachedFollowRepo) toEntity(follow domain.FollowRelation) dao.UserFollow {
 	return dao.UserFollow{
-		FollowerId: follow.Follower,
-		FolloweeId: follow.Followee,
+		FollowerId: follow.FollowerId,
+		FolloweeId: follow.FolloweeId,
 		CreatedAt:  follow.CreatedAt,
 	}
 }

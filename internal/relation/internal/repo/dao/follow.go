@@ -37,6 +37,10 @@ type UserFollow struct {
 //	UpdatedAt time.Time
 //}
 
+var (
+	ErrFollowExist = gorm.ErrDuplicatedKey
+)
+
 type FollowRelationDAO interface {
 	FollowList(ctx context.Context, uid int64, maxId int64, limit int) ([]UserFollow, error)
 	FollowerList(ctx context.Context, uid int64, maxId int64, limit int) ([]UserFollow, error)
@@ -102,7 +106,7 @@ func (dao *GormFollowRelationDAO) CreateFollowRelation(ctx context.Context, c Us
 	if ok {
 		// 已经关注过
 		dao.l.Warn("连续follow", logx.Int64("UserId", c.FollowerId))
-		return nil
+		return ErrFollowExist
 	}
 	return err
 }

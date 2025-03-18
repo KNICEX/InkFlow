@@ -3,6 +3,8 @@
 package relation
 
 import (
+	"github.com/IBM/sarama"
+	"github.com/KNICEX/InkFlow/internal/relation/internal/event"
 	"github.com/KNICEX/InkFlow/internal/relation/internal/repo"
 	"github.com/KNICEX/InkFlow/internal/relation/internal/repo/cache"
 	"github.com/KNICEX/InkFlow/internal/relation/internal/repo/dao"
@@ -25,12 +27,13 @@ func initFollowDAO(db *gorm.DB, node snowflakex.Node, l logx.Logger) dao.FollowR
 	return dao.NewGormFollowRelationDAO(db, node, l)
 }
 
-func InitFollowService(cmd redis.Cmdable, db *gorm.DB, l logx.Logger) FollowService {
+func InitFollowService(cmd redis.Cmdable, db *gorm.DB, producer sarama.SyncProducer, l logx.Logger) FollowService {
 	wire.Build(
 		initSnowflake,
 		initFollowDAO,
 		cache.NewRedisFollowCache,
 		repo.NewCachedFollowRepo,
+		event.NewKafkaFollowProducer,
 		service.NewFollowService,
 	)
 	return nil

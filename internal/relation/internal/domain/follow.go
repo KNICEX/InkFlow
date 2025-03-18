@@ -3,9 +3,9 @@ package domain
 import "time"
 
 type FollowRelation struct {
-	Follower  int64
-	Followee  int64
-	CreatedAt time.Time
+	FollowerId int64
+	FolloweeId int64
+	CreatedAt  time.Time
 }
 
 type FollowStatistic struct {

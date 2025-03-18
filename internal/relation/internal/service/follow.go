@@ -2,8 +2,12 @@ package service
 
 import (
 	"context"
+	"errors"
 	"github.com/KNICEX/InkFlow/internal/relation/internal/domain"
+	"github.com/KNICEX/InkFlow/internal/relation/internal/event"
 	"github.com/KNICEX/InkFlow/internal/relation/internal/repo"
+	"github.com/KNICEX/InkFlow/pkg/logx"
+	"time"
 )
 
 // FollowService TODO 增加关注分组
@@ -18,26 +22,41 @@ type FollowService interface {
 }
 
 type followService struct {
-	repo repo.FollowRepo
+	repo     repo.FollowRepo
+	producer event.FollowProducer
+	l        logx.Logger
 }
 
-func NewFollowService(repo repo.FollowRepo) FollowService {
+func NewFollowService(repo repo.FollowRepo, producer event.FollowProducer, l logx.Logger) FollowService {
 	return &followService{
 		repo: repo,
 	}
 }
 
 func (svc *followService) Follow(ctx context.Context, uid, followeeId int64) error {
-	return svc.repo.AddFollowRelation(ctx, domain.FollowRelation{
-		Follower: uid,
-		Followee: followeeId,
+	err := svc.repo.AddFollowRelation(ctx, domain.FollowRelation{
+		FollowerId: uid,
+		FolloweeId: followeeId,
 	})
+	if err == nil || errors.Is(err, repo.ErrAlreadyFollowed) {
+		er := svc.producer.Produce(ctx, event.FollowEvt{
+			FollowerId: uid,
+			FolloweeId: followeeId,
+			CreatedAt:  time.Now(),
+		})
+		if er != nil {
+			svc.l.Error("produce follow event error", logx.Error(er),
+				logx.Int64("followerId", uid),
+				logx.Int64("followeeId", followeeId))
+		}
+	}
+	return err
 }
 
 func (svc *followService) CancelFollow(ctx context.Context, uid, followeeId int64) error {
 	return svc.repo.RemoveFollowRelation(ctx, domain.FollowRelation{
-		Follower: uid,
-		Followee: followeeId,
+		FollowerId: uid,
+		FolloweeId: followeeId,
 	})
 }
 
