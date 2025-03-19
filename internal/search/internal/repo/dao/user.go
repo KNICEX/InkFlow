@@ -8,13 +8,16 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/typedapi/core/search"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"strconv"
+	"time"
 )
 
 type User struct {
-	Id       int64  `json:"id"`
-	Email    string `json:"email"`
-	Account  string `json:"account"`
-	Username string `json:"username"`
+	Id          int64     `json:"id"`
+	Email       string    `json:"email"`
+	Account     string    `json:"account"`
+	Username    string    `json:"username"`
+	FollowerCnt int64     `json:"follower_cnt"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type UserDAO interface {

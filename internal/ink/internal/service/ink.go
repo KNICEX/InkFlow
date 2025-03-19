@@ -1,11 +1,13 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"github.com/KNICEX/InkFlow/internal/ink/internal/domain"
 	"github.com/KNICEX/InkFlow/internal/ink/internal/repo"
 	"github.com/KNICEX/InkFlow/pkg/logx"
+	"github.com/yuin/goldmark"
 )
 
 var (
@@ -55,6 +57,14 @@ func NewInkService(liveRepo repo.LiveInkRepo, draftRepo repo.DraftInkRepo, l log
 func (svc *inkService) Save(ctx context.Context, ink domain.Ink) (int64, error) {
 	// 保存草稿，草稿状态一定为未发布
 	ink.Status = domain.InkStatusUnPublished
+
+	// 将markdown转换为html
+	var buf bytes.Buffer
+	if err := goldmark.Convert([]byte(ink.ContentMeta), &buf); err != nil {
+		return 0, err
+	}
+	ink.ContentHtml = buf.String()
+
 	if ink.Id == 0 {
 		return svc.draftRepo.Create(ctx, ink)
 	}

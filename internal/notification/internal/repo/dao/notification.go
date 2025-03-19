@@ -3,7 +3,8 @@ package dao
 import "time"
 
 // Notification
-// 可以
+// 取消点赞后，又重新点赞
+// 删除评论后，又重新评论...
 type Notification struct {
 	Id               int64
 	RecipientId      int64

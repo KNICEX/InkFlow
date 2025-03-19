@@ -19,6 +19,14 @@
       },
       "phone": {
         "type": "keyword"
+      },
+      "follower_cnt" : {
+        "type": "long",
+        "index": false
+      },
+      "created_at"  : {
+        "type": "date",
+        "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
       }
     }
   }

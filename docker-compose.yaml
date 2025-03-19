@@ -66,3 +66,26 @@ services:
     container_name: ink-flow-grafana
     ports:
       - "3000:3000"
+
+  gorse:
+    image: zhenghaoz/gorse-in-one
+    restart: unless-stopped
+    ports:
+      - "8086:8086"   # gRPC port
+      - "8088:8088"   # HTTP port
+    environment:
+      # Use Redis as cache storage backend.
+      GORSE_CACHE_STORE: redis://ink-flow-redis:6379
+      # Use MySQL as data storage backend.
+      GORSE_DATA_STORE: postgres://root:root@ink-flow-postgres:5432/gorse
+    command: >
+      -c /etc/gorse/config.toml
+      --log-path /var/log/gorse/master.log
+      --cache-path /var/lib/gorse/master_cache.data
+    volumes:
+      # Mount the configuration file.
+      - ./config.toml:/etc/gorse/config.toml
+    depends_on:
+      - redis
+      - postgres
+      - zipkin

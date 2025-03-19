@@ -2,12 +2,13 @@ package service
 
 import (
 	"context"
-	"github.com/KNICEX/InkFlow/internal/search/internal/domain"
+	"github.com/KNICEX/InkFlow/internal/recommend/internal/domain"
 )
 
 type SyncService interface {
 	InputUser(ctx context.Context, user domain.User) error
 	InputInk(ctx context.Context, ink domain.Ink) error
-	DeleteInk(ctx context.Context, inkId int64) error
+	InputFeedback(ctx context.Context, feedback domain.Feedback) error
 	DeleteUser(ctx context.Context, userId int64) error
+	HiddenInk(ctx context.Context, inkId int64) error
 }
