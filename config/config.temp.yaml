@@ -4,9 +4,12 @@ redis:
   addr: 127.0.0.1:16379
   password: 123456
 
-es:
-  addr: 127.0.0.1:9200
-  sniff: false
+#es:
+#  addr: 127.0.0.1:9200
+#  sniff: false
+
+meilisearch:
+  addr: 127.0.0.1:7700
 
 email:
   smtp:
@@ -20,6 +23,17 @@ llm:
   gemini:
     key: key
 
+otel:
+  grpc:
+    endpoint: localhost:4317
+    insecure: true
+
 kafka:
   addrs:
     - localhost:9094
+
+file:
+  cloudinary:
+    key: your_key
+    secret: your_secret
+    cloud_name: your_cloud_name

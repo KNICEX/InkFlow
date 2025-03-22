@@ -79,3 +79,8 @@ type ListDraftReq struct {
 	Offset   int   `json:"offset"`
 	Limit    int   `json:"limit"`
 }
+
+type ListMaxIdReq struct {
+	MaxId int64 `json:"maxId"`
+	Limit int   `json:"limit"`
+}

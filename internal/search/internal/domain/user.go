@@ -7,8 +7,6 @@ type User struct {
 	Account     string
 	Username    string
 	FollowerCnt int64
-	Email       string
-	Phone       string
 	CreatedAt   time.Time
 }
 

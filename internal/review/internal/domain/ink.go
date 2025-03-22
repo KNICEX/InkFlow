@@ -8,9 +8,6 @@ type Ink struct {
 	Title     string
 	Cover     string
 	Content   string
-	Status    int
-	Tag       []string
-	AiTag     []string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

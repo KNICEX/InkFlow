@@ -339,8 +339,11 @@ func (h *UserHandler) EditProfile(ctx *gin.Context, req EditProfileReq) (ginx.Re
 	err = h.svc.UpdateNonSensitiveInfo(ctx, user.User{
 		Id:       uc.UserId,
 		Username: req.Username,
+		Avatar:   req.Avatar,
+		Banner:   req.Banner,
 		Birthday: birthday,
 		AboutMe:  req.AboutMe,
+		Links:    req.Links,
 	})
 	if err != nil {
 		return ginx.InternalError(), err

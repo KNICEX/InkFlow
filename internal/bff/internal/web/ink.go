@@ -60,6 +60,8 @@ func (handler *InkHandler) RegisterRoutes(server *gin.RouterGroup) {
 		checkGroup.POST("/pending/list", ginx.WrapBody(handler.l, handler.ListPending))
 		checkGroup.POST("/private/list", ginx.WrapBody(handler.l, handler.ListPrivate))
 		checkGroup.POST("/rejected/list", ginx.WrapBody(handler.l, handler.ListReviewRejected))
+		checkGroup.POST("/liked/list", ginx.WrapBody(handler.l, handler.ListLiked))
+		checkGroup.POST("/viewed/list", ginx.WrapBody(handler.l, handler.ListViewed))
 		checkGroup.POST("/withdraw/:id", ginx.Wrap(handler.l, handler.Withdraw))
 	}
 }
@@ -378,6 +380,97 @@ func (handler *InkHandler) ListDraft(ctx *gin.Context, req ListDraftReq) (ginx.R
 	return ginx.SuccessWithData(res), nil
 }
 
+func (handler *InkHandler) ListLiked(ctx *gin.Context, req ListMaxIdReq) (ginx.Result, error) {
+	u := jwt.MustGetUserClaims(ctx)
+	// TODO 这里是不是应该把交互数据一起查出来
+	likes, err := handler.interactiveSvc.ListLike(ctx, inkBiz, u.UserId, req.MaxId, req.Limit)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	inkIds := lo.Map(likes, func(item interactive.LikeRecord, index int) int64 {
+		return item.BizId
+	})
+
+	eg := errgroup.Group{}
+	var inkMap map[int64]ink.Ink
+	var authorMap map[int64]user.User
+	eg.Go(func() error {
+		var er error
+		inkMap, er = handler.svc.FindByIds(ctx, inkIds)
+		return er
+	})
+	eg.Go(func() error {
+		var er error
+		authorMap, er = handler.userSvc.FindByIds(ctx, inkIds)
+		return er
+	})
+	if err = eg.Wait(); err != nil {
+		return ginx.InternalError(), err
+	}
+
+	res := make([]InkDetailResp, 0, len(likes))
+	for _, item := range likes {
+		i, ok := inkMap[item.BizId]
+		if !ok {
+			continue
+		}
+		author, ok := authorMap[item.BizId]
+		if !ok {
+			continue
+		}
+		res = append(res, InkDetailResp{
+			InkBaseInfo: InkBaseInfoFromDomain(i),
+			Author:      UserProfileFromDomain(author),
+		})
+	}
+
+	return ginx.SuccessWithData(res), nil
+}
+
+func (handler *InkHandler) ListViewed(ctx *gin.Context, req ListMaxIdReq) (ginx.Result, error) {
+	u := jwt.MustGetUserClaims(ctx)
+	views, err := handler.interactiveSvc.ListView(ctx, inkBiz, u.UserId, req.MaxId, req.Limit)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	inkIds := lo.Map(views, func(item interactive.ViewRecord, index int) int64 {
+		return item.BizId
+	})
+
+	eg := errgroup.Group{}
+	var inkMap map[int64]ink.Ink
+	var authorMap map[int64]user.User
+	eg.Go(func() error {
+		var er error
+		inkMap, er = handler.svc.FindByIds(ctx, inkIds)
+		return er
+	})
+	eg.Go(func() error {
+		var er error
+		authorMap, er = handler.userSvc.FindByIds(ctx, inkIds)
+		return er
+	})
+	if err = eg.Wait(); err != nil {
+		return ginx.InternalError(), err
+	}
+
+	res := make([]InkDetailResp, 0, len(views))
+	for _, item := range views {
+		i, ok := inkMap[item.BizId]
+		if !ok {
+			continue
+		}
+		author, ok := authorMap[item.BizId]
+		if !ok {
+			continue
+		}
+		res = append(res, InkDetailResp{
+			InkBaseInfo: InkBaseInfoFromDomain(i),
+			Author:      UserProfileFromDomain(author),
+		})
+	}
+	return ginx.SuccessWithData(res), nil
+}
 func (handler *InkHandler) ListPrivate(ctx *gin.Context, req ListSelfReq) (ginx.Result, error) {
 	u := jwt.MustGetUserClaims(ctx)
 	inks, err := handler.svc.ListPrivateByAuthorId(ctx, u.UserId, req.Offset, req.Limit)

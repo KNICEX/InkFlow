@@ -3,7 +3,8 @@ package domain
 import "time"
 
 const (
-	BizInk = "ink"
+	BizInk     = "ink"
+	BizComment = "comment"
 )
 
 type Interactive struct {
@@ -14,7 +15,7 @@ type Interactive struct {
 	CollectCnt int64
 
 	Liked     bool
-	Collected bool
+	Favorited bool
 }
 
 type ViewRecord struct {
@@ -30,4 +31,13 @@ type LikeRecord struct {
 	BizId     int64
 	UserId    int64
 	CreatedAt time.Time
+}
+
+type FavoriteRecord struct {
+	Biz       string
+	BizId     int64
+	Fid       int64
+	UserId    int64
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }

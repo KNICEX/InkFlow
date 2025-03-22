@@ -8,3 +8,7 @@ import (
 type Service interface {
 	ReviewInk(ctx context.Context, ink domain.Ink) (domain.ReviewResult, error)
 }
+
+type AsyncService interface {
+	SubmitInk(ctx context.Context, ink domain.Ink) error
+}

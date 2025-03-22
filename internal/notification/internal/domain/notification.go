@@ -50,3 +50,28 @@ func (t SubjectType) ToString() string {
 func SubjectTypeFromStr(s string) SubjectType {
 	return SubjectType(s)
 }
+
+type ReplyNotification struct {
+	Id            int64
+	SubjectType   SubjectType
+	SubjectId     int64
+	RootId        int64
+	ParentId      int64
+	ReplyUid      int64
+	ReplyContent  string // 回复内容
+	RootContent   string // 根评论内容
+	TargetContent string // 目标内容
+	CreatedAt     time.Time
+}
+
+type LikeNotification struct {
+	Id          int64
+	SubjectType SubjectType
+	SubjectId   int64
+	TargetId    int64
+	TargetType  SubjectType
+	TargetUid   int64
+	TargetTitle string
+	TargetUrl   string
+	CreatedAt   time.Time
+}

@@ -32,13 +32,18 @@ type Links []string
 
 func (links Links) ToString() string {
 	sb := strings.Builder{}
-	for _, link := range links {
+	for i, link := range links {
+		if i > 0 {
+			sb.WriteString(",")
+		}
 		sb.WriteString(link)
-		sb.WriteString(",")
 	}
 	return sb.String()
 }
 
 func LinksFromString(s string) Links {
+	if s == "" {
+		return nil
+	}
 	return strings.Split(s, ",")
 }

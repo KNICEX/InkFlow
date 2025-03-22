@@ -7,8 +7,10 @@ import (
 )
 
 type Interactive = domain.Interactive
-type ReadRecord = domain.ViewRecord
+type Favorite = domain.Favorite
+type ViewRecord = domain.ViewRecord
 type LikeRecord = domain.LikeRecord
+type FavoriteRecord = domain.FavoriteRecord
 
 type Service = service.InteractiveService
 type InkViewConsumer = events.InkViewConsumer

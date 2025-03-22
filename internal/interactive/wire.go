@@ -30,7 +30,7 @@ func initDAO(db *gorm.DB, node snowflakex.Node, l logx.Logger) dao.InteractiveDA
 // 为了初始化consumer,不得已使用一个包变量实现单例
 var r repo.InteractiveRepo
 
-func initRepo(d dao.InteractiveDAO, c cache.InteractiveCache, l logx.Logger) repo.InteractiveRepo {
+func initIntrRepo(d dao.InteractiveDAO, c cache.InteractiveCache, l logx.Logger) repo.InteractiveRepo {
 	if r != nil {
 		return r
 	}
@@ -47,7 +47,7 @@ func InitInteractiveService(cmd redis.Cmdable, p sarama.SyncProducer, db *gorm.D
 		dao.NewGormInteractiveDAO,
 		cache.NewRedisInteractiveCache,
 		initProducer,
-		initRepo,
+		initIntrRepo,
 		service.NewInteractiveService,
 	)
 	return nil

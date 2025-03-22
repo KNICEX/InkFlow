@@ -20,11 +20,12 @@ var (
 // 这里将Save和Publish分开，Sava只当作保存草稿，前端编辑时也会定时调用放丢失
 // 直接发布文章，前端先调用Save保存草稿，然后再调用Publish发布
 type InkService interface {
-	Save(ctx context.Context, ink domain.Ink) (int64, error)    // 保存草稿
-	Publish(ctx context.Context, ink domain.Ink) (int64, error) // 发布
-	Withdraw(ctx context.Context, ink domain.Ink) error         // 撤回
-	DeleteDraft(ctx context.Context, ink domain.Ink) error      // 删除草稿
-	DeleteLive(ctx context.Context, ink domain.Ink) error       // 删除线上文章
+	Save(ctx context.Context, ink domain.Ink) (int64, error)                                   // 保存草稿
+	Publish(ctx context.Context, ink domain.Ink) (int64, error)                                // 发布
+	UpdateInkStatus(ctx context.Context, id int64, authorId int64, status domain.Status) error // 更新文章状态
+	Withdraw(ctx context.Context, ink domain.Ink) error                                        // 撤回
+	DeleteDraft(ctx context.Context, ink domain.Ink) error                                     // 删除草稿
+	DeleteLive(ctx context.Context, ink domain.Ink) error                                      // 删除线上文章
 
 	FindById(ctx context.Context, id int64) (domain.Ink, error)                  // 无论状态获取一篇文章
 	FindByIds(ctx context.Context, ids []int64) (map[int64]domain.Ink, error)    // 批量获取文章
@@ -118,6 +119,7 @@ func (svc *inkService) UpdateInkStatus(ctx context.Context, id int64, authorId i
 
 func (svc *inkService) Withdraw(ctx context.Context, ink domain.Ink) error {
 	// TODO 暂时设置为私有，后续考虑要不要添加更多状态
+	// TODO 从推荐和搜索中隐藏
 	ink.Status = domain.InkStatusPrivate
 	err := svc.liveRepo.UpdateStatus(ctx, ink)
 	if err != nil {

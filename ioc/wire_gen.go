@@ -50,7 +50,7 @@ func InitApp() *App {
 var thirdPartSet = wire.NewSet(
 	InitLogger,
 	InitDB,
-	InitEs,
+	InitMeiliSearch,
 	InitKafka,
 	InitSyncProducer,
 	InitRedisUniversalClient,

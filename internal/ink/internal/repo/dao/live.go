@@ -14,6 +14,7 @@ var (
 type LiveDAO interface {
 	Upsert(ctx context.Context, d LiveInk) (int64, error)
 	UpdateStatus(ctx context.Context, inkId int64, authorId int64, status int) error
+	UpdateAiTags(ctx context.Context, inkId int64, aiTags string) error
 	Delete(ctx context.Context, id int64, authorId int64, status ...int) error
 	FindById(ctx context.Context, id int64, status ...int) (LiveInk, error)
 	FindByAuthorId(ctx context.Context, authorId int64, offset, limit int, status ...int) ([]LiveInk, error)
@@ -59,6 +60,15 @@ func (dao *liveDAO) Upsert(ctx context.Context, d LiveInk) (int64, error) {
 func (dao *liveDAO) UpdateStatus(ctx context.Context, inkId int64, authorId int64, status int) error {
 	err := dao.db.WithContext(ctx).Model(&LiveInk{}).Where("id = ? AND author_id = ?", inkId, authorId).
 		Update("status", status).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (dao *liveDAO) UpdateAiTags(ctx context.Context, inkId int64, aiTags string) error {
+	err := dao.db.WithContext(ctx).Model(&LiveInk{}).Where("id = ?", inkId).
+		Update("ai_tags", aiTags).Error
 	if err != nil {
 		return err
 	}

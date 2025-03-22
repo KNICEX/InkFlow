@@ -10,17 +10,22 @@ import (
 )
 
 type InteractiveRepo interface {
+	CreateInteractive(ctx context.Context, biz string, bizId int64) error
 	IncrView(ctx context.Context, biz string, bizId, uid int64) error
 	IncrViewBatch(ctx context.Context, biz string, bizIds, uid []int64) error
 	IncrLike(ctx context.Context, biz string, bizId, uid int64) error
 	DecrLike(ctx context.Context, biz string, bizId, uid int64) error
+	IncrFavorite(ctx context.Context, biz string, bizId, uid, fid int64) error
+	DecrFavorite(ctx context.Context, biz string, bizId, uid int64) error
 
 	ListView(ctx context.Context, biz string, uid int64, maxId int64, limit int) ([]domain.ViewRecord, error)
 	ListLike(ctx context.Context, biz string, uid int64, maxId int64, limit int) ([]domain.LikeRecord, error)
+	ListFavoriteByFid(ctx context.Context, biz string, uid, fid int64, maxId int64, limit int) ([]domain.FavoriteRecord, error)
 
-	AddCollection(ctx context.Context, biz string, bizId, cid, uid int64) error
 	Liked(ctx context.Context, biz string, bizId, uid int64) (bool, error)
-	Collected(ctx context.Context, biz string, bizId, uid int64) (bool, error)
+	LikedBatch(ctx context.Context, biz string, bizIds []int64, uid int64) (map[int64]bool, error)
+	Favorited(ctx context.Context, biz string, bizId, uid int64) (bool, error)
+	FavoritedBatch(ctx context.Context, biz string, bizIds []int64, uid int64) (map[int64]bool, error)
 	Get(ctx context.Context, biz string, bizId int64) (domain.Interactive, error)
 	GetMulti(ctx context.Context, biz string, bizIds []int64) (map[int64]domain.Interactive, error)
 }
@@ -37,6 +42,10 @@ func NewCachedInteractiveRepo(cache cache.InteractiveCache, dao dao.InteractiveD
 		dao:   dao,
 		l:     l,
 	}
+}
+
+func (repo *CachedInteractiveRepo) CreateInteractive(ctx context.Context, biz string, bizId int64) error {
+	return repo.dao.InsertInteractive(ctx, biz, bizId)
 }
 
 func (repo *CachedInteractiveRepo) IncrView(ctx context.Context, biz string, bizId, uid int64) error {
@@ -99,6 +108,36 @@ func (repo *CachedInteractiveRepo) DecrLike(ctx context.Context, biz string, biz
 	return nil
 }
 
+func (repo *CachedInteractiveRepo) IncrFavorite(ctx context.Context, biz string, bizId, uid, fid int64) error {
+	if err := repo.dao.InsertFavorite(ctx, biz, bizId, uid, fid); err != nil {
+		return err
+	}
+	go func() {
+		if err := repo.cache.IncrFavoriteCnt(ctx, biz, bizId); err != nil {
+			repo.l.WithCtx(ctx).Error("incr favorite cnt cache error", logx.Error(err),
+				logx.String("biz", biz),
+				logx.Int64("bizId", bizId),
+				logx.Int64("uid", uid))
+		}
+	}()
+	return nil
+}
+
+func (repo *CachedInteractiveRepo) DecrFavorite(ctx context.Context, biz string, bizId, uid int64) error {
+	if err := repo.dao.DeleteFavorite(ctx, biz, bizId, uid); err != nil {
+		return err
+	}
+	go func() {
+		if err := repo.cache.DecrFavoriteCnt(ctx, biz, bizId); err != nil {
+			repo.l.WithCtx(ctx).Error("decr favorite cnt cache error", logx.Error(err),
+				logx.String("biz", biz),
+				logx.Int64("bizId", bizId),
+				logx.Int64("uid", uid))
+		}
+	}()
+	return nil
+}
+
 func (repo *CachedInteractiveRepo) ListView(ctx context.Context, biz string, uid int64, maxId int64, limit int) ([]domain.ViewRecord, error) {
 	records, err := repo.dao.ListViewRecord(ctx, biz, uid, maxId, limit)
 	if err != nil {
@@ -119,22 +158,55 @@ func (repo *CachedInteractiveRepo) ListLike(ctx context.Context, biz string, uid
 	}), nil
 }
 
-func (repo *CachedInteractiveRepo) AddCollection(ctx context.Context, biz string, bizId, cid, uid int64) error {
-	//TODO implement me
-	panic("implement me")
+func (repo *CachedInteractiveRepo) ListFavoriteByFid(ctx context.Context, biz string, uid, fid int64, maxId int64, limit int) ([]domain.FavoriteRecord, error) {
+	records, err := repo.dao.FindByFavorite(ctx, biz, uid, fid, maxId, limit)
+	if err != nil {
+		return nil, err
+	}
+	return lo.Map(records, func(item dao.UserFavorite, index int) domain.FavoriteRecord {
+		return repo.favoriteToDomain(item)
+
+	}), nil
 }
 
 func (repo *CachedInteractiveRepo) Liked(ctx context.Context, biz string, bizId, uid int64) (bool, error) {
-	liked, err := repo.dao.GetLikeInfo(ctx, biz, bizId, uid)
+	liked, err := repo.dao.FindLikeInfo(ctx, biz, bizId, uid)
 	if err != nil {
 		return false, err
 	}
 	return liked.Id != 0, nil
 }
 
-func (repo *CachedInteractiveRepo) Collected(ctx context.Context, biz string, bizId, uid int64) (bool, error) {
-	//TODO implement me
-	panic("implement me")
+func (repo *CachedInteractiveRepo) LikedBatch(ctx context.Context, biz string, bizIds []int64, uid int64) (map[int64]bool, error) {
+	liked, err := repo.dao.FindLikeBatch(ctx, biz, bizIds, uid)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[int64]bool)
+	for _, item := range liked {
+		res[item.BizId] = true
+	}
+	return res, nil
+}
+
+func (repo *CachedInteractiveRepo) Favorited(ctx context.Context, biz string, bizId, uid int64) (bool, error) {
+	favorited, err := repo.dao.FindFavoriteInfo(ctx, biz, bizId, uid)
+	if err != nil {
+		return false, err
+	}
+	return favorited.Id != 0, nil
+}
+
+func (repo *CachedInteractiveRepo) FavoritedBatch(ctx context.Context, biz string, bizIds []int64, uid int64) (map[int64]bool, error) {
+	favorited, err := repo.dao.FindFavoriteBatch(ctx, biz, bizIds, uid)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[int64]bool)
+	for _, item := range favorited {
+		res[item.BizId] = true
+	}
+	return res, nil
 }
 
 func (repo *CachedInteractiveRepo) Get(ctx context.Context, biz string, bizId int64) (domain.Interactive, error) {
@@ -148,6 +220,7 @@ func (repo *CachedInteractiveRepo) Get(ctx context.Context, biz string, bizId in
 		return domain.Interactive{}, err
 	}
 	intr = repo.interToDomain(entity)
+
 	go func() {
 		if er := repo.cache.Set(ctx, biz, bizId, intr); er != nil {
 			repo.l.WithCtx(ctx).Error("set interactive cache error", logx.Error(er),
@@ -188,7 +261,7 @@ func (repo *CachedInteractiveRepo) interToDomain(entity dao.Interactive) domain.
 	return domain.Interactive{
 		Biz:     entity.Biz,
 		BizId:   entity.BizId,
-		ViewCnt: entity.ReadCnt,
+		ViewCnt: entity.ViewCnt,
 		LikeCnt: entity.LikeCnt,
 	}
 }
@@ -204,6 +277,15 @@ func (repo *CachedInteractiveRepo) likeToDomain(entity dao.UserLike) domain.Like
 	return domain.LikeRecord{
 		Biz:    entity.Biz,
 		BizId:  entity.BizId,
+		UserId: entity.UserId,
+	}
+}
+
+func (repo *CachedInteractiveRepo) favoriteToDomain(entity dao.UserFavorite) domain.FavoriteRecord {
+	return domain.FavoriteRecord{
+		Biz:    entity.Biz,
+		BizId:  entity.BizId,
+		Fid:    entity.FavoriteId,
 		UserId: entity.UserId,
 	}
 }

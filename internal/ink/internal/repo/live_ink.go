@@ -18,6 +18,7 @@ var (
 type LiveInkRepo interface {
 	Save(ctx context.Context, ink domain.Ink) (int64, error)
 	UpdateStatus(ctx context.Context, ink domain.Ink) error
+	UpdateAiTags(ctx context.Context, id int64, tags domain.Tags) error
 	Delete(ctx context.Context, id int64, authorId int64, status ...domain.Status) error
 	FindById(ctx context.Context, id int64, status ...domain.Status) (domain.Ink, error)
 	FindByAuthorId(ctx context.Context, authorId int64, offset, limit int, status ...domain.Status) ([]domain.Ink, error)
@@ -121,6 +122,14 @@ func (repo *CachedLiveInkRepo) UpdateStatus(ctx context.Context, ink domain.Ink)
 
 	}
 
+	return nil
+}
+
+func (repo *CachedLiveInkRepo) UpdateAiTags(ctx context.Context, id int64, tags domain.Tags) error {
+	err := repo.dao.UpdateAiTags(ctx, id, tags.ToString())
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

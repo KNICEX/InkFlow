@@ -10,3 +10,10 @@ type Feedback struct {
 }
 
 type FeedbackType string
+
+const (
+	FeedbackTypeView     FeedbackType = "view"
+	FeedbackTypeViewLong FeedbackType = "view_long"
+	FeedbackTypeLike     FeedbackType = "like"
+	FeedbackTypeFavorite FeedbackType = "favorite"
+)

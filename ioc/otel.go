@@ -3,8 +3,9 @@ package ioc
 import (
 	"context"
 	"github.com/KNICEX/InkFlow/pkg/logx"
+	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/zipkin"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -42,8 +43,14 @@ func newResource(serviceName, serviceVersion string) (*resource.Resource, error)
 	)
 }
 func newTraceProvider(res *resource.Resource) (*trace.TracerProvider, error) {
-	// TODO 地址后续需要改成配置项
-	exporter, err := zipkin.New("http://localhost:9411/api/v2/spans")
+	type Config struct {
+		Endpoint string
+	}
+	var cfg Config
+	if err := viper.UnmarshalKey("otel.grpc", &cfg); err != nil {
+		return nil, err
+	}
+	exporter, err := otlptracegrpc.New(context.Background(), otlptracegrpc.WithEndpoint(cfg.Endpoint))
 	if err != nil {
 		return nil, err
 	}
