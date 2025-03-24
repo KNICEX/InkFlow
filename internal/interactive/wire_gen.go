@@ -23,11 +23,13 @@ import (
 
 func InitInteractiveService(cmd redis.Cmdable, p sarama.SyncProducer, db *gorm.DB, l logx.Logger) service.InteractiveService {
 	node := initSnowflakeNode()
-	interactiveDAO := dao.NewGormInteractiveDAO(db, node, l)
+	interactiveDAO := initIntrDAO(db, node, l)
 	interactiveCache := cache.NewRedisInteractiveCache(cmd)
-	interactiveRepo := initRepo(interactiveDAO, interactiveCache, l)
+	interactiveRepo := initIntrRepo(interactiveDAO, interactiveCache, l)
+	favoriteDAO := dao.NewGormFavoriteDAO(db, node)
+	favoriteRepo := repo.NewNoCacheFavoriteRepo(favoriteDAO)
 	interactiveProducer := initProducer(p)
-	interactiveService := service.NewInteractiveService(interactiveRepo, interactiveProducer, l)
+	interactiveService := service.NewInteractiveService(interactiveRepo, favoriteRepo, interactiveProducer, l)
 	return interactiveService
 }
 
@@ -37,7 +39,7 @@ func initSnowflakeNode() snowflakex.Node {
 	return snowflakex.NewNode(snowflakex.DefaultStartTime, 0)
 }
 
-func initDAO(db *gorm.DB, node snowflakex.Node, l logx.Logger) dao.InteractiveDAO {
+func initIntrDAO(db *gorm.DB, node snowflakex.Node, l logx.Logger) dao.InteractiveDAO {
 	if err := dao.InitTables(db); err != nil {
 		panic(err)
 	}
@@ -47,7 +49,7 @@ func initDAO(db *gorm.DB, node snowflakex.Node, l logx.Logger) dao.InteractiveDA
 // 为了初始化consumer,不得已使用一个包变量实现单例
 var r repo.InteractiveRepo
 
-func initRepo(d dao.InteractiveDAO, c cache.InteractiveCache, l logx.Logger) repo.InteractiveRepo {
+func initIntrRepo(d dao.InteractiveDAO, c cache.InteractiveCache, l logx.Logger) repo.InteractiveRepo {
 	if r != nil {
 		return r
 	}

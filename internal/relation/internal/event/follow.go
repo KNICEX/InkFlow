@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const topicFollowEvt = "user_follow_event"
+const topicFollowEvt = "user-follow-event"
 
 type FollowEvt struct {
 	FollowerId int64

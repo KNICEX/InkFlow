@@ -11,7 +11,7 @@ type InteractiveVO struct {
 	ShareCnt   int64  `json:"shareCnt"`
 	CollectCnt int64  `json:"collectCnt"`
 	Liked      bool   `json:"liked"`
-	Collected  bool   `json:"collected"`
+	Favorited  bool   `json:"favorited"`
 	Shared     bool   `json:"shared"`
 }
 
@@ -23,6 +23,6 @@ func InteractiveVOFromDomain(i interactive.Interactive) InteractiveVO {
 		LikeCnt:    i.LikeCnt,
 		CollectCnt: i.CollectCnt,
 		Liked:      i.Liked,
-		Collected:  i.Collected,
+		Favorited:  i.Favorited,
 	}
 }

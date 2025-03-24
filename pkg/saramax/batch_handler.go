@@ -8,19 +8,21 @@ import (
 	"time"
 )
 
-type batchHandleFunc[T any] = func(msgs []*sarama.ConsumerMessage, ts []T) error
+type BatchConsumable[T any] interface {
+	Consume(msgs []*sarama.ConsumerMessage, ts []T) error
+}
 
 type BatchHandler[T any] struct {
 	l         logx.Logger
 	batchSize int
 	maxWait   time.Duration
-	fn        batchHandleFunc[T]
+	consumer  BatchConsumable[T]
 }
 
-func NewBatchHandler[T any](l logx.Logger, fn batchHandleFunc[T], opts ...BatchHandlerOption[T]) *BatchHandler[T] {
+func NewBatchHandler[T any](l logx.Logger, consumer BatchConsumable[T], opts ...BatchHandlerOption[T]) *BatchHandler[T] {
 	h := &BatchHandler[T]{
 		l:         l,
-		fn:        fn,
+		consumer:  consumer,
 		batchSize: 10,
 		maxWait:   1 * time.Second,
 	}
@@ -96,7 +98,7 @@ func (h *BatchHandler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 			continue
 		}
 
-		err := h.fn(batch, ts)
+		err := h.consumer.Consume(batch, ts)
 		if err != nil {
 			h.l.Error("batch handler: failed to handle message",
 				logx.String("topic", last.Topic),

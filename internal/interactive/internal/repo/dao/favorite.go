@@ -34,7 +34,7 @@ type GormFavoriteDAO struct {
 	db   *gorm.DB
 }
 
-func NewGormFavoriteDAO(db *gorm.DB, node snowflakex.Node) *GormFavoriteDAO {
+func NewGormFavoriteDAO(db *gorm.DB, node snowflakex.Node) FavoriteDAO {
 	return &GormFavoriteDAO{
 		node: node,
 		db:   db,

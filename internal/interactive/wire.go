@@ -20,7 +20,7 @@ func initSnowflakeNode() snowflakex.Node {
 	return snowflakex.NewNode(snowflakex.DefaultStartTime, 0)
 }
 
-func initDAO(db *gorm.DB, node snowflakex.Node, l logx.Logger) dao.InteractiveDAO {
+func initIntrDAO(db *gorm.DB, node snowflakex.Node, l logx.Logger) dao.InteractiveDAO {
 	if err := dao.InitTables(db); err != nil {
 		panic(err)
 	}
@@ -44,7 +44,9 @@ func initProducer(p sarama.SyncProducer) events.InteractiveProducer {
 func InitInteractiveService(cmd redis.Cmdable, p sarama.SyncProducer, db *gorm.DB, l logx.Logger) Service {
 	wire.Build(
 		initSnowflakeNode,
-		dao.NewGormInteractiveDAO,
+		dao.NewGormFavoriteDAO,
+		initIntrDAO,
+		repo.NewNoCacheFavoriteRepo,
 		cache.NewRedisInteractiveCache,
 		initProducer,
 		initIntrRepo,

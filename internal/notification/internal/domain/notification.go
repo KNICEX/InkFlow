@@ -37,7 +37,7 @@ type SubjectType string
 
 const (
 	SubjectTypeComment SubjectType = "comment"
-	SubjectTypePost    SubjectType = "ink"
+	SubjectTypeInk     SubjectType = "ink"
 	SubjectTypeUser    SubjectType = "user"
 	SubjectTypeFeed    SubjectType = "feed"
 	SubjectTypeSystem  SubjectType = "system"
@@ -51,27 +51,14 @@ func SubjectTypeFromStr(s string) SubjectType {
 	return SubjectType(s)
 }
 
-type ReplyNotification struct {
-	Id            int64
-	SubjectType   SubjectType
-	SubjectId     int64
+type ReplyContent struct {
 	RootId        int64
 	ParentId      int64
-	ReplyUid      int64
 	ReplyContent  string // 回复内容
-	RootContent   string // 根评论内容
-	TargetContent string // 目标内容
-	CreatedAt     time.Time
+	TargetId      int64  // 被回复的评论id, 如果是根评论则为0
+	TargetContent string // 被回复的内容, 如果是根评论则为空
+	//RootContent   string // 根评论内容
 }
 
-type LikeNotification struct {
-	Id          int64
-	SubjectType SubjectType
-	SubjectId   int64
-	TargetId    int64
-	TargetType  SubjectType
-	TargetUid   int64
-	TargetTitle string
-	TargetUrl   string
-	CreatedAt   time.Time
+type LikeContent struct {
 }

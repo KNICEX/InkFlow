@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	inkViewConsumerGroup = "ink_view_consumer_group"
+	inkViewConsumerGroup = "ink-view-consumer-group"
 )
 
 type InkViewConsumer struct {
@@ -46,7 +46,7 @@ func (c *InkViewConsumer) Start() error {
 	}
 	go func() {
 		er := cg.Consume(context.Background(),
-			[]string{inkViewTopic}, saramax.NewBatchHandler(c.l, c.Consume))
+			[]string{inkViewTopic}, saramax.NewBatchHandler(c.l, c))
 		if er != nil {
 			c.l.Warn("consume quited", logx.Error(er))
 		}
