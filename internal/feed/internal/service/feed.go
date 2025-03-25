@@ -1,1 +1,83 @@
 package service
+
+import (
+	"context"
+	"github.com/KNICEX/InkFlow/internal/action"
+	"github.com/KNICEX/InkFlow/internal/feed/internal/domain"
+	"github.com/KNICEX/InkFlow/internal/feed/internal/repo"
+	"github.com/KNICEX/InkFlow/internal/relation"
+	"github.com/samber/lo"
+	"golang.org/x/sync/errgroup"
+	"sort"
+	"time"
+)
+
+type FeedService interface {
+	CreateFeed(ctx context.Context, feed domain.Feed) error
+	FollowFeedList(ctx context.Context, uid int64, maxId, timestamp int64, limit int) ([]domain.Feed, error)
+}
+
+type feedService struct {
+	repo      repo.FeedRepo
+	followSvc relation.FollowService
+	actionSvc action.Service
+	handlers  map[string]Handler
+}
+
+func (f *feedService) CreateFeed(ctx context.Context, feed domain.Feed) error {
+	if err := f.repo.CreatePullFeed(ctx, feed); err != nil {
+		return err
+	}
+
+	// TODO 现在采用全推模型，后续考虑混合
+	followers, err := f.followSvc.FollowerList(ctx, feed.UserId, 0, 0, 10000)
+	if err != nil {
+		return err
+	}
+	// 30 天内活跃用户
+	activeUsers, err := f.actionSvc.FindActiveUser(ctx, lo.Map(followers, func(item relation.FollowInfo, index int) int64 {
+		return item.Uid
+	}), time.Now().Add(-time.Hour*24*30))
+	if err != nil {
+		return err
+	}
+	pushFeeds := make([]domain.Feed, 0, len(activeUsers))
+	for _, user := range activeUsers {
+		feed.UserId = user.Id
+		pushFeeds = append(pushFeeds, feed)
+	}
+	return f.repo.CreatePushFeed(ctx, pushFeeds)
+}
+
+func (f *feedService) FollowFeedList(ctx context.Context, uid, maxId, timestamp int64, limit int) ([]domain.Feed, error) {
+	var pushFeeds []domain.Feed
+	var pullFeeds []domain.Feed
+
+	eg := errgroup.Group{}
+	eg.Go(func() error {
+		var er error
+		pushFeeds, er = f.repo.FindPushFeed(ctx, uid, maxId, timestamp, limit)
+		return er
+	})
+	eg.Go(func() error {
+		// TODO 这里先查2000，后续修改
+		following, er := f.followSvc.FollowList(ctx, uid, uid, 0, 2000)
+		if er != nil {
+			return er
+		}
+		pullFeeds, er = f.repo.FindPullFeed(ctx, lo.Map(following, func(item relation.FollowInfo, index int) int64 {
+			return item.Uid
+		}), maxId, timestamp, limit)
+		return er
+	})
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+
+	feeds := append(pushFeeds, pullFeeds...)
+	sort.Slice(feeds, func(i, j int) bool {
+		return feeds[i].CreatedAt.After(feeds[j].CreatedAt)
+	})
+
+	return feeds[:min(len(feeds), limit)], nil
+}
