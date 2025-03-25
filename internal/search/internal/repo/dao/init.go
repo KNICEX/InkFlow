@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/meilisearch/meilisearch-go"
 	"golang.org/x/sync/errgroup"
 	"net/http"
 	"strings"
@@ -13,16 +14,14 @@ import (
 var (
 	//go:embed user_index.json
 	userIndexMapping string
-	//go:embed follow_index.json
-	followIndexMapping string
 	//go:embed ink_index.json
 	inkIndexMapping string
 )
 
 const (
-	userIndexName   = "user_index"
-	followIndexName = "follow_index"
-	inkIndexName    = "ink_index"
+	userIndexName    = "user_index"
+	commentIndexName = "comment_index"
+	inkIndexName     = "ink_index"
 )
 
 func InitEs(client *elasticsearch.Client) error {
@@ -31,9 +30,6 @@ func InitEs(client *elasticsearch.Client) error {
 	eg := errgroup.Group{}
 	eg.Go(func() error {
 		return tryCreateIndex(ctx, client, userIndexName, userIndexMapping)
-	})
-	eg.Go(func() error {
-		return tryCreateIndex(ctx, client, followIndexName, "")
 	})
 	eg.Go(func() error {
 		return tryCreateIndex(ctx, client, inkIndexName, inkIndexMapping)
@@ -57,6 +53,24 @@ func tryCreateIndex(ctx context.Context,
 		client.Indices.Create.WithContext(ctx),
 		client.Indices.Create.WithBody(strings.NewReader(indexMap)),
 	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func InitMeili(cli meilisearch.ServiceManager) error {
+	_, err := cli.CreateIndex(&meilisearch.IndexConfig{
+		Uid:        userIndexName,
+		PrimaryKey: "id",
+	})
+	if err != nil {
+		return err
+	}
+	_, err = cli.CreateIndex(&meilisearch.IndexConfig{
+		Uid:        inkIndexName,
+		PrimaryKey: "id",
+	})
 	if err != nil {
 		return err
 	}

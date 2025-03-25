@@ -3,11 +3,12 @@ package domain
 import "time"
 
 type User struct {
-	Id          int64
-	Account     string
-	Username    string
-	FollowerCnt int64
-	CreatedAt   time.Time
+	Id        int64
+	Avatar    string
+	Account   string
+	Username  string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type UserOrderField string

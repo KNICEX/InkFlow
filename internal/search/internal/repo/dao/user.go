@@ -2,87 +2,91 @@ package dao
 
 import (
 	"context"
-	"github.com/KNICEX/InkFlow/pkg/elasticx"
-	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/elastic/go-elasticsearch/v8/typedapi"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/core/search"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
+	"github.com/meilisearch/meilisearch-go"
+	"github.com/mitchellh/mapstructure"
+	"github.com/samber/lo"
 	"strconv"
+	"strings"
 	"time"
 )
 
 type User struct {
-	Id          int64     `json:"id"`
-	Email       string    `json:"email"`
-	Account     string    `json:"account"`
-	Username    string    `json:"username"`
-	FollowerCnt int64     `json:"follower_cnt"`
-	CreatedAt   time.Time `json:"created_at"`
+	Id        int64     `json:"id"`
+	Avatar    string    `json:"avatar"`
+	Account   string    `json:"account"`
+	Username  string    `json:"username"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type UserDAO interface {
-	SearchByUsername(ctx context.Context, keywords []string) ([]User, error)
-	SearchByAccount(ctx context.Context, keywords []string) ([]User, error)
-	InputUser(ctx context.Context, user User) error
-	BatchInputUser(ctx context.Context, users []User) error
+	Search(ctx context.Context, query string, offset, limit int) ([]User, error)
+	SearchByIds(ctx context.Context, ids []int64) (map[int64]User, error)
+	InputUser(ctx context.Context, users []User) error
+	DeleteUser(ctx context.Context, userIds []int64) error
 }
 
-type ElasticUserDAO struct {
-	client      *elasticsearch.Client
-	typedClient *elasticsearch.TypedClient
+type MeiliUserDAO struct {
+	cli meilisearch.ServiceManager
 }
 
-func NewElasticUserDAO(client *elasticsearch.Client) UserDAO {
-	typedApi := typedapi.New(client)
-
-	return ElasticUserDAO{
-		client: client,
-		typedClient: &elasticsearch.TypedClient{
-			BaseClient: client.BaseClient,
-			API:        typedApi,
-		},
-	}
+func NewMeiliUserDAO(cli meilisearch.ServiceManager) UserDAO {
+	return &MeiliUserDAO{cli: cli}
 }
 
-func (dao ElasticUserDAO) SearchByUsername(ctx context.Context, keywords []string) ([]User, error) {
-	must := make([]types.Query, 0, len(keywords))
-	for _, keyword := range keywords {
-		must = append(must, types.Query{
-			Match: map[string]types.MatchQuery{
-				"username": {
-					Query: keyword,
-				},
-			},
-		})
-	}
-	resp, err := dao.typedClient.Search().
-		Index(userIndexName).
-		Request(&search.Request{
-			Query: &types.Query{
-				Bool: &types.BoolQuery{
-					Must: must,
-				},
-			},
-		}).Do(ctx)
+func (dao *MeiliUserDAO) Search(ctx context.Context, query string, offset, limit int) ([]User, error) {
+	res, err := dao.cli.Index(userIndexName).SearchWithContext(ctx, query, &meilisearch.SearchRequest{
+		Offset: int64(offset),
+		Limit:  int64(limit),
+	})
 	if err != nil {
 		return nil, err
 	}
-	return elasticx.MarshalResp[User](resp)
+	if len(res.Hits) == 0 {
+		return nil, nil
+	}
+	var users []User
+	err = mapstructure.Decode(res.Hits, &users)
+	return users, err
 }
 
-func (dao ElasticUserDAO) SearchByAccount(ctx context.Context, keywords []string) ([]User, error) {
-	//TODO implement me
-	panic("implement me")
+func (dao *MeiliUserDAO) SearchByIds(ctx context.Context, ids []int64) (map[int64]User, error) {
+	idsStr := strings.Builder{}
+	for i, id := range ids {
+		if i > 0 {
+			idsStr.WriteString(",")
+		}
+		idsStr.WriteString(strconv.FormatInt(id, 10))
+	}
+	res, err := dao.cli.Index(userIndexName).SearchWithContext(ctx, "", &meilisearch.SearchRequest{
+		Filter: []string{"id IN [" + idsStr.String() + "]"},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(res.Hits) == 0 {
+		return nil, nil
+	}
+	var users []User
+	err = mapstructure.Decode(res.Hits, &users)
+	if err != nil {
+		return nil, err
+	}
+	userMap := make(map[int64]User)
+	for _, user := range users {
+		userMap[user.Id] = user
+	}
+	return userMap, nil
 }
 
-func (dao ElasticUserDAO) InputUser(ctx context.Context, user User) error {
-	_, err := dao.typedClient.Index(userIndexName).
-		Id(strconv.FormatInt(user.Id, 10)).
-		Request(user).Do(ctx)
-
+func (dao *MeiliUserDAO) InputUser(ctx context.Context, users []User) error {
+	_, err := dao.cli.Index(userIndexName).AddDocumentsWithContext(ctx, users)
 	return err
 }
 
-func (dao ElasticUserDAO) BatchInputUser(ctx context.Context, users []User) error {
-	panic("")
+func (dao *MeiliUserDAO) DeleteUser(ctx context.Context, userIds []int64) error {
+	_, err := dao.cli.Index(userIndexName).DeleteDocumentsWithContext(ctx, lo.Map(userIds, func(item int64, index int) string {
+		return strconv.FormatInt(item, 10)
+	}))
+	return err
 }

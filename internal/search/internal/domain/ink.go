@@ -4,7 +4,7 @@ import "time"
 
 type Ink struct {
 	Id          int64
-	AuthorId    int64
+	Author      User
 	Title       string
 	Content     string
 	Tags        []string
@@ -14,6 +14,7 @@ type Ink struct {
 	LikeCnt     int64
 	FavoriteCnt int64
 	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type InkOrderField string

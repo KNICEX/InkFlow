@@ -7,4 +7,6 @@ import (
 
 type SyncService service.SyncService
 
+type Service = service.RecommendService
+
 type Ink = domain.Ink
