@@ -69,12 +69,14 @@ type Oauth2Callback struct {
 	State string `json:"state" binding:"required"`
 }
 
-type UserProfile struct {
+type UserVO struct {
 	Id int64 `json:"id"`
 	//Email     string    `json:"email"`
 	//Phone     string    `json:"phone"`
 	Account   string    `json:"account"`
 	Username  string    `json:"username"`
+	Avatar    string    `json:"avatar"`
+	Banner    string    `json:"banner"`
 	Birthday  string    `json:"birthday"`
 	AboutMe   string    `json:"aboutMe"`
 	Followers int64     `json:"followers"`
@@ -90,17 +92,19 @@ type FollowInfo struct {
 	Followed  bool  `json:"followed"`
 }
 
-func UserProfileFromDomain(u user.User) UserProfile {
+func userToUserVO(u user.User) UserVO {
 	birthday := ""
 	if !u.Birthday.IsZero() {
 		birthday = u.Birthday.Format(time.DateOnly)
 	}
-	return UserProfile{
+	return UserVO{
 		Id:       u.Id,
 		Account:  u.Account,
 		Username: u.Username,
 		Birthday: birthday,
 		AboutMe:  u.AboutMe,
+		Avatar:   u.Avatar,
+		Banner:   u.Banner,
 		//Followers: u.Followers,
 		//Following: u.Following,
 		//Followed:  u.Followed,

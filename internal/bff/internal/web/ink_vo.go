@@ -15,9 +15,9 @@ type SaveInkReq struct {
 	Tags        []string `json:"tags"`
 }
 
-type InkDetailResp struct {
-	InkBaseInfo
-	Author      UserProfile   `json:"author"`
+type InkVO struct {
+	InkBaseVO
+	Author      UserVO        `json:"author"`
 	Interactive InteractiveVO `json:"interactive"`
 }
 
@@ -26,7 +26,7 @@ type InkCategory struct {
 	Name string `json:"name"`
 }
 
-type InkBaseInfo struct {
+type InkBaseVO struct {
 	Id          int64       `json:"id"`
 	Title       string      `json:"title"`
 	Cover       string      `json:"cover"`
@@ -41,8 +41,8 @@ type InkBaseInfo struct {
 	UpdatedAt   time.Time   `json:"updatedAt"`
 }
 
-func InkBaseInfoFromDomain(i ink.Ink) InkBaseInfo {
-	return InkBaseInfo{
+func inkToInkBaseVO(i ink.Ink) InkBaseVO {
+	return InkBaseVO{
 		Id:          i.Id,
 		Title:       i.Title,
 		Summary:     i.Summary,

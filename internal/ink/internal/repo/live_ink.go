@@ -228,13 +228,16 @@ func (repo *CachedLiveInkRepo) FindByIds(ctx context.Context, ids []int64, statu
 		return cachedInks, nil
 	}
 
-	// 去除缓存中查询到的
 	if len(cachedInks) > 0 {
-		ids = lo.WithoutBy(ids, func(id int64) bool {
+		// 去除缓存中查询到的
+		ids = lo.Reject(ids, func(id int64, idx int) bool {
 			_, ok := cachedInks[id]
 			return ok
 		})
+	} else {
+		cachedInks = make(map[int64]domain.Ink, len(ids))
 	}
+
 	inks, err := repo.dao.FindByIds(ctx, ids, repo.parseStatus(status)...)
 	if err != nil {
 		repo.l.WithCtx(ctx).Error("find ink by ids from db error", logx.Error(err), logx.Any("ids", ids))

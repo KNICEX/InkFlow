@@ -162,12 +162,12 @@ func (handler *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 		}
 	}()
 
-	authorProfile := UserProfileFromDomain(author)
+	authorProfile := userToUserVO(author)
 	authorProfile.Followers = followInfo.Followers
 	authorProfile.Following = followInfo.Following
 	authorProfile.Followed = followInfo.Followed
-	return ginx.SuccessWithData(InkDetailResp{
-		InkBaseInfo: InkBaseInfoFromDomain(inkDetail),
+	return ginx.SuccessWithData(InkVO{
+		InkBaseVO:   inkToInkBaseVO(inkDetail),
 		Author:      authorProfile,
 		Interactive: InteractiveVOFromDomain(intr),
 	}), nil
@@ -184,7 +184,7 @@ func (handler *InkHandler) DetailDraft(ctx *gin.Context) (ginx.Result, error) {
 	if err != nil {
 		return ginx.InternalError(), err
 	}
-	return ginx.SuccessWithData(InkBaseInfoFromDomain(draft)), nil
+	return ginx.SuccessWithData(inkToInkBaseVO(draft)), nil
 }
 
 func (handler *InkHandler) DetailPrivate(ctx *gin.Context) (ginx.Result, error) {
@@ -201,7 +201,7 @@ func (handler *InkHandler) DetailPrivate(ctx *gin.Context) (ginx.Result, error) 
 		}
 		return ginx.InternalError(), err
 	}
-	return ginx.SuccessWithData(InkBaseInfoFromDomain(draft)), nil
+	return ginx.SuccessWithData(inkToInkBaseVO(draft)), nil
 }
 
 func (handler *InkHandler) DetailRejected(ctx *gin.Context) (ginx.Result, error) {
@@ -218,7 +218,7 @@ func (handler *InkHandler) DetailRejected(ctx *gin.Context) (ginx.Result, error)
 		}
 		return ginx.InternalError(), err
 	}
-	return ginx.SuccessWithData(InkBaseInfoFromDomain(draft)), nil
+	return ginx.SuccessWithData(inkToInkBaseVO(draft)), nil
 }
 
 func (handler *InkHandler) Withdraw(ctx *gin.Context) (ginx.Result, error) {
@@ -246,7 +246,7 @@ func (handler *InkHandler) List(ctx *gin.Context, req ListReq) (ginx.Result, err
 	}
 
 	if len(inks) == 0 {
-		return ginx.SuccessWithData([]InkDetailResp{}), nil
+		return ginx.SuccessWithData([]InkVO{}), nil
 	}
 
 	uids := lo.Map(inks, func(item ink.Ink, index int) int64 {
@@ -283,7 +283,7 @@ func (handler *InkHandler) List(ctx *gin.Context, req ListReq) (ginx.Result, err
 		return ginx.InternalError(), err
 	}
 
-	res := make([]InkDetailResp, 0, len(inks))
+	res := make([]InkVO, 0, len(inks))
 	for _, item := range inks {
 		author, ok := users[item.Author.Id]
 		if !ok {
@@ -293,9 +293,9 @@ func (handler *InkHandler) List(ctx *gin.Context, req ListReq) (ginx.Result, err
 		if !ok {
 			continue
 		}
-		res = append(res, InkDetailResp{
-			InkBaseInfo: InkBaseInfoFromDomain(item),
-			Author:      UserProfileFromDomain(author),
+		res = append(res, InkVO{
+			InkBaseVO:   inkToInkBaseVO(item),
+			Author:      userToUserVO(author),
 			Interactive: InteractiveVOFromDomain(intr),
 		})
 	}
@@ -347,9 +347,9 @@ func (handler *InkHandler) ListPending(ctx *gin.Context, req ListSelfReq) (ginx.
 	if err != nil {
 		return ginx.InternalError(), err
 	}
-	res := make([]InkBaseInfo, 0, len(inks))
+	res := make([]InkBaseVO, 0, len(inks))
 	for _, item := range inks {
-		res = append(res, InkBaseInfoFromDomain(item))
+		res = append(res, inkToInkBaseVO(item))
 	}
 	return ginx.SuccessWithData(res), nil
 }
@@ -360,9 +360,9 @@ func (handler *InkHandler) ListReviewRejected(ctx *gin.Context, req ListSelfReq)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
-	res := make([]InkBaseInfo, 0, len(inks))
+	res := make([]InkBaseVO, 0, len(inks))
 	for _, item := range inks {
-		res = append(res, InkBaseInfoFromDomain(item))
+		res = append(res, inkToInkBaseVO(item))
 	}
 	return ginx.SuccessWithData(res), nil
 }
@@ -373,9 +373,9 @@ func (handler *InkHandler) ListDraft(ctx *gin.Context, req ListDraftReq) (ginx.R
 	if err != nil {
 		return ginx.InternalError(), err
 	}
-	res := make([]InkBaseInfo, 0, len(inks))
+	res := make([]InkBaseVO, 0, len(inks))
 	for _, item := range inks {
-		res = append(res, InkBaseInfoFromDomain(item))
+		res = append(res, inkToInkBaseVO(item))
 	}
 	return ginx.SuccessWithData(res), nil
 }
@@ -408,7 +408,7 @@ func (handler *InkHandler) ListLiked(ctx *gin.Context, req ListMaxIdReq) (ginx.R
 		return ginx.InternalError(), err
 	}
 
-	res := make([]InkDetailResp, 0, len(likes))
+	res := make([]InkVO, 0, len(likes))
 	for _, item := range likes {
 		i, ok := inkMap[item.BizId]
 		if !ok {
@@ -418,9 +418,9 @@ func (handler *InkHandler) ListLiked(ctx *gin.Context, req ListMaxIdReq) (ginx.R
 		if !ok {
 			continue
 		}
-		res = append(res, InkDetailResp{
-			InkBaseInfo: InkBaseInfoFromDomain(i),
-			Author:      UserProfileFromDomain(author),
+		res = append(res, InkVO{
+			InkBaseVO: inkToInkBaseVO(i),
+			Author:    userToUserVO(author),
 		})
 	}
 
@@ -454,7 +454,7 @@ func (handler *InkHandler) ListViewed(ctx *gin.Context, req ListMaxIdReq) (ginx.
 		return ginx.InternalError(), err
 	}
 
-	res := make([]InkDetailResp, 0, len(views))
+	res := make([]InkVO, 0, len(views))
 	for _, item := range views {
 		i, ok := inkMap[item.BizId]
 		if !ok {
@@ -464,9 +464,9 @@ func (handler *InkHandler) ListViewed(ctx *gin.Context, req ListMaxIdReq) (ginx.
 		if !ok {
 			continue
 		}
-		res = append(res, InkDetailResp{
-			InkBaseInfo: InkBaseInfoFromDomain(i),
-			Author:      UserProfileFromDomain(author),
+		res = append(res, InkVO{
+			InkBaseVO: inkToInkBaseVO(i),
+			Author:    userToUserVO(author),
 		})
 	}
 	return ginx.SuccessWithData(res), nil
@@ -477,9 +477,9 @@ func (handler *InkHandler) ListPrivate(ctx *gin.Context, req ListSelfReq) (ginx.
 	if err != nil {
 		return ginx.InternalError(), err
 	}
-	res := make([]InkBaseInfo, 0, len(inks))
+	res := make([]InkBaseVO, 0, len(inks))
 	for _, item := range inks {
-		res = append(res, InkBaseInfoFromDomain(item))
+		res = append(res, inkToInkBaseVO(item))
 	}
 	return ginx.SuccessWithData(res), nil
 }

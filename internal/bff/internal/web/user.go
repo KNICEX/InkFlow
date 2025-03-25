@@ -319,11 +319,11 @@ func (h *UserHandler) Profile(ctx *gin.Context, req ProfileReq) (ginx.Result, er
 		return ginx.InternalError(), err
 	}
 
-	res := UserProfileFromDomain(u)
+	res := userToUserVO(u)
 	res.Followers = follow.Followers
 	res.Following = follow.Following
 	res.Followed = follow.Followed
-	return ginx.SuccessWithData(UserProfileFromDomain(u)), nil
+	return ginx.SuccessWithData(userToUserVO(u)), nil
 }
 
 func (h *UserHandler) EditProfile(ctx *gin.Context, req EditProfileReq) (ginx.Result, error) {
@@ -496,10 +496,10 @@ func (h *UserHandler) FollowList(ctx *gin.Context, req FollowListReq) (ginx.Resu
 	if err != nil {
 		return ginx.InternalError(), err
 	}
-	res := make([]UserProfile, 0, len(users))
+	res := make([]UserVO, 0, len(users))
 	for _, v := range follows {
 		if u, ok := users[v.Uid]; ok {
-			profile := UserProfileFromDomain(u)
+			profile := userToUserVO(u)
 			profile.Followed = followedMap[v.Uid]
 			res = append(res, profile)
 		}

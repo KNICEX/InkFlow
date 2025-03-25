@@ -18,7 +18,8 @@ type FollowService interface {
 	// FollowList TODO 查看他人关注列表时，考虑查询我是否也关注
 	FollowList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowInfo, error)
 	FollowerList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowInfo, error)
-	FollowStatistic(ctx context.Context, uid, viewUid int64) (domain.FollowStatistic, error)
+	FindFollowStats(ctx context.Context, uid, viewUid int64) (domain.FollowStatistic, error)
+	FindFollowStatsBatch(ctx context.Context, uids []int64, viewUid int64) (map[int64]domain.FollowStatistic, error)
 }
 
 type followService struct {
@@ -61,13 +62,16 @@ func (svc *followService) CancelFollow(ctx context.Context, uid, followeeId int6
 }
 
 func (svc *followService) FollowList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowInfo, error) {
-	return svc.repo.FindFollowList(ctx, uid, viewUid, maxId, limit)
+	return svc.repo.FindFollowingList(ctx, uid, viewUid, maxId, limit)
 }
 
 func (svc *followService) FollowerList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowInfo, error) {
 	return svc.repo.FindFlowerList(ctx, uid, viewUid, maxId, limit)
 }
 
-func (svc *followService) FollowStatistic(ctx context.Context, uid, viewUid int64) (domain.FollowStatistic, error) {
-	return svc.repo.GetFollowStatistic(ctx, uid, viewUid)
+func (svc *followService) FindFollowStats(ctx context.Context, uid, viewUid int64) (domain.FollowStatistic, error) {
+	return svc.repo.GetFollowStats(ctx, uid, viewUid)
+}
+func (svc *followService) FindFollowStatsBatch(ctx context.Context, uids []int64, viewUid int64) (map[int64]domain.FollowStatistic, error) {
+	return svc.repo.GetFollowStatBatch(ctx, uids, viewUid)
 }

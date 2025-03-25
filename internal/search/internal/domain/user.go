@@ -7,19 +7,7 @@ type User struct {
 	Avatar    string
 	Account   string
 	Username  string
+	AboutMe   string
 	CreatedAt time.Time
 	UpdatedAt time.Time
-}
-
-type UserOrderField string
-
-const (
-	UserOrderTypeDefault   UserOrderField = "default"
-	UserOrderTypeFollower  UserOrderField = "follower"
-	UserOrderTypeCreatedAt UserOrderField = "created_at"
-)
-
-type UserOrder struct {
-	Field UserOrderField
-	Desc  bool
 }

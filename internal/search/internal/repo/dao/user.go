@@ -15,6 +15,7 @@ type User struct {
 	Avatar    string    `json:"avatar"`
 	Account   string    `json:"account"`
 	Username  string    `json:"username"`
+	AboutMe   string    `json:"about_me"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

@@ -27,7 +27,7 @@ type InteractiveRepo interface {
 	Favorited(ctx context.Context, biz string, bizId, uid int64) (bool, error)
 	FavoritedBatch(ctx context.Context, biz string, bizIds []int64, uid int64) (map[int64]bool, error)
 	Get(ctx context.Context, biz string, bizId int64) (domain.Interactive, error)
-	GetMulti(ctx context.Context, biz string, bizIds []int64) (map[int64]domain.Interactive, error)
+	GetBatch(ctx context.Context, biz string, bizIds []int64) (map[int64]domain.Interactive, error)
 }
 
 type CachedInteractiveRepo struct {
@@ -231,10 +231,26 @@ func (repo *CachedInteractiveRepo) Get(ctx context.Context, biz string, bizId in
 	return intr, nil
 }
 
-func (repo *CachedInteractiveRepo) GetMulti(ctx context.Context, biz string, bizIds []int64) (map[int64]domain.Interactive, error) {
-	intrMap, err := repo.cache.GetMulti(ctx, biz, bizIds)
-	if err == nil {
+func (repo *CachedInteractiveRepo) GetBatch(ctx context.Context, biz string, bizIds []int64) (map[int64]domain.Interactive, error) {
+	intrMap, err := repo.cache.GetBatch(ctx, biz, bizIds)
+	if err != nil {
+		repo.l.WithCtx(ctx).Error("get interactive batch cache error", logx.Error(err),
+			logx.String("biz", biz),
+			logx.Any("bizIds", bizIds))
+	}
+
+	if len(intrMap) == len(bizIds) {
 		return intrMap, nil
+	}
+
+	if len(intrMap) > 0 {
+		// 过滤掉命中缓存的 id
+		bizIds = lo.Reject(bizIds, func(id int64, idx int) bool {
+			_, ok := intrMap[id]
+			return ok
+		})
+	} else {
+		intrMap = make(map[int64]domain.Interactive, len(bizIds))
 	}
 
 	entities, err := repo.dao.GetByIds(ctx, biz, bizIds)
@@ -246,7 +262,7 @@ func (repo *CachedInteractiveRepo) GetMulti(ctx context.Context, biz string, biz
 		intrMap[entity.BizId] = repo.interToDomain(entity)
 	}
 	go func() {
-		if er := repo.cache.SetMulti(ctx, lo.MapToSlice(intrMap, func(key int64, value domain.Interactive) domain.Interactive {
+		if er := repo.cache.SetBatch(ctx, lo.MapToSlice(intrMap, func(key int64, value domain.Interactive) domain.Interactive {
 			return value
 		})); er != nil {
 			repo.l.WithCtx(ctx).Error("set interactive cache error", logx.Error(er),

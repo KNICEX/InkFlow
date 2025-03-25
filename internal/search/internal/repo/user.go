@@ -56,6 +56,7 @@ func (p userParser) domainToEntity(user domain.User) dao.User {
 		Username:  user.Username,
 		Account:   user.Account,
 		Avatar:    user.Avatar,
+		AboutMe:   user.AboutMe,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 	}
@@ -67,6 +68,7 @@ func (p userParser) entityToDomain(user dao.User) domain.User {
 		Username:  user.Username,
 		Account:   user.Account,
 		Avatar:    user.Avatar,
+		AboutMe:   user.AboutMe,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 	}

@@ -57,7 +57,7 @@ func (a *Activities) UpdateInkToRejected(ctx context.Context, inkId int64) error
 }
 
 func (a *Activities) SyncToSearch(ctx context.Context, ink search.Ink) error {
-	return a.searchSyncSvc.InputInk(ctx, ink)
+	return a.searchSyncSvc.InputInk(ctx, []search.Ink{ink})
 }
 
 func (a *Activities) SyncToRecommend(ctx context.Context, ink recommend.Ink) error {

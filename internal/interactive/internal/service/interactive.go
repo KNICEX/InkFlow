@@ -192,7 +192,7 @@ func (svc *interactiveService) GetMulti(ctx context.Context, biz string, bizIds 
 		return nil, err
 	}
 
-	intrs, err := svc.repo.GetMulti(ctx, biz, bizIds)
+	intrs, err := svc.repo.GetBatch(ctx, biz, bizIds)
 	if err != nil {
 		return nil, err
 	}

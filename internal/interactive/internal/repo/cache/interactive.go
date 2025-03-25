@@ -21,8 +21,8 @@ type InteractiveCache interface {
 
 	Set(ctx context.Context, biz string, bizId int64, intr domain.Interactive) error
 	Get(ctx context.Context, biz string, bizId int64) (domain.Interactive, error)
-	GetMulti(ctx context.Context, biz string, bizIds []int64) (map[int64]domain.Interactive, error)
-	SetMulti(ctx context.Context, intrs []domain.Interactive) error
+	GetBatch(ctx context.Context, biz string, bizIds []int64) (map[int64]domain.Interactive, error)
+	SetBatch(ctx context.Context, intrs []domain.Interactive) error
 }
 
 var (
@@ -115,7 +115,7 @@ func (cache *RedisInteractiveCache) Get(ctx context.Context, biz string, bizId i
 	}, nil
 }
 
-func (cache *RedisInteractiveCache) GetMulti(ctx context.Context, biz string, bizIds []int64) (map[int64]domain.Interactive, error) {
+func (cache *RedisInteractiveCache) GetBatch(ctx context.Context, biz string, bizIds []int64) (map[int64]domain.Interactive, error) {
 	pipeline := cache.cmd.Pipeline()
 	cmds := make([]*redis.MapStringStringCmd, len(bizIds))
 	for i, bizId := range bizIds {
@@ -146,7 +146,7 @@ func (cache *RedisInteractiveCache) GetMulti(ctx context.Context, biz string, bi
 	return res, nil
 }
 
-func (cache *RedisInteractiveCache) SetMulti(ctx context.Context, intrs []domain.Interactive) error {
+func (cache *RedisInteractiveCache) SetBatch(ctx context.Context, intrs []domain.Interactive) error {
 	pipeline := cache.cmd.Pipeline()
 	for _, intr := range intrs {
 		key := cache.key(intr.Biz, intr.BizId)
