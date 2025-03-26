@@ -266,6 +266,7 @@ func (h *UserHandler) Profile(ctx *gin.Context, req ProfileReq) (ginx.Result, er
 	var u user.User
 	var follow relation.FollowStatistic
 	eg := errgroup.Group{}
+	var fromToken bool
 
 	if req.Uid > 0 {
 		// 根据id查询
@@ -276,7 +277,7 @@ func (h *UserHandler) Profile(ctx *gin.Context, req ProfileReq) (ginx.Result, er
 		})
 		eg.Go(func() error {
 			var er error
-			follow, er = h.followService.FollowStatistic(ctx, req.Uid, uc.UserId)
+			follow, er = h.followService.FindFollowStats(ctx, req.Uid, uc.UserId)
 			return er
 		})
 	} else if req.Account != "" {
@@ -287,7 +288,7 @@ func (h *UserHandler) Profile(ctx *gin.Context, req ProfileReq) (ginx.Result, er
 			if er != nil {
 				return er
 			}
-			follow, er = h.followService.FollowStatistic(ctx, u.Id, uc.UserId)
+			follow, er = h.followService.FindFollowStats(ctx, u.Id, uc.UserId)
 			if er != nil {
 				return er
 			}
@@ -299,6 +300,7 @@ func (h *UserHandler) Profile(ctx *gin.Context, req ProfileReq) (ginx.Result, er
 		return ginx.BizError("未登录"), nil
 	} else {
 		// 直接通过token凭证查询自己的信息
+		fromToken = true
 		eg.Go(func() error {
 			var er error
 			u, er = h.svc.FindById(ctx, uc.UserId)
@@ -306,7 +308,7 @@ func (h *UserHandler) Profile(ctx *gin.Context, req ProfileReq) (ginx.Result, er
 		})
 		eg.Go(func() error {
 			var er error
-			follow, er = h.followService.FollowStatistic(ctx, req.Uid, uc.UserId)
+			follow, er = h.followService.FindFollowStats(ctx, req.Uid, uc.UserId)
 			return er
 		})
 	}
@@ -314,6 +316,12 @@ func (h *UserHandler) Profile(ctx *gin.Context, req ProfileReq) (ginx.Result, er
 	err := eg.Wait()
 	if err != nil {
 		if errors.Is(err, user.ErrUserNotFound) {
+			if fromToken {
+				// 合法凭证，但是用户不存在
+				h.l.Error("user not found", logx.Error(err), logx.Int64("uid", uc.UserId))
+				ctx.AbortWithStatus(http.StatusUnauthorized)
+				return ginx.BizError("凭证失效"), nil
+			}
 			return ginx.BizError("用户不存在"), nil
 		}
 		return ginx.InternalError(), err

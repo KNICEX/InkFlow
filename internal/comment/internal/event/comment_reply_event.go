@@ -2,6 +2,7 @@ package event
 
 import "time"
 
+// CommentReplyEvent represents an event triggered when a user replies to a comment
 type CommentReplyEvent struct {
 	Id             int64     `json:"id"`
 	UserId         int64     `json:"user_id"`

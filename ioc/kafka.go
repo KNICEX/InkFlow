@@ -3,6 +3,7 @@ package ioc
 import (
 	"github.com/IBM/sarama"
 	"github.com/KNICEX/InkFlow/internal/interactive"
+	"github.com/KNICEX/InkFlow/internal/review"
 	"github.com/KNICEX/InkFlow/pkg/saramax"
 	"github.com/spf13/viper"
 )
@@ -34,8 +35,9 @@ func InitSyncProducer(client sarama.Client) sarama.SyncProducer {
 	return producer
 }
 
-func InitConsumers(inkRead *interactive.InkViewConsumer) []saramax.Consumer {
+func InitConsumers(inkRead *interactive.InkViewConsumer, review *review.Consumer) []saramax.Consumer {
 	return []saramax.Consumer{
 		inkRead,
+		review,
 	}
 }

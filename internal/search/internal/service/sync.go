@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/KNICEX/InkFlow/internal/search/internal/domain"
 	"github.com/KNICEX/InkFlow/internal/search/internal/repo"
+	strip "github.com/grokify/html-strip-tags-go"
 )
 
 type SyncService interface {
@@ -34,6 +35,9 @@ func (s *syncService) InputUser(ctx context.Context, users []domain.User) error 
 }
 
 func (s *syncService) InputInk(ctx context.Context, inks []domain.Ink) error {
+	for i, _ := range inks {
+		inks[i].Content = strip.StripTags(inks[i].Content)
+	}
 	return s.inkRepo.InputInk(ctx, inks)
 }
 

@@ -74,5 +74,32 @@ func InitMeili(cli meilisearch.ServiceManager) error {
 	if err != nil {
 		return err
 	}
-	return nil
+
+	time.Sleep(time.Second * 3)
+	return initIndexSetting(cli)
+}
+
+func initIndexSetting(cli meilisearch.ServiceManager) error {
+	// 设置可搜索属性
+	_, err := cli.Index(userIndexName).UpdateSearchableAttributes(&[]string{
+		"account",
+		"username",
+		"about_me",
+	})
+	if err != nil {
+		return err
+	}
+	_, err = cli.Index(inkIndexName).UpdateSearchableAttributes(&[]string{
+		"title",
+		"content",
+		"tags",
+		"ai_tags",
+	})
+	if err != nil {
+		return err
+	}
+	_, err = cli.Index(commentIndexName).UpdateFilterableAttributes(&[]string{
+		"content",
+	})
+	return err
 }

@@ -154,7 +154,7 @@ func (cache *RedisInkCache) GetByIds(ctx context.Context, ids []int64) (map[int6
 	}
 	inkMap := make(map[int64]domain.Ink, len(ids))
 	for i, val := range vals {
-		if val == "" {
+		if val == nil || val == "" {
 			continue
 		}
 		var ink domain.Ink

@@ -7,13 +7,19 @@
 package ioc
 
 import (
+	"github.com/KNICEX/InkFlow/internal/ai"
 	"github.com/KNICEX/InkFlow/internal/bff"
 	"github.com/KNICEX/InkFlow/internal/code"
 	"github.com/KNICEX/InkFlow/internal/email"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/interactive"
+	"github.com/KNICEX/InkFlow/internal/notification"
+	"github.com/KNICEX/InkFlow/internal/recommend"
 	"github.com/KNICEX/InkFlow/internal/relation"
+	"github.com/KNICEX/InkFlow/internal/review"
+	"github.com/KNICEX/InkFlow/internal/search"
 	"github.com/KNICEX/InkFlow/internal/user"
+	"github.com/KNICEX/InkFlow/internal/workflow/inkpub"
 	"github.com/google/wire"
 )
 
@@ -32,15 +38,28 @@ func InitApp() *App {
 	syncProducer := InitSyncProducer(client)
 	followService := relation.InitFollowService(cmdable, db, syncProducer, logger)
 	interactiveService := interactive.InitInteractiveService(cmdable, syncProducer, db, logger)
+	clientClient := InitTemporalClient()
 	handler := InitJwtHandler(cmdable)
 	authentication := InitAuthMiddleware(handler, logger)
-	v := bff.InitBff(userService, serviceService, inkService, followService, interactiveService, handler, authentication, logger)
+	v := bff.InitBff(userService, serviceService, inkService, followService, interactiveService, clientClient, handler, authentication, logger)
 	engine := InitGin(v, logger)
 	inkViewConsumer := interactive.InitInteractiveInkReadConsumer(client, logger)
-	v2 := InitConsumers(inkViewConsumer)
+	genaiClient := InitGeminiClient()
+	llmService := ai.InitLLMService(genaiClient)
+	reviewConsumer := review.InitReviewConsumer(clientClient, client, llmService, logger)
+	v2 := InitConsumers(inkViewConsumer, reviewConsumer)
+	asyncService := review.InitAsyncService(syncProducer, logger)
+	serviceManager := InitMeiliSearch()
+	syncService := search.InitSyncService(serviceManager)
+	recommendSyncService := recommend.InitSyncService()
+	notificationService := notification.InitNotificationService()
+	activities := inkpub.NewActivities(inkService, interactiveService, asyncService, syncService, recommendSyncService, notificationService)
+	inkPubWorker := InitInkPubWorker(clientClient, activities)
+	v3 := InitWorkers(inkPubWorker)
 	app := &App{
 		Server:    engine,
 		Consumers: v2,
+		Workers:   v3,
 	}
 	return app
 }
@@ -55,6 +74,8 @@ var thirdPartSet = wire.NewSet(
 	InitSyncProducer,
 	InitRedisUniversalClient,
 	InitRedisCmdable,
+	InitGeminiClient,
+	InitTemporalClient,
 )
 
 var webSet = wire.NewSet(

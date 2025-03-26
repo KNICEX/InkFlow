@@ -13,17 +13,19 @@ import (
 	"github.com/KNICEX/InkFlow/internal/interactive"
 	"github.com/KNICEX/InkFlow/internal/relation"
 	"github.com/KNICEX/InkFlow/internal/user"
+
 	"github.com/KNICEX/InkFlow/pkg/ginx"
 	"github.com/KNICEX/InkFlow/pkg/ginx/jwt"
 	"github.com/KNICEX/InkFlow/pkg/ginx/middleware"
 	"github.com/KNICEX/InkFlow/pkg/logx"
+	"go.temporal.io/sdk/client"
 )
 
 // Injectors from wire.go:
 
-func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service, followService relation.FollowService, interactiveSvc interactive.Service, jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
+func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service, followService relation.FollowService, interactiveSvc interactive.Service, workflowCli client.Client, jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
 	userHandler := web.NewUserHandler(userSvc, codeSvc, followService, jwtHandler, auth, log)
-	inkHandler := web.NewInkHandler(inkService, userSvc, interactiveSvc, followService, auth, log)
+	inkHandler := web.NewInkHandler(inkService, userSvc, interactiveSvc, followService, auth, workflowCli, log)
 	cloudinary := initCloudinary()
 	fileHandler := web.NewFileHandler(cloudinary, auth, log)
 	v := InitHandlers(userHandler, inkHandler, fileHandler)

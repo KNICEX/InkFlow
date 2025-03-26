@@ -62,7 +62,7 @@ type LikeReq struct {
 }
 
 type ListReq struct {
-	AuthorId int64 `json:"authorId" binding:"required,max=100"`
+	AuthorId int64 `json:"authorId" binding:"required"`
 	Category int64 `json:"category"`
 	Offset   int   `json:"offset"`
 	Limit    int   `json:"limit"`

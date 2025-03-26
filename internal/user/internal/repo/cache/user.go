@@ -61,7 +61,7 @@ func (cache *RedisUserCache) GetByIds(ctx context.Context, uids []int64) (map[in
 	}
 	res := make(map[int64]domain.User)
 	for i, val := range vals {
-		if val == "" {
+		if val == nil || val == "" {
 			continue
 		}
 		var u domain.User

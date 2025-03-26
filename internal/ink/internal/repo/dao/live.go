@@ -59,7 +59,10 @@ func (dao *liveDAO) Upsert(ctx context.Context, d LiveInk) (int64, error) {
 
 func (dao *liveDAO) UpdateStatus(ctx context.Context, inkId int64, authorId int64, status int) error {
 	err := dao.db.WithContext(ctx).Model(&LiveInk{}).Where("id = ? AND author_id = ?", inkId, authorId).
-		Update("status", status).Error
+		Updates(map[string]any{
+			"status":     status,
+			"updated_at": time.Now(),
+		}).Error
 	if err != nil {
 		return err
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.temporal.io/sdk/worker"
 	"net/http"
 )
 
@@ -20,6 +21,15 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+	}
+
+	for _, w := range app.Workers {
+		go func() {
+			err := w.Run(worker.InterruptCh())
+			if err != nil {
+				fmt.Println("worker run err", err)
+			}
+		}()
 	}
 
 	app.Server.Run(":8080")

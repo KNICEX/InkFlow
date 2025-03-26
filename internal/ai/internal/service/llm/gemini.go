@@ -1,10 +1,10 @@
-package gemini
+package llm
 
 import (
 	"context"
 	"errors"
 	"github.com/KNICEX/InkFlow/internal/ai/internal/domain"
-	"github.com/KNICEX/InkFlow/internal/ai/internal/service/llm"
+	"github.com/KNICEX/InkFlow/internal/ai/internal/service"
 	"github.com/google/generative-ai-go/genai"
 	"strings"
 )
@@ -37,7 +37,7 @@ func (c *Session) Close() error {
 
 type Option func(*Service)
 
-func NewGeminiService(client *genai.Client, opts ...Option) llm.Service {
+func NewGeminiService(client *genai.Client, opts ...Option) service.LLMService {
 	svc := &Service{
 		client: client,
 		model:  client.GenerativeModel("gemini-2.0-flash"),
@@ -91,7 +91,7 @@ func (svc *Service) AskOnce(ctx context.Context, msg string) (domain.Resp, error
 	}, nil
 }
 
-func (svc *Service) BeginChat(ctx context.Context) (llm.Session, error) {
+func (svc *Service) BeginChat(ctx context.Context) (service.LLMSession, error) {
 	session := svc.model.StartChat()
 	return &Session{
 		session: session,

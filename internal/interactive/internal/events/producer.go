@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	inkViewTopic       = "ink_view"
-	inkLikeTopic       = "ink_like"
-	inkCancelLikeTopic = "ink_cancel_like"
+	inkViewTopic       = "ink-view"
+	inkLikeTopic       = "ink-like"
+	inkCancelLikeTopic = "ink-cancel-like"
 )
 
 type InteractiveProducer interface {

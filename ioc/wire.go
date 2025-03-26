@@ -3,13 +3,19 @@
 package ioc
 
 import (
+	"github.com/KNICEX/InkFlow/internal/ai"
 	"github.com/KNICEX/InkFlow/internal/bff"
 	"github.com/KNICEX/InkFlow/internal/code"
 	"github.com/KNICEX/InkFlow/internal/email"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/interactive"
+	"github.com/KNICEX/InkFlow/internal/notification"
+	"github.com/KNICEX/InkFlow/internal/recommend"
 	"github.com/KNICEX/InkFlow/internal/relation"
+	"github.com/KNICEX/InkFlow/internal/review"
+	"github.com/KNICEX/InkFlow/internal/search"
 	"github.com/KNICEX/InkFlow/internal/user"
+	"github.com/KNICEX/InkFlow/internal/workflow/inkpub"
 	"github.com/google/wire"
 )
 
@@ -21,6 +27,8 @@ var thirdPartSet = wire.NewSet(
 	InitSyncProducer,
 	InitRedisUniversalClient,
 	InitRedisCmdable,
+	InitGeminiClient,
+	InitTemporalClient,
 )
 
 var webSet = wire.NewSet(
@@ -39,8 +47,20 @@ func InitApp() *App {
 		relation.InitFollowService,
 		interactive.InitInteractiveService,
 		interactive.InitInteractiveInkReadConsumer,
+		notification.InitNotificationService,
+		search.InitSyncService,
+		recommend.InitSyncService,
+
+		inkpub.NewActivities,
+
+		ai.InitLLMService,
+		review.InitAsyncService,
+		review.InitReviewConsumer,
+		InitInkPubWorker,
+
 		bff.InitBff,
 		InitConsumers,
+		InitWorkers,
 		InitGin,
 		wire.Struct(new(App), "*"),
 	)

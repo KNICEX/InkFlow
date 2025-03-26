@@ -1,5 +1,7 @@
 package ai
 
-import "github.com/KNICEX/InkFlow/internal/ai/internal/service/llm"
+import (
+	"github.com/KNICEX/InkFlow/internal/ai/internal/service"
+)
 
-type LLMService = llm.Service
+type LLMService = service.LLMService

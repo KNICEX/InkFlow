@@ -14,6 +14,7 @@ import (
 	"github.com/KNICEX/InkFlow/pkg/ginx/middleware"
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/google/wire"
+	"go.temporal.io/sdk/client"
 )
 
 func InitHandlers(uh *web.UserHandler, ih *web.InkHandler, fh *web.FileHandler) []ginx.Handler {
@@ -23,6 +24,7 @@ func InitHandlers(uh *web.UserHandler, ih *web.InkHandler, fh *web.FileHandler) 
 func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
 	followService relation.FollowService,
 	interactiveSvc interactive.Service,
+	workflowCli client.Client,
 	jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
 	wire.Build(
 		web.NewUserHandler,

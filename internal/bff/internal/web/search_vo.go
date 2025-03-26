@@ -3,7 +3,7 @@ package web
 import "github.com/KNICEX/InkFlow/internal/search"
 
 type SearchReq struct {
-	Keyword string `json:"keyword"`
+	Keyword string `json:"keyword" binding:"required"`
 	Offset  int    `json:"offset"`
 	Limit   int    `json:"limit"`
 }

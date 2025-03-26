@@ -6,23 +6,29 @@ import (
 	"github.com/KNICEX/InkFlow/internal/interactive"
 	"github.com/KNICEX/InkFlow/internal/relation"
 	"github.com/KNICEX/InkFlow/internal/user"
+	"github.com/KNICEX/InkFlow/internal/workflow/inkpub"
 	"github.com/KNICEX/InkFlow/pkg/ginx"
 	"github.com/KNICEX/InkFlow/pkg/ginx/jwt"
 	"github.com/KNICEX/InkFlow/pkg/ginx/middleware"
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
+	"go.temporal.io/sdk/client"
 	"golang.org/x/sync/errgroup"
 	"strconv"
+	"time"
 )
 
 const (
 	inkBiz = "ink"
+
+	inkPubQueue = "ink-pub-queue"
 )
 
 type InkHandler struct {
 	svc            ink.Service
 	userSvc        user.Service
+	workflowCli    client.Client
 	interactiveSvc interactive.Service
 	followService  relation.FollowService
 	auth           middleware.Authentication
@@ -30,11 +36,13 @@ type InkHandler struct {
 }
 
 func NewInkHandler(svc ink.Service, userSvc user.Service, interactiveSvc interactive.Service,
-	followService relation.FollowService, auth middleware.Authentication, l logx.Logger) *InkHandler {
+	followService relation.FollowService, auth middleware.Authentication,
+	workflowCli client.Client, l logx.Logger) *InkHandler {
 	return &InkHandler{
 		svc:            svc,
 		userSvc:        userSvc,
 		followService:  followService,
+		workflowCli:    workflowCli,
 		interactiveSvc: interactiveSvc,
 		auth:           auth,
 		l:              l,
@@ -105,6 +113,18 @@ func (handler *InkHandler) Publish(ctx *gin.Context) (ginx.Result, error) {
 	if err != nil {
 		return ginx.InternalError(), err
 	}
+
+	_, err = handler.workflowCli.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
+		ID:        inkpub.WorkflowId(id, time.Now()),
+		TaskQueue: inkPubQueue,
+	}, inkpub.InkPublish, id)
+	if err != nil {
+		handler.l.WithCtx(ctx).Error("start ink publish workflow failed",
+			logx.Int64("inkId", id),
+			logx.Error(err))
+		return ginx.InternalError(), err
+	}
+
 	type PublishResp struct {
 		Id int64 `json:"id"`
 	}
@@ -145,7 +165,7 @@ func (handler *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 
 	eg.Go(func() error {
 		var er error
-		followInfo, er = handler.followService.FollowStatistic(ctx, inkDetail.Author.Id, readUserId)
+		followInfo, er = handler.followService.FindFollowStats(ctx, inkDetail.Author.Id, readUserId)
 		return er
 	})
 	if err = eg.Wait(); err != nil {
@@ -169,7 +189,7 @@ func (handler *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 	return ginx.SuccessWithData(InkVO{
 		InkBaseVO:   inkToInkBaseVO(inkDetail),
 		Author:      authorProfile,
-		Interactive: InteractiveVOFromDomain(intr),
+		Interactive: intrToVo(intr),
 	}), nil
 }
 
@@ -296,7 +316,7 @@ func (handler *InkHandler) List(ctx *gin.Context, req ListReq) (ginx.Result, err
 		res = append(res, InkVO{
 			InkBaseVO:   inkToInkBaseVO(item),
 			Author:      userToUserVO(author),
-			Interactive: InteractiveVOFromDomain(intr),
+			Interactive: intrToVo(intr),
 		})
 	}
 

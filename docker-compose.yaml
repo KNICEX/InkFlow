@@ -61,24 +61,14 @@ services:
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: ink-flow-kafka-ui
+    ports:
+      - "18080:8080"
+    environment:
+      DYNAMIC_CONFIG_ENABLED: true
 
-#  redpanda:
-#    image: docker.redpanda.com/redpandadata/redpanda:v24.3.8
-#    container_name: ink-flow-redpanda
-#    command:
-#      - redpanda start
-#      - --mode dev-container
-#    ports:
-#      - "18081:18081"
-#      - "18082:18082"
-#      - "19092:19092"
-#      - "19644:9644"
-
-#  zipkin:
-#    image: openzipkin/zipkin:3
-#    container_name: ink-flow-zipkin
-#    ports:
-#      - "9411:9411"
   jeager:
     image: jaegertracing/jaeger:2.4.0
     container_name: ink-flow-jeager
@@ -117,3 +107,12 @@ services:
 #      - redis
 #      - postgres
 #      - zipkin
+
+  temporal:
+    build:
+      context: ./deps/temporal
+      dockerfile: Dockerfile
+    container_name: ink-flow-temporal
+    ports:
+      - "7233:7233" # temporal server
+      - "8233:8233" # temporal web

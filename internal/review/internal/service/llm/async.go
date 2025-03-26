@@ -2,15 +2,25 @@ package llm
 
 import (
 	"context"
-	"github.com/KNICEX/InkFlow/internal/ai"
 	"github.com/KNICEX/InkFlow/internal/review/internal/domain"
+	"github.com/KNICEX/InkFlow/internal/review/internal/event"
+	"github.com/KNICEX/InkFlow/internal/review/internal/service"
+	"go.temporal.io/sdk/activity"
 )
 
-type AsyncService struct {
-	llm ai.LLMService
+type AsyncWorkflowService struct {
+	producer event.ReviewProducer
 }
 
-func (a AsyncService) SubmitInk(ctx context.Context, ink domain.Ink) error {
-	//TODO implement me
-	panic("implement me")
+func NewAsyncWorkflowService(producer event.ReviewProducer) service.AsyncService {
+	return &AsyncWorkflowService{
+		producer: producer,
+	}
+}
+
+func (a *AsyncWorkflowService) SubmitInk(ctx context.Context, ink domain.Ink) error {
+	return a.producer.Produce(ctx, event.ReviewEvent{
+		Ink:        ink,
+		WorkflowId: activity.GetInfo(ctx).WorkflowExecution.ID,
+	})
 }

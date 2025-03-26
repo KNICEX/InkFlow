@@ -15,7 +15,7 @@ type InteractiveVO struct {
 	Shared     bool   `json:"shared"`
 }
 
-func InteractiveVOFromDomain(i interactive.Interactive) InteractiveVO {
+func intrToVo(i interactive.Interactive) InteractiveVO {
 	return InteractiveVO{
 		Biz:        i.Biz,
 		BizId:      i.BizId,

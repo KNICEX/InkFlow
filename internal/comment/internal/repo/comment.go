@@ -2,9 +2,11 @@ package repo
 
 import (
 	"context"
+
 	"github.com/KNICEX/InkFlow/internal/comment/internal/domain"
 )
 
+// CommentRepo defines the data access operations for comments
 type CommentRepo interface {
 	CreateComment(ctx context.Context, comment domain.Comment) error
 	DelComment(ctx context.Context, commentId int64, uid int64) error
