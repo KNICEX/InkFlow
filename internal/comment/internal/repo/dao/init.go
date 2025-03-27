@@ -5,7 +5,7 @@ import (
 )
 
 func Init(db *gorm.DB) {
-	if err := db.AutoMigrate(&Comment{}, &CommentLike{}, &CommentStatistic{}); err != nil {
+	if err := db.AutoMigrate(&Comment{}, &CommentLike{}, &CommentStats{}); err != nil {
 		panic(err)
 	}
 }

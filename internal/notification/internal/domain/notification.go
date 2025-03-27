@@ -9,7 +9,7 @@ type Notification struct {
 	SubjectType      SubjectType
 	SubjectId        int64
 	NotificationType NotificationType
-	Content          any
+	Payload          any
 	Read             bool
 	CreatedAt        time.Time
 }

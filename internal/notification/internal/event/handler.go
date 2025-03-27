@@ -27,7 +27,7 @@ func (f FollowHandler) HandleMessage(msg *sarama.ConsumerMessage) error {
 		NotificationType: domain.NotificationTypeFollow,
 		SubjectType:      domain.SubjectTypeUser,
 		SubjectId:        evt.FollowerId,
-		Content:          nil,
+		Payload:          nil,
 		Read:             false,
 		CreatedAt:        evt.CreatedAt,
 	})
