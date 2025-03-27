@@ -18,16 +18,16 @@ type SearchHandler struct {
 	l         logx.Logger
 }
 
-func (s *SearchHandler) RegisterRoutes(server *gin.RouterGroup) {
+func (h *SearchHandler) RegisterRoutes(server *gin.RouterGroup) {
 	searchGroup := server.Group("/search")
 	{
-		searchGroup.GET("/user", ginx.WrapBody(s.l, s.SearchUser))
+		searchGroup.GET("/user", ginx.WrapBody(h.l, h.SearchUser))
 	}
 }
 
-func (s *SearchHandler) SearchUser(ctx *gin.Context, req SearchReq) (ginx.Result, error) {
+func (h *SearchHandler) SearchUser(ctx *gin.Context, req SearchReq) (ginx.Result, error) {
 	u, _ := jwt.GetUserClaims(ctx)
-	users, err := s.svc.SearchUser(ctx, req.Keyword, req.Offset, req.Limit)
+	users, err := h.svc.SearchUser(ctx, req.Keyword, req.Offset, req.Limit)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
@@ -35,7 +35,7 @@ func (s *SearchHandler) SearchUser(ctx *gin.Context, req SearchReq) (ginx.Result
 		return item.Id
 	})
 
-	followInfos, err := s.followSvc.FindFollowStatsBatch(ctx, uids, u.UserId)
+	followInfos, err := h.followSvc.FindFollowStatsBatch(ctx, uids, u.UserId)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
@@ -60,4 +60,24 @@ func (s *SearchHandler) SearchUser(ctx *gin.Context, req SearchReq) (ginx.Result
 		})
 	}
 	return ginx.SuccessWithData(res), nil
+}
+
+func (h *SearchHandler) SearchInK(ctx *gin.Context, req SearchReq) (ginx.Result, error) {
+	inks, err := h.svc.SearchInk(ctx, req.Keyword, req.Offset, req.Limit)
+	if err != nil {
+		return ginx.InvalidParam(), err
+	}
+	return ginx.SuccessWithData(lo.Map(inks, func(item search.Ink, index int) InkVO {
+		return searchInkToInkVO(item)
+	})), nil
+}
+
+func (h *SearchHandler) SearchComment(ctx *gin.Context, req SearchReq) (ginx.Result, error) {
+	comments, err := h.svc.SearchComment(ctx, req.Keyword, req.Offset, req.Limit)
+	if err != nil {
+		return ginx.InvalidParam(), err
+	}
+	return ginx.SuccessWithData(lo.Map(comments, func(item search.Comment, index int) CommentVO {
+		return searchCommentToCommentVO(item)
+	})), nil
 }

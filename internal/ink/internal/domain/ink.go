@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"strings"
 	"time"
 )
 
@@ -16,9 +15,9 @@ type Ink struct {
 	// 可能引入块编辑器
 	ContentMeta string
 	// 手动添加的标签
-	Tags Tags
+	Tags []string
 	// ai生成的标签
-	AiTags    Tags
+	AiTags    []string
 	Status    Status
 	Author    Author
 	CreatedAt time.Time
@@ -58,28 +57,6 @@ const (
 
 	InKStatusDeleted // 已删除
 )
-
-type Tags []string
-
-func (tags Tags) ToString() string {
-	// 逗号分隔
-	str := strings.Builder{}
-	for i, tag := range tags {
-		if i != 0 {
-			str.WriteString(",")
-		}
-		str.WriteString(tag)
-	}
-	return str.String()
-}
-
-func TagsFromString(str string) Tags {
-	// 逗号分隔, 去除空格
-	if str == "" {
-		return []string{}
-	}
-	return strings.Split(str, ",")
-}
 
 type Author struct {
 	Id      int64

@@ -9,6 +9,7 @@ import (
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/samber/lo"
 	"slices"
+	"strings"
 )
 
 var (
@@ -18,7 +19,7 @@ var (
 type LiveInkRepo interface {
 	Save(ctx context.Context, ink domain.Ink) (int64, error)
 	UpdateStatus(ctx context.Context, ink domain.Ink) error
-	UpdateAiTags(ctx context.Context, id int64, tags domain.Tags) error
+	UpdateAiTags(ctx context.Context, id int64, tags []string) error
 	Delete(ctx context.Context, id int64, authorId int64, status ...domain.Status) error
 	FindById(ctx context.Context, id int64, status ...domain.Status) (domain.Ink, error)
 	FindByAuthorId(ctx context.Context, authorId int64, offset, limit int, status ...domain.Status) ([]domain.Ink, error)
@@ -125,8 +126,8 @@ func (repo *CachedLiveInkRepo) UpdateStatus(ctx context.Context, ink domain.Ink)
 	return nil
 }
 
-func (repo *CachedLiveInkRepo) UpdateAiTags(ctx context.Context, id int64, tags domain.Tags) error {
-	err := repo.dao.UpdateAiTags(ctx, id, tags.ToString())
+func (repo *CachedLiveInkRepo) UpdateAiTags(ctx context.Context, id int64, tags []string) error {
+	err := repo.dao.UpdateAiTags(ctx, id, strings.Join(tags, ","))
 	if err != nil {
 		return err
 	}
@@ -267,8 +268,8 @@ func (repo *CachedLiveInkRepo) domainToEntity(ink domain.Ink) dao.LiveInk {
 		Summary:     ink.Summary,
 		CategoryId:  ink.Category.Id,
 		ContentType: ink.ContentType.ToInt(),
-		Tags:        ink.Tags.ToString(),
-		AiTags:      ink.AiTags.ToString(),
+		Tags:        strings.Join(ink.Tags, ","),
+		AiTags:      strings.Join(ink.AiTags, ","),
 		ContentHtml: ink.ContentHtml,
 		ContentMeta: ink.ContentMeta,
 		Status:      int(ink.Status),
@@ -289,8 +290,8 @@ func (repo *CachedLiveInkRepo) entityToDomain(ink dao.LiveInk) domain.Ink {
 			Id: ink.CategoryId,
 		},
 		ContentType: domain.ContentTypeFromInt(ink.ContentType),
-		Tags:        domain.TagsFromString(ink.Tags),
-		AiTags:      domain.TagsFromString(ink.AiTags),
+		Tags:        strings.Split(ink.Tags, ","),
+		AiTags:      strings.Split(ink.AiTags, ","),
 		ContentHtml: ink.ContentHtml,
 		ContentMeta: ink.ContentMeta,
 		Status:      domain.Status(ink.Status),

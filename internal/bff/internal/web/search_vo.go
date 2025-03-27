@@ -4,6 +4,7 @@ import "github.com/KNICEX/InkFlow/internal/search"
 
 type SearchReq struct {
 	Keyword string `json:"keyword" binding:"required"`
+	Type    string `json:"type"`
 	Offset  int    `json:"offset"`
 	Limit   int    `json:"limit"`
 }
@@ -31,5 +32,17 @@ func searchUserToUserVO(user search.User) UserVO {
 		AboutMe:   user.AboutMe,
 		Avatar:    user.Avatar,
 		CreatedAt: user.CreatedAt,
+	}
+}
+
+func searchCommentToCommentVO(comment search.Comment) CommentVO {
+	return CommentVO{
+		Id:          comment.Id,
+		Biz:         comment.Biz,
+		BizId:       comment.BizId,
+		Commentator: searchUserToUserVO(comment.Commentator),
+		Content:     comment.Content,
+		Images:      comment.Images,
+		CreatedAt:   comment.CreatedAt,
 	}
 }

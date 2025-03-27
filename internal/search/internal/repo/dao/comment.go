@@ -18,6 +18,7 @@ type Comment struct {
 	ParentId      int64     `json:"parent_id"`
 	CommentatorId int64     `json:"commentator_id"`
 	Content       string    `json:"content"`
+	Images        string    `json:"images"`
 	CreatedAt     time.Time `json:"created_at"`
 }
 

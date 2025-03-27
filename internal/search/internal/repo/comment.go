@@ -5,6 +5,7 @@ import (
 	"github.com/KNICEX/InkFlow/internal/search/internal/domain"
 	"github.com/KNICEX/InkFlow/internal/search/internal/repo/dao"
 	"github.com/samber/lo"
+	"strings"
 )
 
 type CommentRepo interface {
@@ -76,6 +77,7 @@ func (repo *commentRepo) domainToEntity(c domain.Comment) dao.Comment {
 		RootId:        c.RootId,
 		CommentatorId: c.Commentator.Id,
 		Content:       c.Content,
+		Images:        strings.Join(c.Images, ","),
 		CreatedAt:     c.CreatedAt,
 	}
 }
@@ -91,6 +93,7 @@ func (repo *commentRepo) entityToDomain(c dao.Comment) domain.Comment {
 			Id: c.CommentatorId,
 		},
 		Content:   c.Content,
+		Images:    strings.Split(c.Images, ","),
 		CreatedAt: c.CreatedAt,
 	}
 }

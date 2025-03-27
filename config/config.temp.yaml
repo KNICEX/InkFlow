@@ -37,3 +37,8 @@ file:
     key: your_key
     secret: your_secret
     cloud_name: your_cloud_name
+
+temporal:
+  addr: localhost:7233
+  namespace: inkflow
+  domain: default

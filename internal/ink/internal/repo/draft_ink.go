@@ -5,6 +5,7 @@ import (
 	"github.com/KNICEX/InkFlow/internal/ink/internal/domain"
 	"github.com/KNICEX/InkFlow/internal/ink/internal/repo/dao"
 	"github.com/samber/lo"
+	"strings"
 )
 
 var (
@@ -107,8 +108,8 @@ func (repo *NoCacheDraftInkRepo) domainToEntity(ink domain.Ink) dao.DraftInk {
 		Cover:       ink.Cover,
 		Summary:     ink.Summary,
 		CategoryId:  ink.Category.Id,
-		Tags:        ink.Tags.ToString(),
-		AiTags:      ink.AiTags.ToString(),
+		Tags:        strings.Join(ink.Tags, ","),
+		AiTags:      strings.Join(ink.AiTags, ","),
 		ContentHtml: ink.ContentHtml,
 		ContentMeta: ink.ContentMeta,
 		Status:      ink.Status.ToInt(),
@@ -129,8 +130,8 @@ func (repo *NoCacheDraftInkRepo) entityToDomain(ink dao.DraftInk) domain.Ink {
 		Category: domain.Category{
 			Id: ink.CategoryId,
 		},
-		Tags:        domain.TagsFromString(ink.Tags),
-		AiTags:      domain.TagsFromString(ink.AiTags),
+		Tags:        strings.Split(ink.Tags, ","),
+		AiTags:      strings.Split(ink.AiTags, ","),
 		ContentHtml: ink.ContentHtml,
 		ContentMeta: ink.ContentMeta,
 		Status:      domain.Status(ink.Status),

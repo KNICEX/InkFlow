@@ -9,6 +9,7 @@ type Comment struct {
 	RootId      int64
 	ParentId    int64
 	Content     string
+	Images      []string
 	Commentator User
 	CreatedAt   time.Time
 }

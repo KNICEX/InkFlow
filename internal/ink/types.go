@@ -7,7 +7,6 @@ import (
 
 type Author = domain.Author
 type Status = domain.Status
-type Tags = domain.Tags
 type Category = domain.Category
 
 type Ink = domain.Ink
