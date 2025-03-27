@@ -41,8 +41,10 @@ func searchCommentToCommentVO(comment search.Comment) CommentVO {
 		Biz:         comment.Biz,
 		BizId:       comment.BizId,
 		Commentator: searchUserToUserVO(comment.Commentator),
-		Payload:     comment.Content,
-		Images:      comment.Images,
-		CreatedAt:   comment.CreatedAt,
+		Payload: Payload{
+			Content: comment.Content,
+			Images:  comment.Images,
+		},
+		CreatedAt: comment.CreatedAt,
 	}
 }

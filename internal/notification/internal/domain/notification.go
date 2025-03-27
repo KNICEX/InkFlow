@@ -9,7 +9,7 @@ type Notification struct {
 	SubjectType      SubjectType
 	SubjectId        int64
 	NotificationType NotificationType
-	Payload          any
+	Content          any
 	Read             bool
 	CreatedAt        time.Time
 }
@@ -52,13 +52,29 @@ func SubjectTypeFromStr(s string) SubjectType {
 }
 
 type ReplyContent struct {
-	RootId        int64
-	ParentId      int64
-	ReplyContent  string // 回复内容
-	TargetId      int64  // 被回复的评论id, 如果是根评论则为0
-	TargetContent string // 被回复的内容, 如果是根评论则为空
-	//RootContent   string // 根评论内容
+	CommentId     int64
+	SourceContent ReplyPayload
+	TargetContent ReplyPayload
 }
 
+type ReplyPayload struct {
+	Content string
+	Images  []string
+}
+
+// TODO 好像暂时不需要冗余
+
 type LikeContent struct {
+}
+
+type FollowContent struct {
+}
+
+type SubscribeContent struct {
+}
+
+type SystemContent struct {
+}
+
+type MentionContent struct {
 }

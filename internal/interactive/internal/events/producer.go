@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	inkViewTopic       = "ink-view"
-	inkLikeTopic       = "ink-like"
-	inkCancelLikeTopic = "ink-cancel-like"
+	topicInkView       = "ink-view"
+	topicInkLike       = "ink-like"
+	topicInkCancelLike = "ink-cancel-like"
 )
 
 type InteractiveProducer interface {
@@ -41,13 +41,13 @@ func (p *KafkaInteractiveProducer) produce(ctx context.Context, topic string, ev
 }
 
 func (p *KafkaInteractiveProducer) ProduceInkView(ctx context.Context, evt InkViewEvent) error {
-	return p.produce(ctx, inkViewTopic, evt)
+	return p.produce(ctx, topicInkView, evt)
 }
 
 func (p *KafkaInteractiveProducer) ProduceInkLike(ctx context.Context, evt InkLikeEvent) error {
-	return p.produce(ctx, inkLikeTopic, evt)
+	return p.produce(ctx, topicInkLike, evt)
 }
 
 func (p *KafkaInteractiveProducer) ProduceInkCancelLike(ctx context.Context, evt InkCancelLikeEvent) error {
-	return p.produce(ctx, inkCancelLikeTopic, evt)
+	return p.produce(ctx, topicInkCancelLike, evt)
 }

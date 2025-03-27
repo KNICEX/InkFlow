@@ -10,9 +10,9 @@ import (
 const topicFollowEvt = "user-follow-event"
 
 type FollowEvt struct {
-	FollowerId int64
-	FolloweeId int64
-	CreatedAt  time.Time
+	FollowerId int64     `json:"followerId"`
+	FolloweeId int64     `json:"followeeId"`
+	CreatedAt  time.Time `json:"createdAt"`
 }
 
 type FollowProducer interface {

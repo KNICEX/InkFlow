@@ -11,6 +11,9 @@ import (
 const (
 	notificationGroup = "notification-group"
 	topicFollowEvent  = "user-follow-event"
+	topicCommentReply = "comment-reply"
+	topicCommentLike  = "comment-like"
+	topicInkLike      = "ink-like"
 )
 
 type NotificationConsumer struct {
@@ -20,11 +23,22 @@ type NotificationConsumer struct {
 	l        logx.Logger
 }
 
-func (c *NotificationConsumer) RegisterHandler(topic string, handler Handler) error {
-	if _, ok := c.handlers[topic]; ok {
-		return fmt.Errorf("%s handler already exists", topic)
+func NewNotificationConsumer(cli sarama.Client, svc service.NotificationService, l logx.Logger) *NotificationConsumer {
+	return &NotificationConsumer{
+		cli:      cli,
+		svc:      svc,
+		handlers: make(map[string]Handler),
+		l:        l,
 	}
-	c.handlers[topic] = handler
+}
+
+func (c *NotificationConsumer) RegisterHandler(handlers ...Handler) error {
+	for _, handler := range handlers {
+		if _, ok := c.handlers[handler.Topic()]; ok {
+			return fmt.Errorf("%s handler already exists", handler.Topic())
+		}
+		c.handlers[handler.Topic()] = handler
+	}
 	return nil
 }
 
@@ -45,7 +59,7 @@ func (c *NotificationConsumer) Start() error {
 func (c *NotificationConsumer) Consume(msg *sarama.ConsumerMessage) error {
 	topic := msg.Topic
 	if handler, ok := c.handlers[topic]; ok {
-		return handler.HandleMessage(msg)
+		return handler.HandleMessage(context.Background(), msg)
 	} else {
 		c.l.Error("no handler found for topic", logx.String("topic", topic))
 		return nil

@@ -9,6 +9,7 @@ import (
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/samber/lo"
+	"golang.org/x/sync/errgroup"
 	"time"
 )
 
@@ -24,6 +25,9 @@ type CommentService interface {
 	Create(ctx context.Context, comment domain.Comment) (int64, error)
 	Delete(ctx context.Context, id int64, uid int64) error
 	Like(ctx context.Context, uid, cid int64) error
+
+	FindById(ctx context.Context, commentId, uid int64) (domain.Comment, error)
+	FindByIds(ctx context.Context, ids []int64, uid int64) (map[int64]domain.Comment, error)
 
 	// LoadLastedList 加载一级评论列表
 	LoadLastedList(ctx context.Context, biz string, bizId int64, uid, maxId int64, limit int) ([]domain.Comment, error)
@@ -179,6 +183,43 @@ func (svc *commentService) Like(ctx context.Context, uid, cid int64) error {
 		}
 	}()
 	return nil
+}
+
+func (svc *commentService) FindById(ctx context.Context, commentId, uid int64) (domain.Comment, error) {
+	eg := errgroup.Group{}
+	var comment domain.Comment
+	var stats map[int64]domain.CommentStats
+	eg.Go(func() error {
+		var err error
+		comment, err = svc.repo.FindById(ctx, commentId)
+		return err
+	})
+	eg.Go(func() error {
+		var err error
+		stats, err = svc.repo.FindStats(ctx, []int64{commentId}, uid)
+		return err
+	})
+
+	if err := eg.Wait(); err != nil {
+		return domain.Comment{}, err
+	}
+	comment.Stats = stats[comment.Id]
+	return comment, nil
+}
+
+func (svc *commentService) FindByIds(ctx context.Context, ids []int64, uid int64) (map[int64]domain.Comment, error) {
+	comments, err := svc.repo.FindByIds(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	stats, err := svc.repo.FindStats(ctx, ids, uid)
+	if err != nil {
+		return nil, err
+	}
+	for _, comment := range comments {
+		comment.Stats = stats[comment.Id]
+	}
+	return comments, nil
 }
 
 func (svc *commentService) LoadMoreRepliesByRid(ctx context.Context, rid int64, uid, maxId int64, limit int) ([]domain.Comment, error) {
