@@ -14,8 +14,3 @@ type FollowStatistic struct {
 	Following int64
 	Followed  bool
 }
-
-type FollowInfo struct {
-	Uid      int64
-	Followed bool
-}

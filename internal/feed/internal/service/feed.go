@@ -6,7 +6,6 @@ import (
 	"github.com/KNICEX/InkFlow/internal/feed/internal/domain"
 	"github.com/KNICEX/InkFlow/internal/feed/internal/repo"
 	"github.com/KNICEX/InkFlow/internal/relation"
-	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 	"sort"
 	"time"
@@ -30,14 +29,12 @@ func (f *feedService) CreateFeed(ctx context.Context, feed domain.Feed) error {
 	}
 
 	// TODO 现在采用全推模型，后续考虑混合
-	followers, err := f.followSvc.FollowerList(ctx, feed.UserId, 0, 0, 10000)
+	followerIds, err := f.followSvc.FollowerIds(ctx, feed.UserId, 0, 10000)
 	if err != nil {
 		return err
 	}
 	// 30 天内活跃用户
-	activeUsers, err := f.actionSvc.FindActiveUser(ctx, lo.Map(followers, func(item relation.FollowInfo, index int) int64 {
-		return item.Uid
-	}), time.Now().Add(-time.Hour*24*30))
+	activeUsers, err := f.actionSvc.FindActiveUser(ctx, followerIds, time.Now().Add(-time.Hour*24*30))
 	if err != nil {
 		return err
 	}
@@ -61,13 +58,11 @@ func (f *feedService) FollowFeedList(ctx context.Context, uid, maxId, timestamp 
 	})
 	eg.Go(func() error {
 		// TODO 这里先查2000，后续修改
-		following, er := f.followSvc.FollowList(ctx, uid, uid, 0, 2000)
+		followingIds, er := f.followSvc.FollowingIds(ctx, uid, 0, 2000)
 		if er != nil {
 			return er
 		}
-		pullFeeds, er = f.repo.FindPullFeed(ctx, lo.Map(following, func(item relation.FollowInfo, index int) int64 {
-			return item.Uid
-		}), maxId, timestamp, limit)
+		pullFeeds, er = f.repo.FindPullFeed(ctx, followingIds, maxId, timestamp, limit)
 		return er
 	})
 	if err := eg.Wait(); err != nil {

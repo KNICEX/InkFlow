@@ -49,7 +49,3 @@ func (s *searchService) SearchComment(ctx context.Context, query string, offset,
 	}
 	return comments, nil
 }
-
-func (s *searchService) InputUser(ctx context.Context, user domain.User) error {
-	return s.userRepo.InputUser(ctx, []domain.User{user})
-}

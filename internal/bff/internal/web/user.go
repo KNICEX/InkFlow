@@ -11,6 +11,7 @@ import (
 	"github.com/KNICEX/InkFlow/pkg/jwtx"
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 	"net/http"
 	"regexp"
@@ -103,9 +104,9 @@ func (h *UserHandler) RegisterRoutes(server *gin.RouterGroup) {
 			// 取消关注
 			checkGroup.DELETE("/follow/:id", ginx.Wrap(h.l, h.CancelFollow))
 			// 关注列表
-			checkGroup.GET("/follow/:id/following", ginx.WrapBody(h.l, h.FollowList))
+			checkGroup.GET("/follow/:id/following", ginx.WrapBody(h.l, h.FollowingList))
 			// 粉丝列表
-			checkGroup.GET("/follow/:id/follower", ginx.WrapBody(h.l, h.FollowList))
+			checkGroup.GET("/follow/:id/follower", ginx.WrapBody(h.l, h.FollowerList))
 		}
 	}
 
@@ -472,34 +473,30 @@ func (h *UserHandler) CancelFollow(ctx *gin.Context) (ginx.Result, error) {
 	return ginx.Success(), nil
 }
 
-func (h *UserHandler) FollowList(ctx *gin.Context, req FollowListReq) (ginx.Result, error) {
+func (h *UserHandler) FollowingList(ctx *gin.Context, req FollowListReq) (ginx.Result, error) {
+	return h.followList(ctx, req, true)
+}
+
+func (h *UserHandler) FollowerList(ctx *gin.Context, req FollowListReq) (ginx.Result, error) {
+	return h.followList(ctx, req, false)
+}
+
+func (h *UserHandler) followList(ctx *gin.Context, req FollowListReq, following bool) (ginx.Result, error) {
 	uc := jwt.MustGetUserClaims(ctx)
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		return ginx.InvalidParam(), nil
 	}
-
-	var follows []relation.FollowInfo
-	switch req.Type {
-	case "following":
+	var follows []relation.FollowStatistic
+	if following {
 		follows, err = h.followService.FollowList(ctx, id, uc.UserId, req.MaxId, req.Limit)
-	case "follower":
+	} else {
 		follows, err = h.followService.FollowerList(ctx, id, uc.UserId, req.MaxId, req.Limit)
-	default:
-		return ginx.InvalidParam(), nil
 	}
-
-	if err != nil {
-		return ginx.InternalError(), err
-	}
-
-	uids := make([]int64, 0, len(follows))
-	followedMap := make(map[int64]bool, len(follows))
-	for _, v := range follows {
-		uids = append(uids, v.Uid)
-		followedMap[v.Uid] = v.Followed
-	}
+	uids := lo.Map(follows, func(item relation.FollowStatistic, index int) int64 {
+		return item.Uid
+	})
 	users, err := h.svc.FindByIds(ctx, uids)
 	if err != nil {
 		return ginx.InternalError(), err
@@ -508,7 +505,9 @@ func (h *UserHandler) FollowList(ctx *gin.Context, req FollowListReq) (ginx.Resu
 	for _, v := range follows {
 		if u, ok := users[v.Uid]; ok {
 			profile := userToUserVO(u)
-			profile.Followed = followedMap[v.Uid]
+			profile.Followers = v.Followers
+			profile.Following = v.Following
+			profile.Followed = v.Followed
 			res = append(res, profile)
 		}
 	}

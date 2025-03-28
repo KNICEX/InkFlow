@@ -15,5 +15,10 @@ const (
 	FeedbackTypeView     FeedbackType = "view"
 	FeedbackTypeViewLong FeedbackType = "view_long"
 	FeedbackTypeLike     FeedbackType = "like"
+	FeedbackUnLike       FeedbackType = "unlike"
 	FeedbackTypeFavorite FeedbackType = "favorite"
 )
+
+func (t FeedbackType) ToString() string {
+	return string(t)
+}

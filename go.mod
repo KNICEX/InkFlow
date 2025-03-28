@@ -13,6 +13,7 @@ require (
 	github.com/google/generative-ai-go v0.19.0
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.6.0
+	github.com/gorse-io/gorse-go v0.5.0-alpha.1
 	github.com/grokify/html-strip-tags-go v0.1.0
 	github.com/meilisearch/meilisearch-go v0.31.0
 	github.com/mitchellh/mapstructure v1.5.0

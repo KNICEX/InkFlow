@@ -61,13 +61,13 @@ services:
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: ink-flow-kafka-ui
-    ports:
-      - "18080:8080"
-    environment:
-      DYNAMIC_CONFIG_ENABLED: true
+#  kafka-ui:
+#    image: provectuslabs/kafka-ui:latest
+#    container_name: ink-flow-kafka-ui
+#    ports:
+#      - "18080:8080"
+#    environment:
+#      DYNAMIC_CONFIG_ENABLED: true
 
   jeager:
     image: jaegertracing/jaeger:2.4.0
@@ -85,28 +85,29 @@ services:
     ports:
       - "3000:3000"
 
-#  gorse:
-#    image: zhenghaoz/gorse-in-one
-#    restart: unless-stopped
-#    ports:
-#      - "8086:8086"   # gRPC port
-#      - "8088:8088"   # HTTP port
-#    environment:
-#      # Use Redis as cache storage backend.
-#      GORSE_CACHE_STORE: redis://ink-flow-redis:6379
-#      # Use MySQL as data storage backend.
-#      GORSE_DATA_STORE: postgres://root:root@ink-flow-postgres:5432/gorse
-#    command: >
-#      -c /etc/gorse/config.toml
-#      --log-path /var/log/gorse/master.log
-#      --cache-path /var/lib/gorse/master_cache.data
-#    volumes:
-#      # Mount the configuration file.
-#      - ./config.toml:/etc/gorse/config.toml
-#    depends_on:
-#      - redis
-#      - postgres
-#      - zipkin
+  gorse:
+    image: zhenghaoz/gorse-in-one
+    container_name: ink-flow-gorse
+    restart: unless-stopped
+    ports:
+      - "8086:8086"   # gRPC port
+      - "8088:8088"   # HTTP port
+    environment:
+      # Use Redis as cache storage backend.
+      GORSE_CACHE_STORE: redis://redis:6379
+      # Use MySQL as data storage backend.
+      GORSE_DATA_STORE: postgres://root:root@postgres:5432/gorse?sslmode=disable
+    command: >
+      -c /etc/gorse/config.toml
+      --log-path /var/log/gorse/master.log
+      --cache-path /var/lib/gorse/master_cache.data
+    volumes:
+      # Mount the configuration file.
+      - ./config/gorse/config.toml:/etc/gorse/config.toml
+    depends_on:
+      - redis
+      - postgres
+      - jeager
 
   temporal:
     build:

@@ -8,5 +8,3 @@ import (
 type FollowService = service.FollowService
 
 type FollowStatistic = domain.FollowStatistic
-
-type FollowInfo = domain.FollowInfo

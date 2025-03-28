@@ -18,10 +18,13 @@ var (
 type FollowRepo interface {
 	AddFollowRelation(ctx context.Context, c domain.FollowRelation) error
 	RemoveFollowRelation(ctx context.Context, c domain.FollowRelation) error
-	FindFollowingList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowInfo, error)
-	FindFlowerList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowInfo, error)
+	FindFollowingList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowStatistic, error)
+	FindFlowerList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowStatistic, error)
 	GetFollowStats(ctx context.Context, uid, viewUid int64) (domain.FollowStatistic, error)
 	GetFollowStatBatch(ctx context.Context, uids []int64, viewUid int64) (map[int64]domain.FollowStatistic, error)
+
+	GetFollowingIds(ctx context.Context, uid int64, maxId int64, limit int) ([]int64, error)
+	GetFollowerIds(ctx context.Context, uid int64, maxId int64, limit int) ([]int64, error)
 }
 
 type CachedFollowRepo struct {
@@ -65,65 +68,155 @@ func (repo *CachedFollowRepo) RemoveFollowRelation(ctx context.Context, c domain
 	return err
 }
 
-func (repo *CachedFollowRepo) FindFollowingList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowInfo, error) {
-	res, err := repo.dao.FollowList(ctx, uid, maxId, limit)
+func (repo *CachedFollowRepo) FindFollowingList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowStatistic, error) {
+	followings, err := repo.dao.FollowList(ctx, uid, maxId, limit)
 	if err != nil {
 		return nil, err
 	}
 
+	followingIds := lo.Map(followings, func(item dao.UserFollow, index int) int64 {
+		return item.FolloweeId
+	})
+
+	eg := errgroup.Group{}
 	self := viewUid == uid
 	var followedMap map[int64]bool
 	if !self {
 		// 不是查看自己的关注列表，查询是否关注
-		followedMap, err = repo.dao.FollowedBatch(ctx, viewUid, lo.Map(res, func(item dao.UserFollow, index int) int64 {
-			return item.FolloweeId
-		}))
-		if err != nil {
-			repo.l.Error("find followed batch error", logx.Error(err), logx.Int64("uid", uid))
-		}
+		eg.Go(func() error {
+			var er error
+			followedMap, er = repo.dao.FollowedBatch(ctx, viewUid, followingIds)
+			if er != nil {
+				repo.l.Error("find followed batch error", logx.Error(err), logx.Int64("uid", uid))
+			}
+			return nil
+		})
 	} else {
 		followedMap = make(map[int64]bool)
 	}
 
-	return lo.Map(res, func(item dao.UserFollow, index int) domain.FollowInfo {
-		var followed bool
+	var statsMap map[int64]domain.FollowStatistic
+	eg.Go(func() error {
+		var er error
+		statsMap, er = repo.findFollowStats(ctx, followingIds)
+		return er
+	})
+	if err = eg.Wait(); err != nil {
+		return nil, err
+	}
+	res := make([]domain.FollowStatistic, 0, len(followingIds))
+	for _, followingId := range followingIds {
+		stats := statsMap[followingId]
+		stats.Followed = followedMap[followingId]
 		if self {
-			followed = true
-		} else {
-			followed = followedMap[item.FolloweeId]
+			stats.Followed = true
 		}
-		return domain.FollowInfo{
-			Uid:      item.FolloweeId,
-			Followed: followed,
-		}
-	}), nil
+		res = append(res, domain.FollowStatistic{
+			Uid:       followingId,
+			Followers: stats.Followers,
+			Following: stats.Following,
+			Followed:  stats.Followed,
+		})
+	}
+	return res, nil
 }
 
-func (repo *CachedFollowRepo) FindFlowerList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowInfo, error) {
-	res, err := repo.dao.FollowerList(ctx, uid, maxId, limit)
+func (repo *CachedFollowRepo) findFollowStats(ctx context.Context, uids []int64) (map[int64]domain.FollowStatistic, error) {
+	eg := errgroup.Group{}
+	cachedStatsMap, err := repo.cache.GetStatisticBatch(ctx, uids)
 	if err != nil {
+		repo.l.Error("get follow statistic batch cache error", logx.Error(err), logx.Any("UserIds", uids))
+	}
+	if len(cachedStatsMap) == len(uids) {
+		// 如果缓存命中，直接返回
+		if err = eg.Wait(); err != nil {
+			return nil, err
+		}
+		for _, uid := range uids {
+			if _, ok := cachedStatsMap[uid]; !ok {
+				cachedStatsMap[uid] = domain.FollowStatistic{
+					Followers: cachedStatsMap[uid].Followers,
+					Following: cachedStatsMap[uid].Following,
+				}
+			}
+		}
+		return cachedStatsMap, nil
+	}
+
+	if len(cachedStatsMap) > 0 {
+		// 过滤掉已经命中的缓存
+		uids = lo.Reject(uids, func(id int64, idx int) bool {
+			_, ok := cachedStatsMap[id]
+			return ok
+		})
+	} else {
+		cachedStatsMap = make(map[int64]domain.FollowStatistic, len(uids))
+	}
+
+	var followStatsMap map[int64]dao.FollowStats
+	eg.Go(func() error {
+		var er error
+		followStatsMap, er = repo.dao.FindFollowStatsBatch(ctx, uids)
+		return er
+	})
+
+	if err = eg.Wait(); err != nil {
 		return nil, err
 	}
 
-	// 批量查询是否关注
-	var followedMap map[int64]bool
-	followedMap, err = repo.dao.FollowedBatch(ctx, viewUid, lo.Map(res, func(item dao.UserFollow, index int) int64 {
-		return item.FollowerId
-	}))
-	if err != nil {
-		followedMap = make(map[int64]bool)
-		repo.l.Error("find followed batch error", logx.Error(err), logx.Int64("uid", uid))
-	} else {
-		// 防止nil map
-		followedMap = make(map[int64]bool)
+	for uid, stats := range cachedStatsMap {
+		cachedStatsMap[uid] = stats
 	}
 
-	return lo.Map(res, func(item dao.UserFollow, index int) domain.FollowInfo {
-		return domain.FollowInfo{
-			Uid:      item.FollowerId,
-			Followed: followedMap[item.FollowerId],
+	for uid, stats := range followStatsMap {
+		cachedStatsMap[uid] = domain.FollowStatistic{
+			Followers: stats.Followers,
+			Following: stats.Following,
 		}
-	}), nil
+	}
+
+	go func() {
+		// 缓存未命中的数据
+		stats := make([]domain.FollowStatistic, 0, len(followStatsMap))
+		for _, stat := range followStatsMap {
+			stats = append(stats, repo.statsToDomain(stat))
+		}
+		if er := repo.cache.SetStatisticBatch(ctx, stats); er != nil {
+			repo.l.Error("set follow statistic batch cache error", logx.Error(er))
+		}
+	}()
+
+	return cachedStatsMap, nil
+}
+
+func (repo *CachedFollowRepo) FindFlowerList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowStatistic, error) {
+	followers, err := repo.dao.FollowerList(ctx, uid, maxId, limit)
+	if err != nil {
+		return nil, err
+	}
+	if len(followers) == 0 {
+		return nil, nil
+	}
+
+	followerIds := lo.Map(followers, func(item dao.UserFollow, index int) int64 {
+		return item.FollowerId
+	})
+
+	maps, err := repo.GetFollowStatBatch(ctx, followerIds, viewUid)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]domain.FollowStatistic, 0, len(maps))
+	for _, followerId := range followerIds {
+		stats := maps[followerId]
+		res = append(res, domain.FollowStatistic{
+			Uid:       followerId,
+			Followers: stats.Followers,
+			Following: stats.Following,
+			Followed:  stats.Followed,
+		})
+	}
+	return res, nil
 }
 
 func (repo *CachedFollowRepo) GetFollowStats(ctx context.Context, uid, viewUid int64) (domain.FollowStatistic, error) {
@@ -192,73 +285,48 @@ func (repo *CachedFollowRepo) GetFollowStatBatch(ctx context.Context, uids []int
 		return er
 	})
 
-	cachedStatsMap, err := repo.cache.GetStatisticBatch(ctx, uids)
-	if err != nil {
-		repo.l.Error("get follow statistic batch cache error", logx.Error(err), logx.Any("UserIds", uids))
-	}
-	if len(cachedStatsMap) == len(uids) {
-		// 如果缓存命中，直接返回
-		if err = eg.Wait(); err != nil {
-			return nil, err
-		}
-		for _, uid := range uids {
-			if _, ok := cachedStatsMap[uid]; !ok {
-				cachedStatsMap[uid] = domain.FollowStatistic{
-					Followers: cachedStatsMap[uid].Followers,
-					Following: cachedStatsMap[uid].Following,
-					Followed:  followedMap[uid],
-				}
-			}
-		}
-		return cachedStatsMap, nil
-	}
-
-	if len(cachedStatsMap) > 0 {
-		// 过滤掉已经命中的缓存
-		uids = lo.Reject(uids, func(id int64, idx int) bool {
-			_, ok := cachedStatsMap[id]
-			return ok
-		})
-	} else {
-		cachedStatsMap = make(map[int64]domain.FollowStatistic, len(uids))
-	}
-
-	var followStatsMap map[int64]dao.FollowStats
+	var statsMap map[int64]domain.FollowStatistic
 	eg.Go(func() error {
 		var er error
-		followStatsMap, er = repo.dao.FindFollowStatsBatch(ctx, uids)
+		statsMap, er = repo.findFollowStats(ctx, uids)
 		return er
 	})
-
-	if err = eg.Wait(); err != nil {
+	if err := eg.Wait(); err != nil {
 		return nil, err
 	}
 
-	for uid, stats := range cachedStatsMap {
+	for uid, stats := range statsMap {
 		stats.Followed = followedMap[uid]
-		cachedStatsMap[uid] = stats
+		statsMap[uid] = stats
 	}
 
-	for uid, stats := range followStatsMap {
-		cachedStatsMap[uid] = domain.FollowStatistic{
-			Followers: stats.Followers,
-			Following: stats.Following,
-			Followed:  followedMap[uid],
-		}
+	return statsMap, nil
+}
+
+func (repo *CachedFollowRepo) GetFollowingIds(ctx context.Context, uid int64, maxId int64, limit int) ([]int64, error) {
+	followings, err := repo.dao.FollowList(ctx, uid, maxId, limit)
+	if err != nil {
+		return nil, err
 	}
+	if len(followings) == 0 {
+		return nil, nil
+	}
+	return lo.Map(followings, func(item dao.UserFollow, index int) int64 {
+		return item.FolloweeId
+	}), nil
+}
 
-	go func() {
-		// 缓存未命中的数据
-		stats := make([]domain.FollowStatistic, 0, len(followStatsMap))
-		for _, stat := range followStatsMap {
-			stats = append(stats, repo.statsToDomain(stat))
-		}
-		if er := repo.cache.SetStatisticBatch(ctx, stats); er != nil {
-			repo.l.Error("set follow statistic batch cache error", logx.Error(er))
-		}
-	}()
-
-	return cachedStatsMap, nil
+func (repo *CachedFollowRepo) GetFollowerIds(ctx context.Context, uid int64, maxId int64, limit int) ([]int64, error) {
+	followers, err := repo.dao.FollowerList(ctx, uid, maxId, limit)
+	if err != nil {
+		return nil, err
+	}
+	if len(followers) == 0 {
+		return nil, nil
+	}
+	return lo.Map(followers, func(item dao.UserFollow, index int) int64 {
+		return item.FollowerId
+	}), nil
 }
 
 func (repo *CachedFollowRepo) statsToDomain(stats dao.FollowStats) domain.FollowStatistic {

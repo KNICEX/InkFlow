@@ -15,9 +15,10 @@ type FollowService interface {
 	// Follow TODO 考虑动态返回关注数
 	Follow(ctx context.Context, uid, followeeId int64) error
 	CancelFollow(ctx context.Context, uid, followeeId int64) error
-	// FollowList TODO 查看他人关注列表时，考虑查询我是否也关注
-	FollowList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowInfo, error)
-	FollowerList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowInfo, error)
+	FollowingList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowStatistic, error)
+	FollowerList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowStatistic, error)
+	FollowingIds(ctx context.Context, uid int64, maxId int64, limit int) ([]int64, error)
+	FollowerIds(ctx context.Context, uid int64, maxId int64, limit int) ([]int64, error)
 	FindFollowStats(ctx context.Context, uid, viewUid int64) (domain.FollowStatistic, error)
 	FindFollowStatsBatch(ctx context.Context, uids []int64, viewUid int64) (map[int64]domain.FollowStatistic, error)
 }
@@ -61,11 +62,11 @@ func (svc *followService) CancelFollow(ctx context.Context, uid, followeeId int6
 	})
 }
 
-func (svc *followService) FollowList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowInfo, error) {
+func (svc *followService) FollowingList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowStatistic, error) {
 	return svc.repo.FindFollowingList(ctx, uid, viewUid, maxId, limit)
 }
 
-func (svc *followService) FollowerList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowInfo, error) {
+func (svc *followService) FollowerList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowStatistic, error) {
 	return svc.repo.FindFlowerList(ctx, uid, viewUid, maxId, limit)
 }
 
@@ -74,4 +75,12 @@ func (svc *followService) FindFollowStats(ctx context.Context, uid, viewUid int6
 }
 func (svc *followService) FindFollowStatsBatch(ctx context.Context, uids []int64, viewUid int64) (map[int64]domain.FollowStatistic, error) {
 	return svc.repo.GetFollowStatBatch(ctx, uids, viewUid)
+}
+
+func (svc *followService) FollowingIds(ctx context.Context, uid int64, maxId int64, limit int) ([]int64, error) {
+	return svc.repo.GetFollowingIds(ctx, uid, maxId, limit)
+}
+
+func (svc *followService) FollowerIds(ctx context.Context, uid int64, maxId int64, limit int) ([]int64, error) {
+	return svc.repo.GetFollowerIds(ctx, uid, maxId, limit)
 }
