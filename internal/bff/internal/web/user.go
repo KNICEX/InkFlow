@@ -328,11 +328,11 @@ func (h *UserHandler) Profile(ctx *gin.Context, req ProfileReq) (ginx.Result, er
 		return ginx.InternalError(), err
 	}
 
-	res := userToUserVO(u)
+	res := userToVO(u)
 	res.Followers = follow.Followers
 	res.Following = follow.Following
 	res.Followed = follow.Followed
-	return ginx.SuccessWithData(userToUserVO(u)), nil
+	return ginx.SuccessWithData(userToVO(u)), nil
 }
 
 func (h *UserHandler) EditProfile(ctx *gin.Context, req EditProfileReq) (ginx.Result, error) {
@@ -490,7 +490,7 @@ func (h *UserHandler) followList(ctx *gin.Context, req FollowListReq, following 
 	}
 	var follows []relation.FollowStatistic
 	if following {
-		follows, err = h.followService.FollowList(ctx, id, uc.UserId, req.MaxId, req.Limit)
+		follows, err = h.followService.FollowingList(ctx, id, uc.UserId, req.MaxId, req.Limit)
 	} else {
 		follows, err = h.followService.FollowerList(ctx, id, uc.UserId, req.MaxId, req.Limit)
 	}
@@ -504,7 +504,7 @@ func (h *UserHandler) followList(ctx *gin.Context, req FollowListReq, following 
 	res := make([]UserVO, 0, len(users))
 	for _, v := range follows {
 		if u, ok := users[v.Uid]; ok {
-			profile := userToUserVO(u)
+			profile := userToVO(u)
 			profile.Followers = v.Followers
 			profile.Following = v.Following
 			profile.Followed = v.Followed

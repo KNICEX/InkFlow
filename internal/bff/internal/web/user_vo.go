@@ -92,7 +92,7 @@ type FollowInfo struct {
 	Followed  bool  `json:"followed"`
 }
 
-func userToUserVO(u user.User) UserVO {
+func userToVO(u user.User) UserVO {
 	birthday := ""
 	if !u.Birthday.IsZero() {
 		birthday = u.Birthday.Format(time.DateOnly)

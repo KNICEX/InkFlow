@@ -78,3 +78,12 @@ type SystemContent struct {
 
 type MentionContent struct {
 }
+
+type MergedLikeNotification struct {
+	UserIds     []int64
+	SubjectType SubjectType
+	SubjectId   int64
+	Total       int64
+	Read        bool
+	UpdatedAt   time.Time
+}

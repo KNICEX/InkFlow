@@ -10,6 +10,7 @@ type NotificationService interface {
 	SendNotification(ctx context.Context, n domain.Notification) error
 	DeleteByType(ctx context.Context, recipientId int64, types ...domain.NotificationType) error
 	ListNotification(ctx context.Context, recipientId int64, types []domain.NotificationType, maxId int64, limit int) ([]domain.Notification, error)
+	ListMergedLike(ctx context.Context, recipientId int64, offset, limit int) ([]domain.MergedLikeNotification, error)
 	ReadAll(ctx context.Context, recipientId int64, types ...domain.NotificationType) error
 }
 
@@ -33,6 +34,14 @@ func (svc *notificationService) DeleteByType(ctx context.Context, recipientId in
 
 func (svc *notificationService) ListNotification(ctx context.Context, recipientId int64, types []domain.NotificationType, maxId int64, limit int) ([]domain.Notification, error) {
 	return svc.repo.FindByType(ctx, recipientId, types, maxId, limit)
+}
+
+func (svc *notificationService) ListMergedLike(ctx context.Context, recipientId int64, offset, limit int) ([]domain.MergedLikeNotification, error) {
+	likes, err := svc.repo.FindMergedLike(ctx, recipientId, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	return likes, nil
 }
 
 func (svc *notificationService) ReadAll(ctx context.Context, recipientId int64, types ...domain.NotificationType) error {

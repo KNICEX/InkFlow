@@ -182,15 +182,14 @@ func (handler *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 		}
 	}()
 
-	authorProfile := userToUserVO(author)
+	authorProfile := userToVO(author)
 	authorProfile.Followers = followInfo.Followers
 	authorProfile.Following = followInfo.Following
 	authorProfile.Followed = followInfo.Followed
-	return ginx.SuccessWithData(InkVO{
-		InkBaseVO:   inkToInkBaseVO(inkDetail),
-		Author:      authorProfile,
-		Interactive: intrToVo(intr),
-	}), nil
+	res := inkToVO(inkDetail)
+	res.Author = authorProfile
+	res.Interactive = intrToVo(intr)
+	return ginx.SuccessWithData(res), nil
 }
 
 func (handler *InkHandler) DetailDraft(ctx *gin.Context) (ginx.Result, error) {
@@ -204,7 +203,7 @@ func (handler *InkHandler) DetailDraft(ctx *gin.Context) (ginx.Result, error) {
 	if err != nil {
 		return ginx.InternalError(), err
 	}
-	return ginx.SuccessWithData(inkToInkBaseVO(draft)), nil
+	return ginx.SuccessWithData(inkToVO(draft)), nil
 }
 
 func (handler *InkHandler) DetailPrivate(ctx *gin.Context) (ginx.Result, error) {
@@ -221,7 +220,7 @@ func (handler *InkHandler) DetailPrivate(ctx *gin.Context) (ginx.Result, error) 
 		}
 		return ginx.InternalError(), err
 	}
-	return ginx.SuccessWithData(inkToInkBaseVO(draft)), nil
+	return ginx.SuccessWithData(inkToVO(draft)), nil
 }
 
 func (handler *InkHandler) DetailRejected(ctx *gin.Context) (ginx.Result, error) {
@@ -238,7 +237,7 @@ func (handler *InkHandler) DetailRejected(ctx *gin.Context) (ginx.Result, error)
 		}
 		return ginx.InternalError(), err
 	}
-	return ginx.SuccessWithData(inkToInkBaseVO(draft)), nil
+	return ginx.SuccessWithData(inkToVO(draft)), nil
 }
 
 func (handler *InkHandler) Withdraw(ctx *gin.Context) (ginx.Result, error) {
@@ -313,11 +312,10 @@ func (handler *InkHandler) List(ctx *gin.Context, req ListReq) (ginx.Result, err
 		if !ok {
 			continue
 		}
-		res = append(res, InkVO{
-			InkBaseVO:   inkToInkBaseVO(item),
-			Author:      userToUserVO(author),
-			Interactive: intrToVo(intr),
-		})
+		inkVO := inkToVO(item)
+		inkVO.Author = userToVO(author)
+		inkVO.Interactive = intrToVo(intr)
+		res = append(res, inkVO)
 	}
 
 	return ginx.SuccessWithData(res), nil
@@ -367,9 +365,9 @@ func (handler *InkHandler) ListPending(ctx *gin.Context, req ListSelfReq) (ginx.
 	if err != nil {
 		return ginx.InternalError(), err
 	}
-	res := make([]InkBaseVO, 0, len(inks))
+	res := make([]InkVO, 0, len(inks))
 	for _, item := range inks {
-		res = append(res, inkToInkBaseVO(item))
+		res = append(res, inkToVO(item))
 	}
 	return ginx.SuccessWithData(res), nil
 }
@@ -380,9 +378,9 @@ func (handler *InkHandler) ListReviewRejected(ctx *gin.Context, req ListSelfReq)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
-	res := make([]InkBaseVO, 0, len(inks))
+	res := make([]InkVO, 0, len(inks))
 	for _, item := range inks {
-		res = append(res, inkToInkBaseVO(item))
+		res = append(res, inkToVO(item))
 	}
 	return ginx.SuccessWithData(res), nil
 }
@@ -393,9 +391,9 @@ func (handler *InkHandler) ListDraft(ctx *gin.Context, req ListDraftReq) (ginx.R
 	if err != nil {
 		return ginx.InternalError(), err
 	}
-	res := make([]InkBaseVO, 0, len(inks))
+	res := make([]InkVO, 0, len(inks))
 	for _, item := range inks {
-		res = append(res, inkToInkBaseVO(item))
+		res = append(res, inkToVO(item))
 	}
 	return ginx.SuccessWithData(res), nil
 }
@@ -438,10 +436,9 @@ func (handler *InkHandler) ListLiked(ctx *gin.Context, req ListMaxIdReq) (ginx.R
 		if !ok {
 			continue
 		}
-		res = append(res, InkVO{
-			InkBaseVO: inkToInkBaseVO(i),
-			Author:    userToUserVO(author),
-		})
+		inkVO := inkToVO(i)
+		inkVO.Author = userToVO(author)
+		res = append(res, inkVO)
 	}
 
 	return ginx.SuccessWithData(res), nil
@@ -484,10 +481,9 @@ func (handler *InkHandler) ListViewed(ctx *gin.Context, req ListMaxIdReq) (ginx.
 		if !ok {
 			continue
 		}
-		res = append(res, InkVO{
-			InkBaseVO: inkToInkBaseVO(i),
-			Author:    userToUserVO(author),
-		})
+		inkVO := inkToVO(i)
+		inkVO.Author = userToVO(author)
+		res = append(res, inkVO)
 	}
 	return ginx.SuccessWithData(res), nil
 }
@@ -497,9 +493,9 @@ func (handler *InkHandler) ListPrivate(ctx *gin.Context, req ListSelfReq) (ginx.
 	if err != nil {
 		return ginx.InternalError(), err
 	}
-	res := make([]InkBaseVO, 0, len(inks))
+	res := make([]InkVO, 0, len(inks))
 	for _, item := range inks {
-		res = append(res, inkToInkBaseVO(item))
+		res = append(res, inkToVO(item))
 	}
 	return ginx.SuccessWithData(res), nil
 }

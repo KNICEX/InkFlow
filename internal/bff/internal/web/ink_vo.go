@@ -16,8 +16,19 @@ type SaveInkReq struct {
 }
 
 type InkVO struct {
-	InkBaseVO
+	Id          int64         `json:"id"`
+	Title       string        `json:"title"`
 	Author      UserVO        `json:"author"`
+	Cover       string        `json:"cover"`
+	Summary     string        `json:"summary"`
+	Category    InkCategory   `json:"category"`
+	ContentType int           `json:"contentType"`
+	Tags        []string      `json:"tags"`
+	ContentHtml string        `json:"contentHtml"`
+	ContentMeta string        `json:"contentMeta"`
+	Status      int           `json:"status"`
+	CreatedAt   time.Time     `json:"createdAt"`
+	UpdatedAt   time.Time     `json:"updatedAt"`
 	Interactive InteractiveVO `json:"interactive"`
 }
 
@@ -26,23 +37,8 @@ type InkCategory struct {
 	Name string `json:"name"`
 }
 
-type InkBaseVO struct {
-	Id          int64       `json:"id"`
-	Title       string      `json:"title"`
-	Cover       string      `json:"cover"`
-	Summary     string      `json:"summary"`
-	Category    InkCategory `json:"category"`
-	ContentType int         `json:"contentType"`
-	Tags        []string    `json:"tags"`
-	ContentHtml string      `json:"contentHtml"`
-	ContentMeta string      `json:"contentMeta"`
-	Status      int         `json:"status"`
-	CreatedAt   time.Time   `json:"createdAt"`
-	UpdatedAt   time.Time   `json:"updatedAt"`
-}
-
-func inkToInkBaseVO(i ink.Ink) InkBaseVO {
-	return InkBaseVO{
+func inkToVO(i ink.Ink) InkVO {
+	return InkVO{
 		Id:          i.Id,
 		Title:       i.Title,
 		Summary:     i.Summary,

@@ -2,8 +2,11 @@ package dao
 
 import (
 	"context"
+	"fmt"
 	"github.com/KNICEX/InkFlow/pkg/snowflakex"
 	"gorm.io/gorm"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -22,11 +25,21 @@ type Notification struct {
 	Read             bool      `gorm:"index:created_read"`
 }
 
+type MergedLike struct {
+	UserIds     []int64
+	Total       int64
+	SubjectType string
+	SubjectId   int64
+	Read        bool
+	UpdatedAt   time.Time
+}
+
 type NotificationDAO interface {
 	Insert(ctx context.Context, no Notification) error
 	Delete(ctx context.Context, ids []int64, uid int64) error
 	DeleteAll(ctx context.Context, uid int64, notificationType ...string) error
 	FindByType(ctx context.Context, uid int64, notificationType []string, maxId int64, limit int) ([]Notification, error)
+	FindLikeMerge(ctx context.Context, uid int64, offset, limit int) ([]MergedLike, error)
 	ReadAll(ctx context.Context, userId int64, notificationType ...string) error
 	CountTotalUnread(ctx context.Context, userId int64) (int64, error)
 	CountUnreadByType(ctx context.Context, userId int64, types []string) (map[string]int64, error)
@@ -58,6 +71,87 @@ func (dao *GormNotificationDAO) FindByType(ctx context.Context, uid int64, notif
 		return nil, err
 	}
 	return notifications, nil
+}
+
+func (dao *GormNotificationDAO) FindLikeMerge(ctx context.Context, uid int64, offset, limit int) ([]MergedLike, error) {
+	// 按subject_type和subject_id分组，查出前n个用户id和总数量
+	type subject struct {
+		SubjectType string
+		SubjectId   int64
+		Total       int64
+		UpdatedAt   time.Time
+	}
+	var subjects []subject
+
+	err := dao.db.WithContext(ctx).Model(&Notification{}).
+		Select("subject_type, subject_id, count(*) as total, MAX(created_at) as updated_at").
+		Where("recipient_id = ? AND notification_type = ?", uid, "like").
+		Group("subject_type, subject_id").
+		Order("MAX(created_at) desc").
+		Offset(offset).Limit(limit).Find(&subjects).Error
+	if err != nil {
+		return nil, err
+	}
+	if len(subjects) == 0 {
+		return nil, nil
+	}
+
+	subjectInSql := strings.Builder{}
+	subjectInSql.WriteString("(")
+	for i, item := range subjects {
+		subjectInSql.WriteString(fmt.Sprintf("('%s', ", item.SubjectType))
+		subjectInSql.WriteString(strconv.FormatInt(item.SubjectId, 10))
+		subjectInSql.WriteString(")")
+		if i != len(subjects)-1 {
+			subjectInSql.WriteString(", ")
+		}
+	}
+	subjectInSql.WriteString(")")
+
+	var recentUsers []Notification
+	// 查出每个subject对应的前3个用户id
+	subQuery := dao.db.Model(&Notification{}).
+		Select("sender_id, subject_type, subject_id, read, created_at, "+
+			"RANK() OVER (PARTITION BY subject_type, subject_id ORDER BY created_at DESC)").
+		Where("recipient_id = ? AND notification_type = ?", uid, "like").
+		Where("(subject_type, subject_id) IN " + subjectInSql.String())
+
+	err = dao.db.WithContext(ctx).Table("(?) as t", subQuery).
+		Select("sender_id, subject_type, subject_id, read").
+		Where("rank <= 3").
+		Order("created_at desc").
+		Find(&recentUsers).Error
+	if err != nil {
+		return nil, err
+	}
+	subjectUserMap := make(map[string][]Notification)
+	for _, item := range recentUsers {
+		key := fmt.Sprintf("%s_%d", item.SubjectType, item.SubjectId)
+		subjectUserMap[key] = append(subjectUserMap[key], item)
+	}
+
+	res := make([]MergedLike, 0, len(subjects))
+	for _, item := range subjects {
+		ml := MergedLike{
+			SubjectType: item.SubjectType,
+			SubjectId:   item.SubjectId,
+			Total:       item.Total,
+			Read:        true,
+			UpdatedAt:   item.UpdatedAt,
+		}
+		key := fmt.Sprintf("%s_%d", item.SubjectType, item.SubjectId)
+		if users, ok := subjectUserMap[key]; ok {
+			ml.UserIds = make([]int64, 0, len(users))
+			for _, user := range users {
+				if !user.Read {
+					ml.Read = false
+				}
+				ml.UserIds = append(ml.UserIds, user.SenderId)
+			}
+		}
+		res = append(res, ml)
+	}
+	return res, err
 }
 
 func (dao *GormNotificationDAO) ReadAll(ctx context.Context, userId int64, notificationType ...string) error {

@@ -13,6 +13,7 @@ type NotificationRepo interface {
 	DelNotification(ctx context.Context, ids []int64, recipientId int64) error
 	DelByType(ctx context.Context, recipientId int64, types ...domain.NotificationType) error
 	FindByType(ctx context.Context, recipientId int64, types []domain.NotificationType, maxId int64, limit int) ([]domain.Notification, error)
+	FindMergedLike(ctx context.Context, recipient int64, offset, limit int) ([]domain.MergedLikeNotification, error)
 	CountUnreadByType(ctx context.Context, recipientId int64, types []domain.NotificationType) (map[domain.NotificationType]int64, error)
 	CountTotalUnread(ctx context.Context, recipientId int64) (int64, error)
 	MarkAllRead(ctx context.Context, recipientId int64, types ...domain.NotificationType) error
@@ -58,6 +59,23 @@ func (repo *NoCacheNotificationRepo) FindByType(ctx context.Context, recipientId
 	return lo.Map(notifications, func(item dao.Notification, index int) domain.Notification {
 		domainNotification, _ := repo.toDomain(item)
 		return domainNotification
+	}), nil
+}
+
+func (repo *NoCacheNotificationRepo) FindMergedLike(ctx context.Context, recipient int64, offset, limit int) ([]domain.MergedLikeNotification, error) {
+	ml, err := repo.dao.FindLikeMerge(ctx, recipient, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	return lo.Map(ml, func(item dao.MergedLike, index int) domain.MergedLikeNotification {
+		return domain.MergedLikeNotification{
+			UserIds:     item.UserIds,
+			Total:       item.Total,
+			SubjectType: domain.SubjectTypeFromStr(item.SubjectType),
+			SubjectId:   item.SubjectId,
+			Read:        item.Read,
+			UpdatedAt:   item.UpdatedAt,
+		}
 	}), nil
 }
 
