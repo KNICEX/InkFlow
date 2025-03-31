@@ -18,10 +18,21 @@ type SearchHandler struct {
 	l         logx.Logger
 }
 
+func NewSearchHandler(auth middleware.Authentication, svc search.Service, followSvc relation.FollowService, l logx.Logger) *SearchHandler {
+	return &SearchHandler{
+		auth:      auth,
+		svc:       svc,
+		followSvc: followSvc,
+		l:         l,
+	}
+}
+
 func (h *SearchHandler) RegisterRoutes(server *gin.RouterGroup) {
 	searchGroup := server.Group("/search")
 	{
 		searchGroup.GET("/user", ginx.WrapBody(h.l, h.SearchUser))
+		searchGroup.GET("/ink", ginx.WrapBody(h.l, h.SearchInK))
+		searchGroup.GET("/comment", ginx.WrapBody(h.l, h.SearchComment))
 	}
 }
 

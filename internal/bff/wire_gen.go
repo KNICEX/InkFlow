@@ -9,9 +9,12 @@ package bff
 import (
 	"github.com/KNICEX/InkFlow/internal/bff/internal/web"
 	"github.com/KNICEX/InkFlow/internal/code"
+	"github.com/KNICEX/InkFlow/internal/comment"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/interactive"
+	"github.com/KNICEX/InkFlow/internal/notification"
 	"github.com/KNICEX/InkFlow/internal/relation"
+	"github.com/KNICEX/InkFlow/internal/search"
 	"github.com/KNICEX/InkFlow/internal/user"
 
 	"github.com/KNICEX/InkFlow/pkg/ginx"
@@ -23,17 +26,24 @@ import (
 
 // Injectors from wire.go:
 
-func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service, followService relation.FollowService, interactiveSvc interactive.Service, workflowCli client.Client, jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
+func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
+	followService relation.FollowService, interactiveSvc interactive.Service, commentSvc comment.Service,
+	notificationSvc notification.Service, searchSvc search.Service, workflowCli client.Client,
+	jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
 	userHandler := web.NewUserHandler(userSvc, codeSvc, followService, jwtHandler, auth, log)
 	inkHandler := web.NewInkHandler(inkService, userSvc, interactiveSvc, followService, auth, workflowCli, log)
 	cloudinary := initCloudinary()
 	fileHandler := web.NewFileHandler(cloudinary, auth, log)
-	v := InitHandlers(userHandler, inkHandler, fileHandler)
+	commentHandler := web.NewCommentHandler(commentSvc, userSvc, auth, log)
+	notificationHandler := web.NewNotificationHandler(notificationSvc, userSvc, inkService, commentSvc, auth, log)
+	searchHandler := web.NewSearchHandler(auth, searchSvc, followService, log)
+	v := InitHandlers(userHandler, inkHandler, fileHandler, commentHandler, notificationHandler, searchHandler)
 	return v
 }
 
 // wire.go:
 
-func InitHandlers(uh *web.UserHandler, ih *web.InkHandler, fh *web.FileHandler) []ginx.Handler {
-	return []ginx.Handler{uh, ih, fh}
+func InitHandlers(uh *web.UserHandler, ih *web.InkHandler, fh *web.FileHandler,
+	ch *web.CommentHandler, nh *web.NotificationHandler, sh *web.SearchHandler) []ginx.Handler {
+	return []ginx.Handler{uh, ih, fh, ch, nh, sh}
 }

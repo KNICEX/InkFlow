@@ -10,6 +10,7 @@ import (
 	"github.com/KNICEX/InkFlow/internal/ai"
 	"github.com/KNICEX/InkFlow/internal/bff"
 	"github.com/KNICEX/InkFlow/internal/code"
+	"github.com/KNICEX/InkFlow/internal/comment"
 	"github.com/KNICEX/InkFlow/internal/email"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/interactive"
@@ -30,29 +31,35 @@ func InitApp() *App {
 	db := InitDB(logger)
 	universalClient := InitRedisUniversalClient()
 	cmdable := InitRedisCmdable(universalClient)
-	userService := user.InitUserService(db, cmdable, logger)
+	client := InitKafka()
+	syncProducer := InitSyncProducer(client)
+	userService := user.InitUserService(db, cmdable, syncProducer, logger)
 	service := email.InitMemoryService()
 	serviceService := code.InitEmailCodeService(cmdable, service)
 	inkService := ink.InitInkService(cmdable, db, logger)
-	client := InitKafka()
-	syncProducer := InitSyncProducer(client)
 	followService := relation.InitFollowService(cmdable, db, syncProducer, logger)
 	interactiveService := interactive.InitInteractiveService(cmdable, syncProducer, db, logger)
+	commentService := comment.InitCommentService(db, cmdable, inkService, syncProducer, logger)
+	notificationService := notification.InitNotificationService(db)
+	serviceManager := InitMeiliSearch()
+	searchService := search.InitSearchService(serviceManager)
 	clientClient := InitTemporalClient()
 	handler := InitJwtHandler(cmdable)
 	authentication := InitAuthMiddleware(handler, logger)
-	v := bff.InitBff(userService, serviceService, inkService, followService, interactiveService, clientClient, handler, authentication, logger)
+	v := bff.InitBff(userService, serviceService, inkService, followService, interactiveService, commentService, notificationService, searchService, clientClient, handler, authentication, logger)
 	engine := InitGin(v, logger)
 	inkViewConsumer := interactive.InitInteractiveInkReadConsumer(client, logger)
 	genaiClient := InitGeminiClient()
 	llmService := ai.InitLLMService(genaiClient)
 	reviewConsumer := review.InitReviewConsumer(clientClient, client, llmService, logger)
-	v2 := InitConsumers(inkViewConsumer, reviewConsumer)
-	asyncService := review.InitAsyncService(syncProducer, logger)
-	serviceManager := InitMeiliSearch()
 	syncService := search.InitSyncService(serviceManager)
-	recommendSyncService := recommend.InitSyncService()
-	notificationService := notification.InitNotificationService()
+	syncConsumer := search.InitSyncConsumer(syncService, client, logger)
+	notificationConsumer := notification.InitNotificationConsumer(client, notificationService, inkService, commentService, logger)
+	gorseClient := InitGorseCli()
+	recommendSyncService := recommend.InitSyncService(gorseClient)
+	eventSyncConsumer := recommend.InitSyncConsumer(client, recommendSyncService, logger)
+	v2 := InitConsumers(inkViewConsumer, reviewConsumer, syncConsumer, notificationConsumer, eventSyncConsumer)
+	asyncService := review.InitAsyncService(syncProducer, logger)
 	activities := inkpub.NewActivities(inkService, interactiveService, asyncService, syncService, recommendSyncService, notificationService)
 	inkPubWorker := InitInkPubWorker(clientClient, activities)
 	v3 := InitWorkers(inkPubWorker)
@@ -76,6 +83,7 @@ var thirdPartSet = wire.NewSet(
 	InitRedisCmdable,
 	InitGeminiClient,
 	InitTemporalClient,
+	InitGorseCli,
 )
 
 var webSet = wire.NewSet(

@@ -1,6 +1,8 @@
 package user
 
 import (
+	"github.com/IBM/sarama"
+	"github.com/KNICEX/InkFlow/internal/user/internal/event"
 	"github.com/KNICEX/InkFlow/internal/user/internal/repo"
 	"github.com/KNICEX/InkFlow/internal/user/internal/repo/cache"
 	"github.com/KNICEX/InkFlow/internal/user/internal/repo/dao"
@@ -13,7 +15,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func InitUserService(db *gorm.DB, cmd redis.Cmdable, l logx.Logger) Service {
+func InitUserService(db *gorm.DB, cmd redis.Cmdable, producer sarama.SyncProducer, l logx.Logger) Service {
 	//wire.Build(
 	//	dao.NewGormUserDAO,
 	//	repo.NewCachedUserRepo,
@@ -26,7 +28,8 @@ func InitUserService(db *gorm.DB, cmd redis.Cmdable, l logx.Logger) Service {
 	d := dao.NewGormUserDAO(db, node)
 	c := cache.NewRedisUserCache(cmd)
 	r := repo.NewCachedUserRepo(d, c, l)
-	return service.NewUserService(r, l)
+	userProducer := event.NewKafkaUserProducer(producer)
+	return service.NewUserService(r, userProducer, l)
 }
 
 func InitGithubOAuth2Service(l logx.Logger) OAuth2Service[GithubInfo] {

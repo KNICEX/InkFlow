@@ -36,7 +36,7 @@ func NewFollowHandler(svc service.NotificationService) Handler {
 }
 
 func (f *FollowHandler) Topic() string {
-	return topicFollowEvent
+	return topicFollow
 }
 
 func (f *FollowHandler) HandleMessage(ctx context.Context, msg *sarama.ConsumerMessage) error {
@@ -44,7 +44,7 @@ func (f *FollowHandler) HandleMessage(ctx context.Context, msg *sarama.ConsumerM
 	if err := json.Unmarshal(msg.Value, &evt); err != nil {
 		return err
 	}
-	return f.svc.SendNotification(context.Background(), domain.Notification{
+	return f.svc.SendNotification(ctx, domain.Notification{
 		RecipientId:      evt.FolloweeId,
 		SenderId:         evt.FollowerId,
 		NotificationType: domain.NotificationTypeFollow,
@@ -74,6 +74,15 @@ func (r *ReplyHandler) Topic() string {
 	return topicCommentReply
 }
 
+func (r *ReplyHandler) bizToSubjectType(biz string) (domain.SubjectType, error) {
+	switch biz {
+	case bizInk:
+		return domain.SubjectTypeInk, nil
+	default:
+		return "", fmt.Errorf("%w: %s", ErrUnknownBiz, biz)
+	}
+}
+
 func (r *ReplyHandler) HandleMessage(ctx context.Context, msg *sarama.ConsumerMessage) error {
 	var evt ReplyEvent
 	if err := json.Unmarshal(msg.Value, &evt); err != nil {
@@ -91,11 +100,16 @@ func (r *ReplyHandler) HandleMessage(ctx context.Context, msg *sarama.ConsumerMe
 			return nil
 		}
 
+		subjectType, err := r.bizToSubjectType(evt.Biz)
+		if err != nil {
+			return err
+		}
+
 		return r.svc.SendNotification(ctx, domain.Notification{
 			RecipientId:      parent.Commentator.Id,
 			SenderId:         evt.CommentatorId,
 			NotificationType: domain.NotificationTypeReply,
-			SubjectType:      domain.SubjectTypeComment,
+			SubjectType:      subjectType,
 			SubjectId:        evt.BizId,
 			Content: domain.ReplyContent{
 				CommentId: evt.CommentId,
@@ -112,32 +126,38 @@ func (r *ReplyHandler) HandleMessage(ctx context.Context, msg *sarama.ConsumerMe
 			CreatedAt: evt.CreatedAt,
 		})
 	} else {
-		switch evt.Biz {
-		case bizInk:
-			inkInfo, err := r.inkSvc.FindById(ctx, evt.BizId)
-			if err != nil {
-				return err
-			}
-
-			if inkInfo.Author.Id == evt.CommentatorId {
-				// 自己评论自己的
-				return nil
-			}
-
-			return r.svc.SendNotification(ctx, domain.Notification{
-				RecipientId:      inkInfo.Author.Id,
-				SenderId:         evt.CommentatorId,
-				NotificationType: domain.NotificationTypeReply,
-				SubjectType:      domain.SubjectTypeInk,
-				SubjectId:        evt.BizId,
-				Content:          nil,
-				Read:             false,
-				CreatedAt:        evt.CreatedAt,
-			})
-			// TODO 更多类型
-		default:
-			return fmt.Errorf("%w: %s", ErrUnknownBiz, evt.Biz)
+		// 一级回复
+		inkInfo, err := r.inkSvc.FindById(ctx, evt.BizId)
+		if err != nil {
+			return err
 		}
+
+		if inkInfo.Author.Id == evt.CommentatorId {
+			// 自己评论自己的
+			return nil
+		}
+
+		subjectType, err := r.bizToSubjectType(evt.Biz)
+		if err != nil {
+			return err
+		}
+
+		return r.svc.SendNotification(ctx, domain.Notification{
+			RecipientId:      inkInfo.Author.Id,
+			SenderId:         evt.CommentatorId,
+			NotificationType: domain.NotificationTypeReply,
+			SubjectType:      subjectType,
+			SubjectId:        evt.BizId,
+			Content: domain.ReplyContent{
+				CommentId: evt.CommentId,
+				SourceContent: domain.ReplyPayload{
+					Content: evt.Payload.Content,
+					Images:  evt.Payload.Images,
+				},
+			},
+			Read:      false,
+			CreatedAt: evt.CreatedAt,
+		})
 	}
 }
 

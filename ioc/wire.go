@@ -6,6 +6,7 @@ import (
 	"github.com/KNICEX/InkFlow/internal/ai"
 	"github.com/KNICEX/InkFlow/internal/bff"
 	"github.com/KNICEX/InkFlow/internal/code"
+	"github.com/KNICEX/InkFlow/internal/comment"
 	"github.com/KNICEX/InkFlow/internal/email"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/interactive"
@@ -29,6 +30,7 @@ var thirdPartSet = wire.NewSet(
 	InitRedisCmdable,
 	InitGeminiClient,
 	InitTemporalClient,
+	InitGorseCli,
 )
 
 var webSet = wire.NewSet(
@@ -45,17 +47,28 @@ func InitApp() *App {
 		code.InitEmailCodeService,
 		ink.InitInkService,
 		relation.InitFollowService,
+
 		interactive.InitInteractiveService,
 		interactive.InitInteractiveInkReadConsumer,
+
 		notification.InitNotificationService,
+		notification.InitNotificationConsumer,
+
 		search.InitSyncService,
+		search.InitSearchService,
+		search.InitSyncConsumer,
+
 		recommend.InitSyncService,
+		recommend.InitSyncConsumer,
+
+		comment.InitCommentService,
 
 		inkpub.NewActivities,
 
 		ai.InitLLMService,
 		review.InitAsyncService,
 		review.InitReviewConsumer,
+
 		InitInkPubWorker,
 
 		bff.InitBff,

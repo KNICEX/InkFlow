@@ -31,7 +31,9 @@ type followService struct {
 
 func NewFollowService(repo repo.FollowRepo, producer event.FollowProducer, l logx.Logger) FollowService {
 	return &followService{
-		repo: repo,
+		repo:     repo,
+		producer: producer,
+		l:        l,
 	}
 }
 

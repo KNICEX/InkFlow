@@ -25,7 +25,7 @@ func notificationToVO(n notification.Notification) NotificationVO {
 		SubjectId:        n.SubjectId,
 		Subject:          nil,
 		NotificationType: n.NotificationType.ToString(),
-		Content:          nil,
+		Content:          n.Content,
 		Read:             n.Read,
 		CreatedAt:        n.CreatedAt,
 	}

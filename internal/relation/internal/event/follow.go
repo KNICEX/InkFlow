@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const topicFollowEvt = "user-follow-event"
+const topicFollow = "user-follow"
 
 type FollowEvt struct {
 	FollowerId int64     `json:"followerId"`
@@ -35,7 +35,7 @@ func (p *KafkaFollowProducer) Produce(ctx context.Context, evt FollowEvt) error 
 		return err
 	}
 	_, _, err = p.producer.SendMessage(&sarama.ProducerMessage{
-		Topic: topicFollowEvt,
+		Topic: topicFollow,
 		Value: sarama.ByteEncoder(data),
 	})
 	return err

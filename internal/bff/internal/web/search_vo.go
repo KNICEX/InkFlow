@@ -3,24 +3,22 @@ package web
 import "github.com/KNICEX/InkFlow/internal/search"
 
 type SearchReq struct {
-	Keyword string `json:"keyword" binding:"required"`
-	Type    string `json:"type"`
-	Offset  int    `json:"offset"`
-	Limit   int    `json:"limit"`
+	Keyword string `json:"keyword" form:"keyword" binding:"required"`
+	Type    string `json:"type" form:"type"`
+	Offset  int    `json:"offset" form:"offset"`
+	Limit   int    `json:"limit" form:"limit"`
 }
 
 func searchInkToInkVO(ink search.Ink) InkVO {
 	return InkVO{
-		InkBaseVO: InkBaseVO{
-			Id:          ink.Id,
-			Title:       ink.Title,
-			Cover:       ink.Cover,
-			ContentHtml: ink.Content,
-			CreatedAt:   ink.CreatedAt,
-			UpdatedAt:   ink.UpdatedAt,
-			Tags:        ink.Tags,
-		},
-		Author: searchUserToUserVO(ink.Author),
+		Id:          ink.Id,
+		Title:       ink.Title,
+		Cover:       ink.Cover,
+		Author:      searchUserToUserVO(ink.Author),
+		ContentHtml: ink.Content,
+		CreatedAt:   ink.CreatedAt,
+		UpdatedAt:   ink.UpdatedAt,
+		Tags:        ink.Tags,
 	}
 }
 

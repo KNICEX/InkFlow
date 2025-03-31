@@ -18,10 +18,8 @@ func NewSyncService(cli *client.GorseClient) service.SyncService {
 }
 
 func (s SyncService) InputUser(ctx context.Context, user domain.User) error {
-	_, err := s.cli.InsertUsers(ctx, []client.User{
-		{
-			UserId: strconv.FormatInt(user.Id, 10),
-		},
+	_, err := s.cli.InsertUser(ctx, client.User{
+		UserId: strconv.FormatInt(user.Id, 10),
 	})
 	return err
 }

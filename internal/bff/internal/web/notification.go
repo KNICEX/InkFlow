@@ -2,12 +2,14 @@ package web
 
 import (
 	"context"
+	"fmt"
 	"github.com/KNICEX/InkFlow/internal/comment"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/notification"
 	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/KNICEX/InkFlow/pkg/ginx"
 	"github.com/KNICEX/InkFlow/pkg/ginx/jwt"
+	"github.com/KNICEX/InkFlow/pkg/ginx/middleware"
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
@@ -20,14 +22,31 @@ type NotificationHandler struct {
 	userSvc    user.Service
 	inkSvc     ink.Service
 	commentSvc comment.Service
-	l          logx.Logger
+
+	auth middleware.Authentication
+	l    logx.Logger
+}
+
+func NewNotificationHandler(svc notification.Service, userSvc user.Service, inkSvc ink.Service,
+	commentSvc comment.Service, auth middleware.Authentication, l logx.Logger) *NotificationHandler {
+	return &NotificationHandler{
+		svc:        svc,
+		userSvc:    userSvc,
+		inkSvc:     inkSvc,
+		commentSvc: commentSvc,
+		auth:       auth,
+		l:          l,
+	}
 }
 
 func (handler *NotificationHandler) RegisterRoutes(server *gin.RouterGroup) {
-	notificationGroup := server.Group("/notification")
+	notificationGroup := server.Group("/notification", handler.auth.CheckLogin())
 	{
 		notificationGroup.GET("/like", ginx.WrapBody(handler.l, handler.ListMergedLike))
+		notificationGroup.GET("/mention", ginx.WrapBody(handler.l, handler.ListMention))
 		notificationGroup.GET("/reply", ginx.WrapBody(handler.l, handler.ListReply))
+		notificationGroup.GET("/follow", ginx.WrapBody(handler.l, handler.ListFollow))
+		notificationGroup.GET("/system", ginx.WrapBody(handler.l, handler.ListSystem))
 	}
 }
 
@@ -115,8 +134,7 @@ func (handler *NotificationHandler) findSubjectsVO(ctx context.Context, subjectI
 				return nil
 			})
 		default:
-			handler.l.Error("unknown like subject type",
-				logx.String("type", subjectType.ToString()))
+			return nil, fmt.Errorf("unsupported subject type: %s", subjectType)
 		}
 	}
 	if err := eg.Wait(); err != nil {
@@ -169,4 +187,109 @@ func (handler *NotificationHandler) ListReply(ctx *gin.Context, req MaxIdPagedRe
 	}
 
 	return ginx.SuccessWithData(notificationsVO), nil
+}
+
+func (handler *NotificationHandler) ListFollow(ctx *gin.Context, req MaxIdPagedReq) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	notifications, err := handler.svc.ListNotification(ctx, uc.UserId, []notification.Type{notification.TypeFollow}, req.MaxId, req.Limit)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+
+	uids := lo.UniqMap(notifications, func(item notification.Notification, index int) int64 {
+		return item.SenderId
+	})
+
+	users, err := handler.userSvc.FindByIds(ctx, uids)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+
+	followVOs := make([]NotificationVO, 0, len(notifications))
+	for _, no := range notifications {
+		vo := notificationToVO(no)
+		if u, ok := users[no.SenderId]; ok {
+			userVO := userToVO(u)
+			vo.User = &userVO
+		}
+		followVOs = append(followVOs, vo)
+	}
+
+	return ginx.SuccessWithData(followVOs), nil
+}
+
+func (handler *NotificationHandler) ListMention(ctx *gin.Context, req MaxIdPagedReq) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	notifications, err := handler.svc.ListNotification(ctx, uc.UserId, []notification.Type{notification.TypeMention}, req.MaxId, req.Limit)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+
+	uids := lo.UniqMap(notifications, func(item notification.Notification, index int) int64 {
+		return item.SenderId
+	})
+
+	subjectIds := handler.subjectIds(notifications)
+
+	var users map[int64]user.User
+	var subjects map[notification.SubjectType]map[int64]any
+	eg := errgroup.Group{}
+	eg.Go(func() error {
+		var er error
+		users, er = handler.userSvc.FindByIds(ctx, uids)
+		return er
+	})
+	eg.Go(func() error {
+		var er error
+		subjects, er = handler.findSubjectsVO(ctx, subjectIds)
+		return er
+	})
+	if err = eg.Wait(); err != nil {
+		return ginx.InternalError(), err
+	}
+
+	mentionsVOs := make([]NotificationVO, 0, len(notifications))
+	for _, no := range notifications {
+		vo := notificationToVO(no)
+		if u, ok := users[no.SenderId]; ok {
+			userVO := userToVO(u)
+			vo.User = &userVO
+		}
+		vo.Subject = subjects[no.SubjectType][no.SubjectId]
+		mentionsVOs = append(mentionsVOs, vo)
+	}
+
+	return ginx.SuccessWithData(mentionsVOs), nil
+}
+
+func (handler *NotificationHandler) ListSystem(ctx *gin.Context, req MaxIdPagedReq) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	notifications, err := handler.svc.ListNotification(ctx, uc.UserId, []notification.Type{notification.TypeSystem}, req.MaxId, req.Limit)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+
+	subjectIds := handler.subjectIds(notifications)
+
+	subjects, err := handler.findSubjectsVO(ctx, subjectIds)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+
+	systemVOs := make([]NotificationVO, 0, len(notifications))
+	for _, no := range notifications {
+		vo := notificationToVO(no)
+		vo.Subject = subjects[no.SubjectType][no.SubjectId]
+		systemVOs = append(systemVOs, vo)
+	}
+
+	return ginx.SuccessWithData(systemVOs), nil
+}
+
+func (handler *NotificationHandler) subjectIds(nos []notification.Notification) map[notification.SubjectType][]int64 {
+	subjectIds := make(map[notification.SubjectType][]int64)
+	for _, no := range nos {
+		subjectIds[no.SubjectType] = append(subjectIds[no.SubjectType], no.SubjectId)
+	}
+	return subjectIds
 }

@@ -37,7 +37,7 @@ func InitNotificationService(db *gorm.DB) Service {
 	return nil
 }
 
-func InitNotificationConsumer(cli sarama.Client, svc Service, inkSvc ink.Service, commentSvc comment.Service, l logx.Logger) *event.NotificationConsumer {
+func InitNotificationConsumer(cli sarama.Client, svc Service, inkSvc ink.Service, commentSvc comment.Service, l logx.Logger) *SyncConsumer {
 	consumer := event.NewNotificationConsumer(cli, svc, l)
 	userFollowHandler := event.NewFollowHandler(svc)
 	commentReplyHandler := event.NewReplyHandler(svc, commentSvc, inkSvc)

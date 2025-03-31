@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/KNICEX/InkFlow/internal/user/internal/domain"
+	"github.com/KNICEX/InkFlow/internal/user/internal/event"
 	"github.com/KNICEX/InkFlow/internal/user/internal/repo"
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/KNICEX/InkFlow/pkg/uuidx"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/crypto/bcrypt"
+	"time"
 )
 
 var (
@@ -38,15 +40,17 @@ type UserService interface {
 }
 
 type userService struct {
-	repo   repo.UserRepo
-	l      logx.Logger
-	tracer trace.Tracer
+	repo     repo.UserRepo
+	l        logx.Logger
+	tracer   trace.Tracer
+	producer event.UserProducer
 }
 
-func NewUserService(repo repo.UserRepo, l logx.Logger) UserService {
+func NewUserService(repo repo.UserRepo, producer event.UserProducer, l logx.Logger) UserService {
 	return &userService{
-		repo: repo,
-		l:    l,
+		repo:     repo,
+		producer: producer,
+		l:        l,
 	}
 }
 
@@ -100,7 +104,32 @@ func (svc *userService) LoginAccountPwd(ctx context.Context, accountName string,
 	return user, nil
 }
 func (svc *userService) UpdateNonSensitiveInfo(ctx context.Context, user domain.User) error {
-	return svc.repo.UpdateNonZeroFields(ctx, user)
+	user.Account = ""
+	err := svc.repo.UpdateNonZeroFields(ctx, user)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		// TODO 可能需要重新查询出最新的用户信息
+		er := svc.producer.ProduceUpdate(ctx, event.UserUpdateEvent{
+			UserId:    user.Id,
+			Account:   user.Account,
+			Username:  user.Username,
+			Avatar:    user.Avatar,
+			Banner:    user.Banner,
+			Links:     user.Links,
+			AboutMe:   user.AboutMe,
+			Birthday:  user.Birthday,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+		})
+		if er != nil {
+			svc.l.Error("failed to produce user update event", logx.Error(err))
+		}
+	}()
+
+	return nil
 }
 
 func (svc *userService) FindById(ctx context.Context, uid int64) (domain.User, error) {
@@ -149,6 +178,18 @@ func (svc *userService) Create(ctx context.Context, user domain.User) (domain.Us
 	if user.Id, err = svc.repo.Create(ctx, user); err != nil {
 		return domain.User{}, err
 	}
+	go func() {
+		er := svc.producer.ProduceCreate(ctx, event.UserCreateEvent{
+			UserId:    user.Id,
+			Account:   user.Account,
+			Username:  user.Username,
+			Avatar:    user.Avatar,
+			CreatedAt: time.Now(),
+		})
+		if er != nil {
+			svc.l.Error("failed to produce user create event", logx.Error(err))
+		}
+	}()
 	return user, nil
 }
 

@@ -2,10 +2,12 @@ package notification
 
 import (
 	"github.com/KNICEX/InkFlow/internal/notification/internal/domain"
+	"github.com/KNICEX/InkFlow/internal/notification/internal/event"
 	"github.com/KNICEX/InkFlow/internal/notification/internal/service"
 )
 
 type Service = service.NotificationService
+type SyncConsumer = event.NotificationConsumer
 
 type Notification = domain.Notification
 type MergedLike = domain.MergedLikeNotification

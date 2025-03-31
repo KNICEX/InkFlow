@@ -6,11 +6,12 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/KNICEX/InkFlow/internal/notification/internal/service"
 	"github.com/KNICEX/InkFlow/pkg/logx"
+	"github.com/KNICEX/InkFlow/pkg/saramax"
 )
 
 const (
 	notificationGroup = "notification-group"
-	topicFollowEvent  = "user-follow-event"
+	topicFollow       = "user-follow"
 	topicCommentReply = "comment-reply"
 	topicCommentLike  = "comment-like"
 	topicInkLike      = "ink-like"
@@ -48,9 +49,11 @@ func (c *NotificationConsumer) Start() error {
 		return err
 	}
 	go func() {
-		err = cg.Consume(context.Background(), []string{topicFollowEvent}, c)
+		err = cg.Consume(context.Background(),
+			[]string{topicFollow, topicCommentReply, topicCommentLike, topicInkLike},
+			saramax.NewRawHandler(c.l, c))
 		if err != nil {
-			c.l.Warn("follow notification consumer quit...", logx.Error(err))
+			c.l.Warn("notification consumer quit...", logx.Error(err))
 		}
 	}()
 	return nil
@@ -65,16 +68,4 @@ func (c *NotificationConsumer) Consume(msg *sarama.ConsumerMessage) error {
 		return nil
 	}
 
-}
-
-func (c *NotificationConsumer) Setup(session sarama.ConsumerGroupSession) error {
-	return nil
-}
-
-func (c *NotificationConsumer) Cleanup(session sarama.ConsumerGroupSession) error {
-	return nil
-}
-
-func (c *NotificationConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	return nil
 }
