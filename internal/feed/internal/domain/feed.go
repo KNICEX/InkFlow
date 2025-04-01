@@ -5,17 +5,15 @@ import "time"
 type Feed struct {
 	Id        int64
 	UserId    int64
-	FeedType  FeedType
-	FeedId    int64
-	Content   string
+	Biz       string
+	BizId     int64
+	Content   any
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
-type FeedType = string
-
 const (
-	FeedTypeInk FeedType = "ink"
+	BizInk = "ink"
 )
 
 type FeedInk struct {

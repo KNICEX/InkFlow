@@ -28,8 +28,6 @@ const (
 	registerJwtKey = "register"
 )
 
-var _ ginx.Handler = (*UserHandler)(nil)
-
 type UserHandler struct {
 	svc           user.Service
 	codeSvc       code.Service

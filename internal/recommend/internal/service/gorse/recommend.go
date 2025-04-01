@@ -20,6 +20,15 @@ type RecommendService struct {
 	intrSvc   interactive.Service
 }
 
+func NewRecommendService(cli *client.GorseClient, followSvc relation.FollowService, intrSvc interactive.Service, l logx.Logger) *RecommendService {
+	return &RecommendService{
+		cli:       cli,
+		l:         l,
+		followSvc: followSvc,
+		intrSvc:   intrSvc,
+	}
+}
+
 func (svc *RecommendService) FindSimilarInk(ctx context.Context, inkId int64, offset, limit int) ([]int64, error) {
 	// TODO 这个sdk没有实现offset
 	scores, err := svc.cli.GetNeighbors(ctx, strconv.FormatInt(inkId, 10), limit)

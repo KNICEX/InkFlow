@@ -7,11 +7,13 @@
 package ioc
 
 import (
+	"github.com/KNICEX/InkFlow/internal/action"
 	"github.com/KNICEX/InkFlow/internal/ai"
 	"github.com/KNICEX/InkFlow/internal/bff"
 	"github.com/KNICEX/InkFlow/internal/code"
 	"github.com/KNICEX/InkFlow/internal/comment"
 	"github.com/KNICEX/InkFlow/internal/email"
+	"github.com/KNICEX/InkFlow/internal/feed"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/interactive"
 	"github.com/KNICEX/InkFlow/internal/notification"
@@ -41,12 +43,16 @@ func InitApp() *App {
 	interactiveService := interactive.InitInteractiveService(cmdable, syncProducer, db, logger)
 	commentService := comment.InitCommentService(db, cmdable, inkService, syncProducer, logger)
 	notificationService := notification.InitNotificationService(db)
+	gorseClient := InitGorseCli()
+	recommendService := recommend.InitService(gorseClient, followService, interactiveService, logger)
+	actionService := action.InitService()
+	feedService := feed.InitService(db, followService, actionService, logger)
 	serviceManager := InitMeiliSearch()
 	searchService := search.InitSearchService(serviceManager)
 	clientClient := InitTemporalClient()
 	handler := InitJwtHandler(cmdable)
 	authentication := InitAuthMiddleware(handler, logger)
-	v := bff.InitBff(userService, serviceService, inkService, followService, interactiveService, commentService, notificationService, searchService, clientClient, handler, authentication, logger)
+	v := bff.InitBff(userService, serviceService, inkService, followService, interactiveService, commentService, notificationService, recommendService, feedService, searchService, clientClient, handler, authentication, logger)
 	engine := InitGin(v, logger)
 	inkViewConsumer := interactive.InitInteractiveInkReadConsumer(client, logger)
 	genaiClient := InitGeminiClient()
@@ -55,12 +61,11 @@ func InitApp() *App {
 	syncService := search.InitSyncService(serviceManager)
 	syncConsumer := search.InitSyncConsumer(syncService, client, logger)
 	notificationConsumer := notification.InitNotificationConsumer(client, notificationService, inkService, commentService, logger)
-	gorseClient := InitGorseCli()
 	recommendSyncService := recommend.InitSyncService(gorseClient)
 	eventSyncConsumer := recommend.InitSyncConsumer(client, recommendSyncService, logger)
 	v2 := InitConsumers(inkViewConsumer, reviewConsumer, syncConsumer, notificationConsumer, eventSyncConsumer)
 	asyncService := review.InitAsyncService(syncProducer, logger)
-	activities := inkpub.NewActivities(inkService, interactiveService, asyncService, syncService, recommendSyncService, notificationService)
+	activities := inkpub.NewActivities(inkService, interactiveService, asyncService, syncService, recommendSyncService, notificationService, feedService)
 	inkPubWorker := InitInkPubWorker(clientClient, activities)
 	v3 := InitWorkers(inkPubWorker)
 	app := &App{

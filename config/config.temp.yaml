@@ -9,7 +9,7 @@ redis:
 #  sniff: false
 
 meilisearch:
-  addr: 127.0.0.1:7700
+  addr: http://127.0.0.1:7700
 
 email:
   smtp:

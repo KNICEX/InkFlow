@@ -10,11 +10,11 @@ import (
 
 type PullFeed struct {
 	Id        int64
-	UserId    int64  `gorm:"index:idx_uid_type_status"`
-	FeedType  string `gorm:"index:idx_uid_type_status"`
-	FeedId    int64
+	UserId    int64  `gorm:"index:idx_uid_biz_status"`
+	Biz       string `gorm:"index:idx_uid_biz_status"`
+	BizId     int64
 	Content   string
-	Status    int `gorm:"index:idx_uid_type_status"`
+	Status    int `gorm:"index:idx_uid_biz_status"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -36,6 +36,13 @@ type PullFeedDAO interface {
 type GormFeedPullDAO struct {
 	node snowflakex.Node
 	db   *gorm.DB
+}
+
+func NewGormFeedPullDAO(db *gorm.DB, node snowflakex.Node) PullFeedDAO {
+	return &GormFeedPullDAO{
+		node: node,
+		db:   db,
+	}
 }
 
 func (dao *GormFeedPullDAO) CreatePull(ctx context.Context, pull PullFeed) error {
@@ -69,7 +76,7 @@ func (dao *GormFeedPullDAO) BatchDelete(ctx context.Context, ids []int64) error 
 
 func (dao *GormFeedPullDAO) UpdateStatus(ctx context.Context, feed PullFeed) error {
 	err := dao.db.WithContext(ctx).Model(&PullFeed{}).
-		Where("user_id = ? AND feed_type = ? AND feed_id = ?", feed.UserId, feed.FeedType, feed.FeedId).
+		Where("user_id = ? AND biz = ? AND feed_id = ?", feed.UserId, feed.Biz, feed.BizId).
 		Update("status", feed.Status).Error
 	if err != nil {
 		return err
@@ -89,12 +96,12 @@ func (dao *GormFeedPullDAO) FindPull(ctx context.Context, uids []int64, maxId, t
 	return feeds, err
 }
 
-func (dao *GormFeedPullDAO) FindPullByType(ctx context.Context, uids []int64, feedType string, maxId, timestamp int64, limit int) ([]PullFeed, error) {
+func (dao *GormFeedPullDAO) FindPullByType(ctx context.Context, uids []int64, biz string, maxId, timestamp int64, limit int) ([]PullFeed, error) {
 	tx := dao.db.WithContext(ctx)
 	if maxId == 0 {
-		tx = tx.Where("user_id in ? AND feed_type = ? AND status = ?", uids, feedType, FeedStatusNormal)
+		tx = tx.Where("user_id in ? AND biz = ? AND status = ?", uids, biz, FeedStatusNormal)
 	} else {
-		tx = tx.Where("user_id in ? AND feed_type = ? AND id < ? AND created_at < ? AND status = ?", uids, feedType, maxId, time.UnixMilli(timestamp), FeedStatusNormal)
+		tx = tx.Where("user_id in ? AND biz = ? AND id < ? AND created_at < ? AND status = ?", uids, biz, maxId, time.UnixMilli(timestamp), FeedStatusNormal)
 	}
 	var feeds []PullFeed
 	err := tx.Order("id desc").Limit(limit).Find(&feeds).Error

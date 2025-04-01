@@ -3,9 +3,7 @@ package inkpub
 import (
 	"fmt"
 	"github.com/KNICEX/InkFlow/internal/ink"
-	"github.com/KNICEX/InkFlow/internal/recommend"
 	"github.com/KNICEX/InkFlow/internal/review"
-	"github.com/KNICEX/InkFlow/internal/search"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 	"time"
@@ -72,34 +70,24 @@ func InkPublish(ctx workflow.Context, inkId int64) error {
 			return err
 		}
 
-		searchInk := search.Ink{
-			Id:     inkInfo.Id,
-			Title:  inkInfo.Title,
-			Tags:   inkInfo.Tags,
-			AiTags: inkInfo.AiTags,
-			Cover:  inkInfo.Cover,
-			Author: search.User{
-				Id: inkInfo.Author.Id,
-			},
-			Content: inkInfo.ContentHtml,
-		}
 		// 同步到搜索引擎
-		err = workflow.ExecuteActivity(ctx, activities.SyncToSearch, searchInk).Get(ctx, nil)
+		err = workflow.ExecuteActivity(ctx, activities.SyncToSearch, inkInfo).Get(ctx, nil)
 		if err != nil {
 			l.Error("sync ink to search error", "error", err, "inkId", inkInfo.Id)
 			return err
 		}
 
-		recommendInk := recommend.Ink{
-			Id:        inkInfo.Id,
-			AuthorId:  inkInfo.Author.Id,
-			Tags:      inkInfo.Tags, // TODO 这里合并 + 去重
-			CreatedAt: inkInfo.CreatedAt,
-		}
 		// 同步到推荐引擎
-		err = workflow.ExecuteActivity(ctx, activities.SyncToRecommend, recommendInk).Get(ctx, nil)
+		err = workflow.ExecuteActivity(ctx, activities.SyncToRecommend, inkInfo).Get(ctx, nil)
 		if err != nil {
 			l.Error("sync ink to recommend error", "error", err, "inkId", inkInfo.Id)
+			return err
+		}
+
+		// 同步到feed
+		err = workflow.ExecuteActivity(ctx, activities.SyncToFeed, inkInfo).Get(ctx, nil)
+		if err != nil {
+			l.Error("sync ink to feed error", "error", err, "inkId", inkInfo.Id)
 			return err
 		}
 	} else {
@@ -113,7 +101,7 @@ func InkPublish(ctx workflow.Context, inkId int64) error {
 		}
 
 		// 通知作者拒绝原因
-		err = workflow.ExecuteActivity(ctx, activities.NotifyRejected, inkInfo.Id, inkInfo.Author.Id, reviewResult.Reason).Get(ctx, nil)
+		err = workflow.ExecuteActivity(ctx, activities.NotifyRejected, inkInfo, reviewResult.Reason).Get(ctx, nil)
 		if err != nil {
 			l.Error("notify ink rejected error", "error", err, "inkId", inkInfo.Id)
 			return err

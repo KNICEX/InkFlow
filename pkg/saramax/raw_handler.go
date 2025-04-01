@@ -3,11 +3,13 @@ package saramax
 import (
 	"github.com/IBM/sarama"
 	"github.com/KNICEX/InkFlow/pkg/logx"
+	"golang.org/x/sync/semaphore"
 )
 
 type RawHandler struct {
 	l        logx.Logger
 	consumer RawConsumable
+	se       semaphore.Weighted
 }
 type RawConsumable interface {
 	Consume(msg *sarama.ConsumerMessage) error

@@ -30,9 +30,9 @@ type InkHandler struct {
 	userSvc        user.Service
 	workflowCli    client.Client
 	interactiveSvc interactive.Service
-	followService  relation.FollowService
 	auth           middleware.Authentication
-	l              logx.Logger
+	*userAggregate
+	l logx.Logger
 }
 
 func NewInkHandler(svc ink.Service, userSvc user.Service, interactiveSvc interactive.Service,
@@ -41,10 +41,10 @@ func NewInkHandler(svc ink.Service, userSvc user.Service, interactiveSvc interac
 	return &InkHandler{
 		svc:            svc,
 		userSvc:        userSvc,
-		followService:  followService,
 		workflowCli:    workflowCli,
 		interactiveSvc: interactiveSvc,
 		auth:           auth,
+		userAggregate:  newUserAggregate(userSvc, followService),
 		l:              l,
 	}
 }
@@ -149,12 +149,11 @@ func (handler *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 	readUserId := readUser.UserId
 
 	eg := errgroup.Group{}
-	var author user.User
-	var followInfo relation.FollowStatistic
+	var author UserVO
 	var intr interactive.Interactive
 	eg.Go(func() error {
 		var er error
-		author, er = handler.userSvc.FindById(ctx, inkDetail.Author.Id)
+		author, er = handler.GetUserDetail(ctx, inkDetail.Author.Id, readUserId)
 		return er
 	})
 	eg.Go(func() error {
@@ -163,11 +162,6 @@ func (handler *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 		return er
 	})
 
-	eg.Go(func() error {
-		var er error
-		followInfo, er = handler.followService.FindFollowStats(ctx, inkDetail.Author.Id, readUserId)
-		return er
-	})
 	if err = eg.Wait(); err != nil {
 		return ginx.InternalError(), err
 	}
@@ -182,12 +176,8 @@ func (handler *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 		}
 	}()
 
-	authorProfile := userToVO(author)
-	authorProfile.Followers = followInfo.Followers
-	authorProfile.Following = followInfo.Following
-	authorProfile.Followed = followInfo.Followed
 	res := inkToVO(inkDetail)
-	res.Author = authorProfile
+	res.Author = author
 	res.Interactive = intrToVo(intr)
 	return ginx.SuccessWithData(res), nil
 }

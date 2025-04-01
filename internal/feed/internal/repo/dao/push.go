@@ -9,11 +9,11 @@ import (
 
 type PushFeed struct {
 	Id        int64
-	UserId    int64  `gorm:"index:idx_uid_type_status"`
-	FeedType  string `gorm:"index:idx_uid_type_status"`
-	FeedId    int64
+	UserId    int64  `gorm:"index:idx_uid_biz_status"`
+	Biz       string `gorm:"index:idx_uid_biz_status"`
+	BizId     int64
 	Content   string
-	Status    int `gorm:"index:idx_uid_type_status"`
+	Status    int `gorm:"index:idx_uid_biz_status"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -24,7 +24,7 @@ type PushFeedDAO interface {
 	BatchDelete(ctx context.Context, ids []int64) error
 	UpdateStatus(ctx context.Context, feed PushFeed) error
 	FindPush(ctx context.Context, uid int64, maxId, timestamp int64, limit int) ([]PushFeed, error)
-	FindPushByType(ctx context.Context, uid int64, feedType string, maxId, timestamp int64, limit int) ([]PushFeed, error)
+	FindPushByBiz(ctx context.Context, uid int64, biz string, maxId, timestamp int64, limit int) ([]PushFeed, error)
 }
 
 type GormPushFeedDAO struct {
@@ -67,7 +67,7 @@ func (dao *GormPushFeedDAO) BatchDelete(ctx context.Context, ids []int64) error 
 func (dao *GormPushFeedDAO) UpdateStatus(ctx context.Context, feed PushFeed) error {
 	feed.UpdatedAt = time.Now()
 	return dao.db.WithContext(ctx).Model(&PushFeed{}).
-		Where("feed_type = ? AND feed_id = ?", feed.FeedType, feed.FeedId).
+		Where("biz = ? AND feed_id = ?", feed.Biz, feed.BizId).
 		Update("status", feed.Status).Error
 }
 
@@ -83,12 +83,12 @@ func (dao *GormPushFeedDAO) FindPush(ctx context.Context, uid int64, maxId, time
 	return feeds, err
 }
 
-func (dao *GormPushFeedDAO) FindPushByType(ctx context.Context, uid int64, feedType string, maxId, timestamp int64, limit int) ([]PushFeed, error) {
+func (dao *GormPushFeedDAO) FindPushByBiz(ctx context.Context, uid int64, biz string, maxId, timestamp int64, limit int) ([]PushFeed, error) {
 	tx := dao.db.WithContext(ctx)
 	if maxId == 0 {
-		tx = tx.Where("user_id = ? AND feed_type = ? AND status = ?", uid, feedType, FeedStatusNormal)
+		tx = tx.Where("user_id = ? AND biz = ? AND status = ?", uid, biz, FeedStatusNormal)
 	} else {
-		tx = tx.Where("user_id = ? AND feed_type = ? AND id < ? AND created_at < ? AND status = ?", uid, feedType, maxId, time.UnixMilli(timestamp), FeedStatusNormal)
+		tx = tx.Where("user_id = ? AND biz = ? AND id < ? AND created_at < ? AND status = ?", uid, biz, maxId, time.UnixMilli(timestamp), FeedStatusNormal)
 	}
 	var feeds []PushFeed
 	err := tx.Order("id desc").Limit(limit).Find(&feeds).Error

@@ -23,6 +23,7 @@ func InitKafka() sarama.Client {
 
 	saramaCfg := sarama.NewConfig()
 	saramaCfg.Producer.Return.Successes = true
+	saramaCfg.Consumer.Offsets.Initial = sarama.OffsetOldest
 	client, err := sarama.NewClient(cfg.Addrs, saramaCfg)
 	if err != nil {
 		panic(err)

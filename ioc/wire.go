@@ -3,11 +3,13 @@
 package ioc
 
 import (
+	"github.com/KNICEX/InkFlow/internal/action"
 	"github.com/KNICEX/InkFlow/internal/ai"
 	"github.com/KNICEX/InkFlow/internal/bff"
 	"github.com/KNICEX/InkFlow/internal/code"
 	"github.com/KNICEX/InkFlow/internal/comment"
 	"github.com/KNICEX/InkFlow/internal/email"
+	"github.com/KNICEX/InkFlow/internal/feed"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/interactive"
 	"github.com/KNICEX/InkFlow/internal/notification"
@@ -60,14 +62,19 @@ func InitApp() *App {
 
 		recommend.InitSyncService,
 		recommend.InitSyncConsumer,
+		recommend.InitService,
 
 		comment.InitCommentService,
 
-		inkpub.NewActivities,
 
 		ai.InitLLMService,
 		review.InitAsyncService,
 		review.InitReviewConsumer,
+
+		action.InitService,
+		feed.InitService,
+
+		inkpub.NewActivities,
 
 		InitInkPubWorker,
 

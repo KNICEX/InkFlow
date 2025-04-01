@@ -13,14 +13,21 @@ import (
 
 type FeedService interface {
 	CreateFeed(ctx context.Context, feed domain.Feed) error
-	FollowFeedList(ctx context.Context, uid int64, maxId, timestamp int64, limit int) ([]domain.Feed, error)
+	FollowFeedInkList(ctx context.Context, uid int64, maxId, timestamp int64, limit int) ([]domain.Feed, error)
 }
 
 type feedService struct {
 	repo      repo.FeedRepo
 	followSvc relation.FollowService
 	actionSvc action.Service
-	handlers  map[string]Handler
+}
+
+func NewFeedService(repo repo.FeedRepo, followSvc relation.FollowService, actionSvc action.Service) FeedService {
+	return &feedService{
+		repo:      repo,
+		followSvc: followSvc,
+		actionSvc: actionSvc,
+	}
 }
 
 func (f *feedService) CreateFeed(ctx context.Context, feed domain.Feed) error {
@@ -46,7 +53,7 @@ func (f *feedService) CreateFeed(ctx context.Context, feed domain.Feed) error {
 	return f.repo.CreatePushFeed(ctx, pushFeeds)
 }
 
-func (f *feedService) FollowFeedList(ctx context.Context, uid, maxId, timestamp int64, limit int) ([]domain.Feed, error) {
+func (f *feedService) FollowFeedInkList(ctx context.Context, uid, maxId, timestamp int64, limit int) ([]domain.Feed, error) {
 	var pushFeeds []domain.Feed
 	var pullFeeds []domain.Feed
 
