@@ -12,6 +12,7 @@ type NotificationService interface {
 	ListNotification(ctx context.Context, recipientId int64, types []domain.NotificationType, maxId int64, limit int) ([]domain.Notification, error)
 	ListMergedLike(ctx context.Context, recipientId int64, offset, limit int) ([]domain.MergedLikeNotification, error)
 	ReadAll(ctx context.Context, recipientId int64, types ...domain.NotificationType) error
+	UnreadCount(ctx context.Context, recipientId int64) (map[domain.NotificationType]int64, error)
 }
 
 type notificationService struct {
@@ -46,4 +47,15 @@ func (svc *notificationService) ListMergedLike(ctx context.Context, recipientId 
 
 func (svc *notificationService) ReadAll(ctx context.Context, recipientId int64, types ...domain.NotificationType) error {
 	return svc.repo.MarkAllRead(ctx, recipientId, types...)
+}
+
+func (svc *notificationService) UnreadCount(ctx context.Context, recipientId int64) (map[domain.NotificationType]int64, error) {
+	return svc.repo.CountUnreadByType(ctx, recipientId, []domain.NotificationType{
+		domain.NotificationTypeLike,
+		domain.NotificationTypeReply,
+		domain.NotificationTypeFollow,
+		domain.NotificationTypeSystem,
+		domain.NotificationTypeMention,
+		domain.NotificationTypeSubscribe,
+	})
 }

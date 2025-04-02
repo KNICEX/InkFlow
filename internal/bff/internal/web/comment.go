@@ -9,6 +9,7 @@ import (
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
+	"strconv"
 )
 
 type CommentHandler struct {
@@ -32,6 +33,7 @@ func (h *CommentHandler) RegisterRoutes(server *gin.RouterGroup) {
 	commentGroup := server.Group("/comment")
 	{
 		commentGroup.GET("", ginx.WrapBody(h.l, h.List))
+		commentGroup.GET("/child/:rid", ginx.WrapBody(h.l, h.LoadMoreChild))
 		commentGroup.POST("", h.auth.CheckLogin(), ginx.WrapBody(h.l, h.Reply))
 	}
 }
@@ -69,6 +71,10 @@ func (h *CommentHandler) List(ctx *gin.Context, req BizCommentReq) (ginx.Result,
 		return ginx.InternalError(), err
 	}
 
+	if len(coms) == 0 {
+		return ginx.SuccessWithData([]CommentVO{}), nil
+	}
+
 	uids := lo.UniqMap(coms, func(item comment.Comment, index int) int64 {
 		return item.Commentator.Id
 	})
@@ -88,7 +94,11 @@ func (h *CommentHandler) List(ctx *gin.Context, req BizCommentReq) (ginx.Result,
 
 func (h *CommentHandler) LoadMoreChild(ctx *gin.Context, req ChildCommentReq) (ginx.Result, error) {
 	uc, _ := jwt.GetUserClaims(ctx)
-	coms, err := h.svc.LoadMoreRepliesByRid(ctx, req.RootId, uc.UserId, req.MaxId, req.Limit)
+	rid, err := strconv.ParseInt(ctx.Param("rid"), 10, 64)
+	if err != nil {
+		return ginx.InvalidParam(), err
+	}
+	coms, err := h.svc.LoadMoreRepliesByRid(ctx, rid, uc.UserId, req.MaxId, req.Limit)
 	if err != nil {
 		return ginx.InternalError(), err
 	}

@@ -1,6 +1,9 @@
 package web
 
-import "github.com/KNICEX/InkFlow/internal/interactive"
+import (
+	"github.com/KNICEX/InkFlow/internal/interactive"
+	"time"
+)
 
 type InteractiveVO struct {
 	Biz        string `json:"biz"`
@@ -25,4 +28,28 @@ func intrToVo(i interactive.Interactive) InteractiveVO {
 		Liked:      i.Liked,
 		Favorited:  i.Favorited,
 	}
+}
+
+type FavoriteVO struct {
+	Fid       int64     `json:"fid"`
+	Name      string    `json:"name"`
+	Biz       string    `json:"biz"`
+	Private   bool      `json:"private"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+func favoriteToVO(f interactive.Favorite) FavoriteVO {
+	return FavoriteVO{
+		Fid:       f.Id,
+		Name:      f.Name,
+		Biz:       f.Biz,
+		Private:   f.Private,
+		CreatedAt: f.CreatedAt,
+	}
+}
+
+type CreateFavReq struct {
+	Name    string `json:"name"`
+	Private bool   `json:"private"`
+	Biz     string `json:"biz"`
 }

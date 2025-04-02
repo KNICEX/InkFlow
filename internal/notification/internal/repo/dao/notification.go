@@ -197,6 +197,9 @@ func (dao *GormNotificationDAO) CountUnreadByType(ctx context.Context, userId in
 		return nil, err
 	}
 	res := make(map[string]int64)
+	for _, t := range types {
+		res[t] = 0
+	}
 	for _, item := range notifications {
 		res[item.NotificationType] = item.Cnt
 	}

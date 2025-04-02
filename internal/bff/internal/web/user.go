@@ -307,7 +307,7 @@ func (h *UserHandler) Profile(ctx *gin.Context, req ProfileReq) (ginx.Result, er
 		})
 		eg.Go(func() error {
 			var er error
-			follow, er = h.followService.FindFollowStats(ctx, req.Uid, uc.UserId)
+			follow, er = h.followService.FindFollowStats(ctx, uc.UserId, uc.UserId)
 			return er
 		})
 	}
@@ -330,7 +330,7 @@ func (h *UserHandler) Profile(ctx *gin.Context, req ProfileReq) (ginx.Result, er
 	res.Followers = follow.Followers
 	res.Following = follow.Following
 	res.Followed = follow.Followed
-	return ginx.SuccessWithData(userToVO(u)), nil
+	return ginx.SuccessWithData(res), nil
 }
 
 func (h *UserHandler) EditProfile(ctx *gin.Context, req EditProfileReq) (ginx.Result, error) {

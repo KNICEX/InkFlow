@@ -39,13 +39,15 @@ func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
 	notificationHandler := web.NewNotificationHandler(notificationSvc, userSvc, inkService, commentSvc, auth, log)
 	searchHandler := web.NewSearchHandler(auth, searchSvc, followService, log)
 	feedHandler := web.NewFeedHandler(feedSvc, inkService, interactiveSvc, userSvc, recommendSvc, auth, log)
-	v := InitHandlers(userHandler, inkHandler, fileHandler, commentHandler, notificationHandler, searchHandler, feedHandler)
+	interactiveHandler := web.NewInteractiveHandler(interactiveSvc, auth, log)
+	v := InitHandlers(userHandler, inkHandler, fileHandler, commentHandler, notificationHandler, searchHandler, feedHandler, interactiveHandler)
 	return v
 }
 
 // wire.go:
 
 func InitHandlers(uh *web.UserHandler, ih *web.InkHandler, fh *web.FileHandler,
-	ch *web.CommentHandler, nh *web.NotificationHandler, sh *web.SearchHandler, feedH *web.FeedHandler) []ginx.Handler {
-	return []ginx.Handler{uh, ih, fh, ch, nh, sh, feedH}
+	ch *web.CommentHandler, nh *web.NotificationHandler, sh *web.SearchHandler, feedH *web.FeedHandler,
+	intrH *web.InteractiveHandler) []ginx.Handler {
+	return []ginx.Handler{uh, ih, fh, ch, nh, sh, feedH, intrH}
 }

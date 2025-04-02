@@ -50,11 +50,6 @@ func mergedLikeToVO(ml notification.MergedLike) MergedLikeVO {
 	}
 }
 
-type PagedReq struct {
-	Offset int `json:"offset"`
-	Limit  int `json:"limit"`
-}
-
 type MaxIdPagedReq struct {
 	MaxId int64 `json:"maxId"`
 	Limit int   `json:"limit"`

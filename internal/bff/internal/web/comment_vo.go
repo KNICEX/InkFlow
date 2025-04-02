@@ -78,22 +78,22 @@ func commentStatsToVO(stats comment.Stats) CommentStats {
 }
 
 type BizCommentReq struct {
-	Biz   string `json:"biz"`
-	BizId int64  `json:"bizId"`
-	MaxId int64  `json:"maxId"`
-	Limit int    `json:"limit"`
+	Biz   string `json:"biz" form:"biz"`
+	BizId int64  `json:"bizId" form:"bizId"`
+	MaxId int64  `json:"maxId" form:"maxId"`
+	Limit int    `json:"limit" form:"limit"`
 }
 
 type ChildCommentReq struct {
-	RootId int64 `json:"rootId"`
-	MaxId  int64 `json:"maxId"`
-	Limit  int   `json:"limit"`
+	RootId int64 `json:"rootId" form:"rootId"`
+	MaxId  int64 `json:"maxId" form:"maxId"`
+	Limit  int   `json:"limit" form:"limit" binding:"required"`
 }
 
 type PostReplyReq struct {
-	Biz      string  `json:"biz"`
-	BizId    int64   `json:"bizId"`
+	Biz      string  `json:"biz" binding:"required"`
+	BizId    int64   `json:"bizId" binding:"required"`
 	RootId   int64   `json:"rootId"`
 	ParentId int64   `json:"parentId"`
-	Payload  Payload `json:"payload"`
+	Payload  Payload `json:"payload" binding:"required"`
 }

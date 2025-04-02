@@ -7,6 +7,7 @@ import (
 	"github.com/KNICEX/InkFlow/internal/ink/internal/repo/cache"
 	"github.com/KNICEX/InkFlow/internal/ink/internal/repo/dao"
 	"github.com/KNICEX/InkFlow/pkg/logx"
+	"github.com/KNICEX/InkFlow/pkg/stringx"
 	"github.com/samber/lo"
 	"slices"
 	"strings"
@@ -290,8 +291,8 @@ func (repo *CachedLiveInkRepo) entityToDomain(ink dao.LiveInk) domain.Ink {
 			Id: ink.CategoryId,
 		},
 		ContentType: domain.ContentTypeFromInt(ink.ContentType),
-		Tags:        strings.Split(ink.Tags, ","),
-		AiTags:      strings.Split(ink.AiTags, ","),
+		Tags:        stringx.Split(ink.Tags, ","),
+		AiTags:      stringx.Split(ink.AiTags, ","),
 		ContentHtml: ink.ContentHtml,
 		ContentMeta: ink.ContentMeta,
 		Status:      domain.Status(ink.Status),

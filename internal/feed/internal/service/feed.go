@@ -50,6 +50,9 @@ func (f *feedService) CreateFeed(ctx context.Context, feed domain.Feed) error {
 		feed.UserId = user.Id
 		pushFeeds = append(pushFeeds, feed)
 	}
+	if len(pushFeeds) == 0 {
+		return nil
+	}
 	return f.repo.CreatePushFeed(ctx, pushFeeds)
 }
 

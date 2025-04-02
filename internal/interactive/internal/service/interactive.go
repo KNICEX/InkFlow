@@ -7,6 +7,7 @@ import (
 	"github.com/KNICEX/InkFlow/internal/interactive/internal/repo"
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"golang.org/x/sync/errgroup"
+	"time"
 )
 
 type InteractiveService interface {
@@ -55,10 +56,19 @@ func (svc *interactiveService) CreateInteractive(ctx context.Context, biz string
 
 func (svc *interactiveService) View(ctx context.Context, biz string, bizId int64, uid int64) error {
 	if biz == domain.BizInk {
-		return svc.producer.ProduceInkView(ctx, events.InkViewEvent{
-			InkId:  bizId,
-			UserId: uid,
-		})
+		go func() {
+			if err := svc.producer.ProduceInkView(ctx, events.InkViewEvent{
+				InkId:     bizId,
+				UserId:    uid,
+				CreatedAt: time.Now(),
+			}); err != nil {
+				svc.l.WithCtx(ctx).Error("produce ink view event error", logx.Error(err),
+					logx.String("biz", biz),
+					logx.Int64("bizId", bizId),
+					logx.Int64("uid", uid))
+			}
+		}()
+		return nil
 	}
 	return svc.repo.IncrView(ctx, biz, bizId, uid)
 }
@@ -69,15 +79,17 @@ func (svc *interactiveService) Like(ctx context.Context, biz string, bizId int64
 	}
 
 	if biz == domain.BizInk {
-		if err := svc.producer.ProduceInkLike(ctx, events.InkLikeEvent{
-			InkId:  bizId,
-			UserId: uid,
-		}); err != nil {
-			svc.l.WithCtx(ctx).Error("produce ink like event error", logx.Error(err),
-				logx.String("biz", biz),
-				logx.Int64("bizId", bizId),
-				logx.Int64("uid", uid))
-		}
+		go func() {
+			if err := svc.producer.ProduceInkLike(ctx, events.InkLikeEvent{
+				InkId:  bizId,
+				UserId: uid,
+			}); err != nil {
+				svc.l.WithCtx(ctx).Error("produce ink like event error", logx.Error(err),
+					logx.String("biz", biz),
+					logx.Int64("bizId", bizId),
+					logx.Int64("uid", uid))
+			}
+		}()
 	}
 	return nil
 }
@@ -93,15 +105,17 @@ func (svc *interactiveService) CancelLike(ctx context.Context, biz string, bizId
 	}
 
 	if biz == domain.BizInk {
-		if err := svc.producer.ProduceInkCancelLike(ctx, events.InkCancelLikeEvent{
-			InkId:  bizId,
-			UserId: uid,
-		}); err != nil {
-			svc.l.WithCtx(ctx).Error("produce ink cancel like event error", logx.Error(err),
-				logx.String("biz", biz),
-				logx.Int64("bizId", bizId),
-				logx.Int64("uid", uid))
-		}
+		go func() {
+			if err := svc.producer.ProduceInkCancelLike(ctx, events.InkCancelLikeEvent{
+				InkId:  bizId,
+				UserId: uid,
+			}); err != nil {
+				svc.l.WithCtx(ctx).Error("produce ink cancel like event error", logx.Error(err),
+					logx.String("biz", biz),
+					logx.Int64("bizId", bizId),
+					logx.Int64("uid", uid))
+			}
+		}()
 	}
 	return nil
 }

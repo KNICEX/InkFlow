@@ -16,6 +16,7 @@ type Service = service.InkService
 var ErrNoPermission = service.ErrNoPermission
 
 const (
+	StatusPending   = domain.InkStatusPending
 	StatusPublished = domain.InkStatusPublished
 	StatusRejected  = domain.InkStatusRejected
 )

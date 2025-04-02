@@ -57,6 +57,10 @@ func (h *FeedHandler) Follow(ctx *gin.Context, req FeedFollowReq) (ginx.Result, 
 	if err != nil {
 		return ginx.InternalError(), err
 	}
+	if len(feeds) == 0 {
+		return ginx.SuccessWithData([]InkVO{}), nil
+	}
+
 	inkIds := lo.Map(feeds, func(item feed.Feed, index int) int64 {
 		return item.BizId
 	})
@@ -68,7 +72,7 @@ func (h *FeedHandler) Follow(ctx *gin.Context, req FeedFollowReq) (ginx.Result, 
 	eg := errgroup.Group{}
 	eg.Go(func() error {
 		var er error
-		intrs, er = h.intrSvc.GetMulti(ctx, inkBiz, inkIds, uc.UserId)
+		intrs, er = h.intrSvc.GetMulti(ctx, bizInk, inkIds, uc.UserId)
 		return er
 	})
 	eg.Go(func() error {
@@ -96,6 +100,10 @@ func (h *FeedHandler) Recommend(ctx *gin.Context, req FeedRecommendReq) (ginx.Re
 	if err != nil {
 		return ginx.InternalError(), err
 	}
+	if len(inkIds) == 0 {
+		return ginx.SuccessWithData([]InkVO{}), nil
+	}
+
 	inkVos, err := h.inkAggregate.GetInkList(ctx, inkIds, uc.UserId)
 	if err != nil {
 		return ginx.InternalError(), err
@@ -117,6 +125,10 @@ func (h *FeedHandler) Hot(ctx *gin.Context, req FeedRecommendReq) (ginx.Result, 
 	if err != nil {
 		return ginx.InternalError(), err
 	}
+	if len(inkIds) == 0 {
+		return ginx.SuccessWithData([]InkVO{}), nil
+	}
+
 	inkVos, err := h.inkAggregate.GetInkList(ctx, inkIds, uc.UserId)
 	if err != nil {
 		return ginx.InternalError(), err

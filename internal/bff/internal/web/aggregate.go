@@ -6,6 +6,7 @@ import (
 	"github.com/KNICEX/InkFlow/internal/interactive"
 	"github.com/KNICEX/InkFlow/internal/relation"
 	"github.com/KNICEX/InkFlow/internal/user"
+	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -93,31 +94,36 @@ func newInkAggregate(inkSvc ink.Service, userSvc user.Service, intrSvc interacti
 }
 
 func (i *inkAggregate) GetInkList(ctx context.Context, ids []int64, viewUid int64) (map[int64]InkVO, error) {
-	var inks map[int64]ink.Ink
 	var authors map[int64]user.User
 	var intrs map[int64]interactive.Interactive
+	inkMap, err := i.inkSvc.FindByIds(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	if len(inkMap) == 0 {
+		return nil, nil
+	}
+
+	authorIds := lo.MapToSlice(inkMap, func(key int64, value ink.Ink) int64 {
+		return value.Author.Id
+	})
 	eg := errgroup.Group{}
 	eg.Go(func() error {
-		var err error
-		inks, err = i.inkSvc.FindByIds(ctx, ids)
-		return err
+		var er error
+		authors, er = i.userSvc.FindByIds(ctx, authorIds)
+		return er
 	})
 	eg.Go(func() error {
-		var err error
-		authors, err = i.userSvc.FindByIds(ctx, ids)
-		return err
+		var er error
+		intrs, er = i.intrSvc.GetMulti(ctx, bizInk, ids, viewUid)
+		return er
 	})
-	eg.Go(func() error {
-		var err error
-		intrs, err = i.intrSvc.GetMulti(ctx, inkBiz, ids, viewUid)
-		return err
-	})
-	if err := eg.Wait(); err != nil {
+	if err = eg.Wait(); err != nil {
 		return nil, err
 	}
 
-	vos := make(map[int64]InkVO, len(inks))
-	for _, inkInfo := range inks {
+	vos := make(map[int64]InkVO, len(inkMap))
+	for _, inkInfo := range inkMap {
 		vo := inkToVO(inkInfo)
 		if author, ok := authors[inkInfo.Author.Id]; ok {
 			vo.Author = userToVO(author)

@@ -30,7 +30,7 @@ services:
 #      "xpack.security.enabled": false
 #    entrypoint: ["/bin/bash", "/entrypoint.sh"]
   meilisearch:
-    image: getmeili/meilisearch:nightly
+    image: getmeili/meilisearch:v1.13.3
     container_name: ink-flow-meilisearch
     ports:
       - "7700:7700"

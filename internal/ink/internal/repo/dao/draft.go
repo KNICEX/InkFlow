@@ -17,8 +17,8 @@ type DraftDAO interface {
 	Delete(ctx context.Context, id int64, authorId int64, status ...int) error
 	UpdateStatus(ctx context.Context, inkId int64, authorId int64, status int) error
 	FindById(ctx context.Context, id int64) (DraftInk, error)
-	FindByIdAndAuthorId(ctx context.Context, id int64, authorId int64) (DraftInk, error)
-	FindByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]DraftInk, error)
+	FindByIdAndAuthorId(ctx context.Context, id int64, authorId int64, status ...int) (DraftInk, error)
+	FindByAuthorId(ctx context.Context, authorId int64, offset, limit int, status ...int) ([]DraftInk, error)
 	FindAll(ctx context.Context, maxId int64, limit int) ([]DraftInk, error)
 }
 
@@ -75,9 +75,15 @@ func (dao *draftDAO) FindById(ctx context.Context, id int64) (DraftInk, error) {
 	return d, nil
 }
 
-func (dao *draftDAO) FindByIdAndAuthorId(ctx context.Context, id int64, authorId int64) (DraftInk, error) {
+func (dao *draftDAO) FindByIdAndAuthorId(ctx context.Context, id int64, authorId int64, status ...int) (DraftInk, error) {
 	var d DraftInk
-	err := dao.db.WithContext(ctx).Where("id = ? AND author_id = ?", id, authorId).First(&d).Error
+	var tx *gorm.DB
+	if len(status) > 0 {
+		tx = dao.db.WithContext(ctx).Where("id = ? AND author_id = ? AND status IN ?", id, authorId, status)
+	} else {
+		tx = dao.db.WithContext(ctx).Where("id = ? AND author_id = ?", id, authorId)
+	}
+	err := tx.First(&d).Error
 	if err != nil {
 		return d, err
 	}
@@ -91,10 +97,15 @@ func (dao *draftDAO) Delete(ctx context.Context, id int64, authorId int64, statu
 	return dao.db.WithContext(ctx).Where("id = ? AND author_id = ? AND status IN ?", id, authorId, status).Delete(&DraftInk{}).Error
 }
 
-func (dao *draftDAO) FindByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]DraftInk, error) {
+func (dao *draftDAO) FindByAuthorId(ctx context.Context, authorId int64, offset, limit int, status ...int) ([]DraftInk, error) {
 	var drafts []DraftInk
-	err := dao.db.WithContext(ctx).Where("author_id = ? AND status = ?", authorId, InkStatusUnPublished).
-		Order("updated_at desc").Offset(offset).Limit(limit).Find(&drafts).Error
+	var tx *gorm.DB
+	if len(status) > 0 {
+		tx = dao.db.WithContext(ctx).Where("author_id = ? AND status IN ?", authorId, status)
+	} else {
+		tx = dao.db.WithContext(ctx).Where("author_id = ?", authorId)
+	}
+	err := tx.Order("updated_at desc").Offset(offset).Limit(limit).Find(&drafts).Error
 	if err != nil {
 		return drafts, err
 	}

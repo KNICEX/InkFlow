@@ -7,7 +7,10 @@ import (
 	"time"
 )
 
-const topicFollow = "user-follow"
+const (
+	topicFollow       = "user-follow"
+	topicCancelFollow = "user-cancel-follow"
+)
 
 type FollowEvt struct {
 	FollowerId int64     `json:"followerId"`
@@ -17,6 +20,7 @@ type FollowEvt struct {
 
 type FollowProducer interface {
 	Produce(ctx context.Context, evt FollowEvt) error
+	ProduceCancel(ctx context.Context, evt FollowEvt) error
 }
 
 type KafkaFollowProducer struct {
@@ -36,6 +40,18 @@ func (p *KafkaFollowProducer) Produce(ctx context.Context, evt FollowEvt) error 
 	}
 	_, _, err = p.producer.SendMessage(&sarama.ProducerMessage{
 		Topic: topicFollow,
+		Value: sarama.ByteEncoder(data),
+	})
+	return err
+}
+
+func (p *KafkaFollowProducer) ProduceCancel(ctx context.Context, evt FollowEvt) error {
+	data, err := json.Marshal(evt)
+	if err != nil {
+		return err
+	}
+	_, _, err = p.producer.SendMessage(&sarama.ProducerMessage{
+		Topic: topicCancelFollow,
 		Value: sarama.ByteEncoder(data),
 	})
 	return err

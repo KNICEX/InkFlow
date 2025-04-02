@@ -25,25 +25,12 @@ func (s SyncService) InputUser(ctx context.Context, user domain.User) error {
 }
 
 func (s SyncService) InputInk(ctx context.Context, ink domain.Ink) error {
-	_, err := s.cli.GetItem(ctx, strconv.FormatInt(ink.Id, 10))
-	if err != nil {
-		// TODO 区分错误类型
-		_, err = s.cli.InsertItem(ctx, client.Item{
-			ItemId:    strconv.FormatInt(ink.Id, 10),
-			Labels:    ink.Tags,
-			Timestamp: ink.CreatedAt.Format(time.RFC3339),
-			Comment:   ink.Title,
-		})
-		return err
-	}
-	hidden := false
-	_, err = s.cli.UpdateItem(ctx, strconv.FormatInt(ink.Id, 10), client.ItemPatch{
+	_, err := s.cli.InsertItem(ctx, client.Item{
+		ItemId:    strconv.FormatInt(ink.Id, 10),
 		Labels:    ink.Tags,
-		IsHidden:  &hidden,
-		Timestamp: &ink.CreatedAt,
-		Comment:   &ink.Title,
+		Timestamp: ink.CreatedAt.Format(time.RFC3339),
+		Comment:   ink.Title,
 	})
-
 	return err
 }
 

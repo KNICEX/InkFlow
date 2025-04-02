@@ -146,7 +146,7 @@ func (dao *GormFollowRelationDAO) CancelFollow(ctx context.Context, c UserFollow
 		now := time.Now()
 		c.UpdatedAt = now
 		// delete follow relation
-		err := dao.db.WithContext(ctx).Delete(&c).Error
+		err := dao.db.WithContext(ctx).Where("follower_id = ? AND followee_id = ?", c.FollowerId, c.FolloweeId).Delete(&c).Error
 		if err != nil {
 			return err
 		}

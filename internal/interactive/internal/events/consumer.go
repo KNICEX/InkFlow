@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	inkViewConsumerGroup = "ink-view-consumer-group"
+	inkViewConsumerGroup = "ink-view-group"
 )
 
 type InkViewConsumer struct {

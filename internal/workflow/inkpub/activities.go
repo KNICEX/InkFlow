@@ -41,8 +41,8 @@ func NewActivities(
 		feedSvc:          feedSvc,
 	}
 }
-func (a *Activities) FindInkInfo(ctx context.Context, inkId int64) (ink.Ink, error) {
-	return a.inkSvc.FindById(ctx, inkId)
+func (a *Activities) FindInkInfo(ctx context.Context, inkId, uid int64) (ink.Ink, error) {
+	return a.inkSvc.FindPendingInk(ctx, inkId, uid)
 }
 
 func (a *Activities) SubmitReview(ctx context.Context, ink review.Ink) error {
@@ -54,11 +54,16 @@ func (a *Activities) CreateIntr(ctx context.Context, biz string, bizId int64) er
 }
 
 func (a *Activities) UpdateToPublished(ctx context.Context, inkId, uid int64) error {
-	return a.inkSvc.UpdateInkStatus(ctx, inkId, uid, ink.StatusPublished)
+	return a.inkSvc.UpdateDraftStatus(ctx, inkId, uid, ink.StatusPublished)
 }
 
-func (a *Activities) UpdateInkToRejected(ctx context.Context, inkId int64) error {
-	return a.inkSvc.UpdateInkStatus(ctx, inkId, 0, ink.StatusRejected)
+func (a *Activities) UpdateInkToRejected(ctx context.Context, inkId int64, uid int64) error {
+	return a.inkSvc.UpdateDraftStatus(ctx, inkId, uid, ink.StatusRejected)
+}
+
+func (a *Activities) SyncToLive(ctx context.Context, inkInfo ink.Ink) error {
+	inkInfo.Status = ink.StatusPublished
+	return a.inkSvc.SyncToLive(ctx, inkInfo)
 }
 
 func (a *Activities) SyncToSearch(ctx context.Context, ink ink.Ink) error {

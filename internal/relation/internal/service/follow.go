@@ -42,17 +42,22 @@ func (svc *followService) Follow(ctx context.Context, uid, followeeId int64) err
 		FollowerId: uid,
 		FolloweeId: followeeId,
 	})
-	if err == nil || errors.Is(err, repo.ErrAlreadyFollowed) {
-		er := svc.producer.Produce(ctx, event.FollowEvt{
-			FollowerId: uid,
-			FolloweeId: followeeId,
-			CreatedAt:  time.Now(),
-		})
-		if er != nil {
-			svc.l.Error("produce follow event error", logx.Error(er),
-				logx.Int64("followerId", uid),
-				logx.Int64("followeeId", followeeId))
-		}
+	if err == nil {
+		go func() {
+			er := svc.producer.Produce(ctx, event.FollowEvt{
+				FollowerId: uid,
+				FolloweeId: followeeId,
+				CreatedAt:  time.Now(),
+			})
+			if er != nil {
+				svc.l.Error("produce follow event error", logx.Error(er),
+					logx.Int64("followerId", uid),
+					logx.Int64("followeeId", followeeId))
+			}
+		}()
+	}
+	if errors.Is(err, repo.ErrAlreadyFollowed) {
+		return nil
 	}
 	return err
 }

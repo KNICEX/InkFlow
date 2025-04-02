@@ -47,15 +47,20 @@ func (handler *NotificationHandler) RegisterRoutes(server *gin.RouterGroup) {
 		notificationGroup.GET("/reply", ginx.WrapBody(handler.l, handler.ListReply))
 		notificationGroup.GET("/follow", ginx.WrapBody(handler.l, handler.ListFollow))
 		notificationGroup.GET("/system", ginx.WrapBody(handler.l, handler.ListSystem))
+		notificationGroup.GET("/count", ginx.Wrap(handler.l, handler.UnreadCount))
 	}
 }
 
-func (handler *NotificationHandler) ListMergedLike(ctx *gin.Context, req PagedReq) (ginx.Result, error) {
+func (handler *NotificationHandler) ListMergedLike(ctx *gin.Context, req OffsetPagedReq) (ginx.Result, error) {
 	uc := jwt.MustGetUserClaims(ctx)
 	likes, err := handler.svc.ListMergedLike(ctx, uc.UserId, req.Offset, req.Limit)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
+	if len(likes) == 0 {
+		return ginx.SuccessWithData([]MergedLikeVO{}), nil
+	}
+
 	uids := make(map[int64]struct{})
 	for _, like := range likes {
 		for _, uid := range like.UserIds {
@@ -149,6 +154,9 @@ func (handler *NotificationHandler) ListReply(ctx *gin.Context, req MaxIdPagedRe
 	if err != nil {
 		return ginx.InternalError(), err
 	}
+	if len(notifications) == 0 {
+		return ginx.SuccessWithData([]NotificationVO{}), nil
+	}
 
 	subjectIds := make(map[notification.SubjectType][]int64)
 	for _, no := range notifications {
@@ -195,6 +203,9 @@ func (handler *NotificationHandler) ListFollow(ctx *gin.Context, req MaxIdPagedR
 	if err != nil {
 		return ginx.InternalError(), err
 	}
+	if len(notifications) == 0 {
+		return ginx.SuccessWithData([]NotificationVO{}), nil
+	}
 
 	uids := lo.UniqMap(notifications, func(item notification.Notification, index int) int64 {
 		return item.SenderId
@@ -223,6 +234,9 @@ func (handler *NotificationHandler) ListMention(ctx *gin.Context, req MaxIdPaged
 	notifications, err := handler.svc.ListNotification(ctx, uc.UserId, []notification.Type{notification.TypeMention}, req.MaxId, req.Limit)
 	if err != nil {
 		return ginx.InternalError(), err
+	}
+	if len(notifications) == 0 {
+		return ginx.SuccessWithData([]NotificationVO{}), nil
 	}
 
 	uids := lo.UniqMap(notifications, func(item notification.Notification, index int) int64 {
@@ -268,6 +282,9 @@ func (handler *NotificationHandler) ListSystem(ctx *gin.Context, req MaxIdPagedR
 	if err != nil {
 		return ginx.InternalError(), err
 	}
+	if len(notifications) == 0 {
+		return ginx.SuccessWithData([]NotificationVO{}), nil
+	}
 
 	subjectIds := handler.subjectIds(notifications)
 
@@ -292,4 +309,13 @@ func (handler *NotificationHandler) subjectIds(nos []notification.Notification) 
 		subjectIds[no.SubjectType] = append(subjectIds[no.SubjectType], no.SubjectId)
 	}
 	return subjectIds
+}
+
+func (handler *NotificationHandler) UnreadCount(ctx *gin.Context) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	count, err := handler.svc.UnreadCount(ctx, uc.UserId)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.SuccessWithData(count), nil
 }

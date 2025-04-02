@@ -160,8 +160,8 @@ func (dao *GormInteractiveDAO) InsertFavorite(ctx context.Context, biz string, b
 		Columns: []clause.Column{
 			{Name: "user_id"},
 			{Name: "biz"},
-			{Name: "favorite_id"},
 			{Name: "biz_id"},
+			{Name: "favorite_id"},
 		},
 		DoUpdates: clause.Assignments(map[string]any{
 			"updated_at": now,
@@ -187,8 +187,8 @@ func (dao *GormInteractiveDAO) DeleteLike(ctx context.Context, biz string, bizId
 			return nil
 		}
 
-		return tx.Where("biz = ? AND biz_id = ?", biz, bizId).Updates(map[string]any{
-			"like_cnt":   gorm.Expr("interactive.like_cnt - 1"),
+		return tx.Model(&Interactive{}).Where("biz = ? AND biz_id = ?", biz, bizId).Updates(map[string]any{
+			"like_cnt":   gorm.Expr("like_cnt - 1"),
 			"updated_at": time.Now(),
 		}).Error
 	})
@@ -204,7 +204,7 @@ func (dao *GormInteractiveDAO) DeleteFavorite(ctx context.Context, biz string, b
 			return nil
 		}
 
-		return tx.Where("biz = ? AND biz_id = ?", biz, bizId).Updates(map[string]any{
+		return tx.Model(&Interactive{}).Where("biz = ? AND biz_id = ?", biz, bizId).Updates(map[string]any{
 			"favorite_cnt": gorm.Expr("favorite_cnt - 1"),
 			"updated_at":   time.Now(),
 		}).Error
@@ -294,7 +294,7 @@ func (dao *GormInteractiveDAO) FindFavoriteInfo(ctx context.Context, biz string,
 
 func (dao *GormInteractiveDAO) FindLikeBatch(ctx context.Context, biz string, bizIds []int64, uid int64) (map[int64]UserLike, error) {
 	var likes []UserLike
-	err := dao.db.WithContext(ctx).Where("biz = ? AND AND user_id = ? biz_id IN ?", biz, uid, bizIds).Find(&likes).Error
+	err := dao.db.WithContext(ctx).Where("biz = ? AND user_id = ? AND biz_id IN ?", biz, uid, bizIds).Find(&likes).Error
 	if err != nil {
 		return nil, err
 	}
@@ -356,9 +356,9 @@ func (dao *GormInteractiveDAO) ListLikeRecord(ctx context.Context, biz string, u
 
 type UserView struct {
 	Id        int64
-	UserId    int64  `gorm:"uniqueIndex:userId_biz_id_idx"`
-	Biz       string `gorm:"type:varchar(64);uniqueIndex:userId_biz_id_idx"`
-	BizId     int64  `gorm:"uniqueIndex:userId_biz_id_idx"`
+	UserId    int64  `gorm:"uniqueIndex:uid_biz_id_idx"`
+	Biz       string `gorm:"type:varchar(64);uniqueIndex:uid_biz_id_idx"`
+	BizId     int64  `gorm:"uniqueIndex:uid_biz_id_idx"`
 	CreatedAt time.Time
 	UpdatedAt time.Time `gorm:"index"`
 }
@@ -375,10 +375,10 @@ type UserLike struct {
 // UserFavorite TODO 考虑支持多个收藏夹
 type UserFavorite struct {
 	Id         int64
-	UserId     int64  `gorm:"uniqueIndex:userId_biz_id_idx;index:biz_uid_biz_id_idx,priority:2"`
-	Biz        string `gorm:"type:varchar(64);uniqueIndex:userId_biz_id_idx;index:biz_uid_biz_id_idx,priority:1"`
-	FavoriteId int64  `gorm:"index;uniqueIndex:userId_biz_id_idx"`
-	BizId      int64  `gorm:"uniqueIndex:userId_biz_id_idx;index:biz_uid_biz_id_idx,priority:3"`
+	UserId     int64  `gorm:"uniqueIndex:uid_biz_id_fid_idx;index:biz_uid_biz_id_idx,priority:2"`
+	Biz        string `gorm:"type:varchar(64);uniqueIndex:uid_biz_id_fid_idx;index:biz_uid_biz_id_idx,priority:1"`
+	BizId      int64  `gorm:"uniqueIndex:uid_biz_id_fid_idx;index:biz_uid_biz_id_idx,priority:3"`
+	FavoriteId int64  `gorm:"index;uniqueIndex:uid_biz_id_fid_idx"`
 	CreatedAt  time.Time
 	UpdatedAt  time.Time `gorm:"index"`
 }

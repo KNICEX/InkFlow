@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	inkBiz = "ink"
+	bizInk = "ink"
 
 	inkPubQueue = "ink-pub-queue"
 )
@@ -32,6 +32,7 @@ type InkHandler struct {
 	interactiveSvc interactive.Service
 	auth           middleware.Authentication
 	*userAggregate
+	*inkAggregate
 	l logx.Logger
 }
 
@@ -45,38 +46,49 @@ func NewInkHandler(svc ink.Service, userSvc user.Service, interactiveSvc interac
 		interactiveSvc: interactiveSvc,
 		auth:           auth,
 		userAggregate:  newUserAggregate(userSvc, followService),
+		inkAggregate:   newInkAggregate(svc, userSvc, interactiveSvc),
 		l:              l,
 	}
 }
 
-func (handler *InkHandler) RegisterRoutes(server *gin.RouterGroup) {
+func (h *InkHandler) RegisterRoutes(server *gin.RouterGroup) {
 	inkGroup := server.Group("/ink")
 
-	inkGroup.GET("/detail/:id", ginx.Wrap(handler.l, handler.Detail))
-	inkGroup.POST("/list", ginx.WrapBody(handler.l, handler.List))
+	inkGroup.GET("/detail/:id", h.auth.ExtractPayload(), ginx.Wrap(h.l, h.Detail))
+	inkGroup.POST("/list", ginx.WrapBody(h.l, h.List))
 
-	checkGroup := inkGroup.Use(handler.auth.CheckLogin())
+	checkGroup := inkGroup.Use(h.auth.CheckLogin())
 	{
-		checkGroup.POST("/draft/save", ginx.WrapBody(handler.l, handler.SaveDraft))
-		checkGroup.POST("/draft/publish/:id", ginx.Wrap(handler.l, handler.Publish))
-		checkGroup.GET("/draft/detail/:id", ginx.Wrap(handler.l, handler.DetailDraft))
-		checkGroup.POST("/draft/delete/:id", ginx.Wrap(handler.l, handler.DeleteDraft))
-		checkGroup.GET("/private/detail/:id", ginx.Wrap(handler.l, handler.DetailPrivate))
-		checkGroup.GET("/review/detail/:id", ginx.Wrap(handler.l, handler.Detail))
-		checkGroup.POST("/live/delete/:id", ginx.Wrap(handler.l, handler.DeleteLive))
-		checkGroup.POST("/draft/list", ginx.WrapBody(handler.l, handler.ListDraft))
-		checkGroup.POST("/pending/list", ginx.WrapBody(handler.l, handler.ListPending))
-		checkGroup.POST("/private/list", ginx.WrapBody(handler.l, handler.ListPrivate))
-		checkGroup.POST("/rejected/list", ginx.WrapBody(handler.l, handler.ListReviewRejected))
-		checkGroup.POST("/liked/list", ginx.WrapBody(handler.l, handler.ListLiked))
-		checkGroup.POST("/viewed/list", ginx.WrapBody(handler.l, handler.ListViewed))
-		checkGroup.POST("/withdraw/:id", ginx.Wrap(handler.l, handler.Withdraw))
+		checkGroup.POST("/draft/save", ginx.WrapBody(h.l, h.SaveDraft))
+		checkGroup.POST("/draft/publish/:id", ginx.Wrap(h.l, h.Publish))
+
+		checkGroup.GET("/draft", ginx.WrapBody(h.l, h.ListDraft))
+		checkGroup.GET("/pending", ginx.WrapBody(h.l, h.ListPending))
+		checkGroup.GET("/private", ginx.WrapBody(h.l, h.ListPrivate))
+		checkGroup.GET("/rejected", ginx.WrapBody(h.l, h.ListReviewRejected))
+
+		checkGroup.GET("/draft/:id", ginx.Wrap(h.l, h.DetailDraft))
+		checkGroup.GET("/reviewing/:id", ginx.Wrap(h.l, h.DetailPending))
+		checkGroup.GET("/private/:id", ginx.Wrap(h.l, h.DetailPrivate))
+
+		checkGroup.DELETE("/draft/:id", ginx.Wrap(h.l, h.DeleteDraft))
+		checkGroup.DELETE("/live/:id", ginx.Wrap(h.l, h.DeleteLive))
+
+		checkGroup.GET("/liked", ginx.WrapBody(h.l, h.ListLiked))
+		checkGroup.GET("/viewed", ginx.WrapBody(h.l, h.ListViewed))
+		checkGroup.GET("/favorited", ginx.WrapBody(h.l, h.ListFavorited))
+		checkGroup.POST("/withdraw/:id", ginx.Wrap(h.l, h.Withdraw))
+
+		checkGroup.POST("/like/:id", ginx.Wrap(h.l, h.Like))
+		checkGroup.DELETE("/like/:id", ginx.Wrap(h.l, h.CancelLike))
+		checkGroup.POST("/favorite/:id", ginx.WrapBody(h.l, h.Favorite))
+		checkGroup.DELETE("/favorite/:id", ginx.Wrap(h.l, h.CancelFavorite))
 	}
 }
 
-func (handler *InkHandler) SaveDraft(ctx *gin.Context, req SaveInkReq) (ginx.Result, error) {
+func (h *InkHandler) SaveDraft(ctx *gin.Context, req SaveInkReq) (ginx.Result, error) {
 	u := jwt.MustGetUserClaims(ctx)
-	id, err := handler.svc.Save(ctx, ink.Ink{
+	id, err := h.svc.Save(ctx, ink.Ink{
 		Id:          req.Id,
 		Title:       req.Title,
 		Cover:       req.Cover,
@@ -99,27 +111,26 @@ func (handler *InkHandler) SaveDraft(ctx *gin.Context, req SaveInkReq) (ginx.Res
 	}), nil
 }
 
-func (handler *InkHandler) Publish(ctx *gin.Context) (ginx.Result, error) {
-	u := jwt.MustGetUserClaims(ctx)
-	idParam := ctx.Param("id")
-	id, err := strconv.ParseInt(idParam, 10, 64)
+func (h *InkHandler) Publish(ctx *gin.Context) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 
-	id, err = handler.svc.Publish(ctx, ink.Ink{
+	err = h.svc.Publish(ctx, ink.Ink{
 		Id: id,
 		Author: ink.Author{
-			Id: u.UserId,
+			Id: uc.UserId,
 		},
 	})
 	if err != nil {
 		return ginx.InternalError(), err
 	}
 
-	_, err = handler.workflowCli.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
+	_, err = h.workflowCli.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
 		ID:        inkpub.WorkflowId(id, time.Now()),
 		TaskQueue: inkPubQueue,
-	}, inkpub.InkPublish, id)
+	}, inkpub.InkPublish, id, uc.UserId)
 	if err != nil {
-		handler.l.WithCtx(ctx).Error("start ink publish workflow failed",
+		h.l.WithCtx(ctx).Error("start ink publish workflow failed",
 			logx.Int64("inkId", id),
 			logx.Error(err))
 		return ginx.InternalError(), err
@@ -133,13 +144,12 @@ func (handler *InkHandler) Publish(ctx *gin.Context) (ginx.Result, error) {
 	}), nil
 }
 
-func (handler *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
-	idParam := ctx.Param("id")
-	id, err := strconv.ParseInt(idParam, 10, 64)
+func (h *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 	if err != nil {
 		return ginx.InvalidParam(), err
 	}
-	inkDetail, err := handler.svc.FindLiveInk(ctx, id)
+	inkDetail, err := h.svc.FindLiveInk(ctx, id)
 	if err != nil {
 		return ginx.InternalError(), nil
 	}
@@ -153,12 +163,12 @@ func (handler *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 	var intr interactive.Interactive
 	eg.Go(func() error {
 		var er error
-		author, er = handler.GetUserDetail(ctx, inkDetail.Author.Id, readUserId)
+		author, er = h.GetUserDetail(ctx, inkDetail.Author.Id, readUserId)
 		return er
 	})
 	eg.Go(func() error {
 		var er error
-		intr, er = handler.interactiveSvc.Get(ctx, inkBiz, inkDetail.Id, readUserId)
+		intr, er = h.interactiveSvc.Get(ctx, bizInk, inkDetail.Id, readUserId)
 		return er
 	})
 
@@ -167,9 +177,9 @@ func (handler *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 	}
 
 	go func() {
-		er := handler.interactiveSvc.View(ctx, inkBiz, inkDetail.Id, readUserId)
+		er := h.interactiveSvc.View(ctx, bizInk, inkDetail.Id, readUserId)
 		if er != nil {
-			handler.l.WithCtx(ctx).Error("send read event failed when get live article",
+			h.l.WithCtx(ctx).Error("send read event failed when get live article",
 				logx.Int64("user_id", readUserId),
 				logx.Int64("ink_id", inkDetail.Id),
 				logx.Error(er))
@@ -182,28 +192,26 @@ func (handler *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 	return ginx.SuccessWithData(res), nil
 }
 
-func (handler *InkHandler) DetailDraft(ctx *gin.Context) (ginx.Result, error) {
-	idParam := ctx.Param("id")
-	id, err := strconv.ParseInt(idParam, 10, 64)
+func (h *InkHandler) DetailDraft(ctx *gin.Context) (ginx.Result, error) {
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 	u := jwt.MustGetUserClaims(ctx)
 	if err != nil {
 		return ginx.InvalidParam(), err
 	}
-	draft, err := handler.svc.FindDraftInk(ctx, id, u.UserId)
+	draft, err := h.svc.FindDraftInk(ctx, id, u.UserId)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
 	return ginx.SuccessWithData(inkToVO(draft)), nil
 }
 
-func (handler *InkHandler) DetailPrivate(ctx *gin.Context) (ginx.Result, error) {
-	idParam := ctx.Param("id")
-	id, err := strconv.ParseInt(idParam, 10, 64)
+func (h *InkHandler) DetailPrivate(ctx *gin.Context) (ginx.Result, error) {
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 	u := jwt.MustGetUserClaims(ctx)
 	if err != nil {
 		return ginx.InvalidParam(), err
 	}
-	draft, err := handler.svc.FindPrivateInk(ctx, id, u.UserId)
+	draft, err := h.svc.FindPrivateInk(ctx, id, u.UserId)
 	if err != nil {
 		if errors.Is(err, ink.ErrNoPermission) {
 			return ginx.NoPermission(), err
@@ -213,14 +221,26 @@ func (handler *InkHandler) DetailPrivate(ctx *gin.Context) (ginx.Result, error) 
 	return ginx.SuccessWithData(inkToVO(draft)), nil
 }
 
-func (handler *InkHandler) DetailRejected(ctx *gin.Context) (ginx.Result, error) {
-	idParam := ctx.Param("id")
-	id, err := strconv.ParseInt(idParam, 10, 64)
+func (h *InkHandler) DetailPending(ctx *gin.Context) (ginx.Result, error) {
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+	if err != nil {
+		return ginx.InvalidParam(), err
+	}
+	uc := jwt.MustGetUserClaims(ctx)
+	inkInfo, err := h.svc.FindPendingInk(ctx, id, uc.UserId)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.SuccessWithData(inkToVO(inkInfo)), nil
+}
+
+func (h *InkHandler) DetailRejected(ctx *gin.Context) (ginx.Result, error) {
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 	u := jwt.MustGetUserClaims(ctx)
 	if err != nil {
 		return ginx.InvalidParam(), err
 	}
-	draft, err := handler.svc.FindRejectedInk(ctx, id, u.UserId)
+	draft, err := h.svc.FindRejectedInk(ctx, id, u.UserId)
 	if err != nil {
 		if errors.Is(err, ink.ErrNoPermission) {
 			return ginx.NoPermission(), err
@@ -230,14 +250,13 @@ func (handler *InkHandler) DetailRejected(ctx *gin.Context) (ginx.Result, error)
 	return ginx.SuccessWithData(inkToVO(draft)), nil
 }
 
-func (handler *InkHandler) Withdraw(ctx *gin.Context) (ginx.Result, error) {
+func (h *InkHandler) Withdraw(ctx *gin.Context) (ginx.Result, error) {
 	u := jwt.MustGetUserClaims(ctx)
-	idParam := ctx.Param("id")
-	id, err := strconv.ParseInt(idParam, 10, 64)
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 	if err != nil {
 		return ginx.InvalidParam(), err
 	}
-	err = handler.svc.Withdraw(ctx, ink.Ink{
+	err = h.svc.Withdraw(ctx, ink.Ink{
 		Id: id,
 		Author: ink.Author{
 			Id: u.UserId,
@@ -248,8 +267,8 @@ func (handler *InkHandler) Withdraw(ctx *gin.Context) (ginx.Result, error) {
 	}
 	return ginx.Success(), nil
 }
-func (handler *InkHandler) List(ctx *gin.Context, req ListReq) (ginx.Result, error) {
-	inks, err := handler.svc.ListLiveByAuthorId(ctx, req.AuthorId, req.Offset, req.Limit)
+func (h *InkHandler) List(ctx *gin.Context, req ListReq) (ginx.Result, error) {
+	inks, err := h.svc.ListLiveByAuthorId(ctx, req.AuthorId, req.Offset, req.Limit)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
@@ -258,9 +277,6 @@ func (handler *InkHandler) List(ctx *gin.Context, req ListReq) (ginx.Result, err
 		return ginx.SuccessWithData([]InkVO{}), nil
 	}
 
-	uids := lo.Map(inks, func(item ink.Ink, index int) int64 {
-		return item.Author.Id
-	})
 	inkIds := lo.Map(inks, func(item ink.Ink, index int) int64 {
 		return item.Id
 	})
@@ -269,17 +285,17 @@ func (handler *InkHandler) List(ctx *gin.Context, req ListReq) (ginx.Result, err
 	readUserId := readUser.UserId
 
 	eg := errgroup.Group{}
-	var users map[int64]user.User
+	var author UserVO
 	var intrs map[int64]interactive.Interactive
 	eg.Go(func() error {
 		var er error
-		users, er = handler.userSvc.FindByIds(ctx, uids)
+		author, er = h.userAggregate.GetUserDetail(ctx, req.AuthorId, readUserId)
 		return er
 	})
 
 	eg.Go(func() error {
 		var er error
-		intrs, er = handler.interactiveSvc.GetMulti(ctx, inkBiz, inkIds, readUserId)
+		intrs, er = h.interactiveSvc.GetMulti(ctx, bizInk, inkIds, readUserId)
 		return er
 	})
 
@@ -294,16 +310,12 @@ func (handler *InkHandler) List(ctx *gin.Context, req ListReq) (ginx.Result, err
 
 	res := make([]InkVO, 0, len(inks))
 	for _, item := range inks {
-		author, ok := users[item.Author.Id]
-		if !ok {
-			continue
-		}
 		intr, ok := intrs[item.Id]
 		if !ok {
 			continue
 		}
 		inkVO := inkToVO(item)
-		inkVO.Author = userToVO(author)
+		inkVO.Author = author
 		inkVO.Interactive = intrToVo(intr)
 		res = append(res, inkVO)
 	}
@@ -311,14 +323,13 @@ func (handler *InkHandler) List(ctx *gin.Context, req ListReq) (ginx.Result, err
 	return ginx.SuccessWithData(res), nil
 }
 
-func (handler *InkHandler) DeleteDraft(ctx *gin.Context) (ginx.Result, error) {
+func (h *InkHandler) DeleteDraft(ctx *gin.Context) (ginx.Result, error) {
 	u := jwt.MustGetUserClaims(ctx)
-	idParam := ctx.Param("id")
-	id, err := strconv.ParseInt(idParam, 10, 64)
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 	if err != nil {
 		return ginx.InvalidParam(), err
 	}
-	err = handler.svc.DeleteDraft(ctx, ink.Ink{
+	err = h.svc.DeleteDraft(ctx, ink.Ink{
 		Id: id,
 		Author: ink.Author{
 			Id: u.UserId,
@@ -330,14 +341,13 @@ func (handler *InkHandler) DeleteDraft(ctx *gin.Context) (ginx.Result, error) {
 	return ginx.Success(), nil
 }
 
-func (handler *InkHandler) DeleteLive(ctx *gin.Context) (ginx.Result, error) {
+func (h *InkHandler) DeleteLive(ctx *gin.Context) (ginx.Result, error) {
 	u := jwt.MustGetUserClaims(ctx)
-	idParam := ctx.Param("id")
-	id, err := strconv.ParseInt(idParam, 10, 64)
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 	if err != nil {
 		return ginx.InvalidParam(), err
 	}
-	err = handler.svc.DeleteLive(ctx, ink.Ink{
+	err = h.svc.DeleteLive(ctx, ink.Ink{
 		Id: id,
 		Author: ink.Author{
 			Id: u.UserId,
@@ -349,9 +359,9 @@ func (handler *InkHandler) DeleteLive(ctx *gin.Context) (ginx.Result, error) {
 	return ginx.Success(), nil
 }
 
-func (handler *InkHandler) ListPending(ctx *gin.Context, req ListSelfReq) (ginx.Result, error) {
+func (h *InkHandler) ListPending(ctx *gin.Context, req ListSelfReq) (ginx.Result, error) {
 	u := jwt.MustGetUserClaims(ctx)
-	inks, err := handler.svc.ListPendingByAuthorId(ctx, u.UserId, req.Offset, req.Limit)
+	inks, err := h.svc.ListPendingByAuthorId(ctx, u.UserId, req.Offset, req.Limit)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
@@ -362,9 +372,9 @@ func (handler *InkHandler) ListPending(ctx *gin.Context, req ListSelfReq) (ginx.
 	return ginx.SuccessWithData(res), nil
 }
 
-func (handler *InkHandler) ListReviewRejected(ctx *gin.Context, req ListSelfReq) (ginx.Result, error) {
+func (h *InkHandler) ListReviewRejected(ctx *gin.Context, req ListSelfReq) (ginx.Result, error) {
 	u := jwt.MustGetUserClaims(ctx)
-	inks, err := handler.svc.ListReviewRejectedByAuthorId(ctx, u.UserId, req.Offset, req.Limit)
+	inks, err := h.svc.ListReviewRejectedByAuthorId(ctx, u.UserId, req.Offset, req.Limit)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
@@ -375,9 +385,9 @@ func (handler *InkHandler) ListReviewRejected(ctx *gin.Context, req ListSelfReq)
 	return ginx.SuccessWithData(res), nil
 }
 
-func (handler *InkHandler) ListDraft(ctx *gin.Context, req ListDraftReq) (ginx.Result, error) {
+func (h *InkHandler) ListDraft(ctx *gin.Context, req ListDraftReq) (ginx.Result, error) {
 	u := jwt.MustGetUserClaims(ctx)
-	inks, err := handler.svc.ListDraftByAuthorId(ctx, u.UserId, req.Offset, req.Limit)
+	inks, err := h.svc.ListDraftByAuthorId(ctx, u.UserId, req.Offset, req.Limit)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
@@ -388,98 +398,91 @@ func (handler *InkHandler) ListDraft(ctx *gin.Context, req ListDraftReq) (ginx.R
 	return ginx.SuccessWithData(res), nil
 }
 
-func (handler *InkHandler) ListLiked(ctx *gin.Context, req ListMaxIdReq) (ginx.Result, error) {
+func (h *InkHandler) ListLiked(ctx *gin.Context, req ListMaxIdReq) (ginx.Result, error) {
 	u := jwt.MustGetUserClaims(ctx)
 	// TODO 这里是不是应该把交互数据一起查出来
-	likes, err := handler.interactiveSvc.ListLike(ctx, inkBiz, u.UserId, req.MaxId, req.Limit)
+	likes, err := h.interactiveSvc.ListLike(ctx, bizInk, u.UserId, req.MaxId, req.Limit)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
+	if len(likes) == 0 {
+		return ginx.SuccessWithData([]InkVO{}), nil
+	}
+
 	inkIds := lo.Map(likes, func(item interactive.LikeRecord, index int) int64 {
 		return item.BizId
 	})
 
-	eg := errgroup.Group{}
-	var inkMap map[int64]ink.Ink
-	var authorMap map[int64]user.User
-	eg.Go(func() error {
-		var er error
-		inkMap, er = handler.svc.FindByIds(ctx, inkIds)
-		return er
-	})
-	eg.Go(func() error {
-		var er error
-		authorMap, er = handler.userSvc.FindByIds(ctx, inkIds)
-		return er
-	})
-	if err = eg.Wait(); err != nil {
+	inkVoMap, err := h.inkAggregate.GetInkList(ctx, inkIds, u.UserId)
+	if err != nil {
 		return ginx.InternalError(), err
 	}
-
 	res := make([]InkVO, 0, len(likes))
 	for _, item := range likes {
-		i, ok := inkMap[item.BizId]
+		vo, ok := inkVoMap[item.BizId]
 		if !ok {
 			continue
 		}
-		author, ok := authorMap[item.BizId]
-		if !ok {
-			continue
-		}
-		inkVO := inkToVO(i)
-		inkVO.Author = userToVO(author)
-		res = append(res, inkVO)
+		res = append(res, vo)
 	}
 
 	return ginx.SuccessWithData(res), nil
 }
 
-func (handler *InkHandler) ListViewed(ctx *gin.Context, req ListMaxIdReq) (ginx.Result, error) {
+func (h *InkHandler) ListViewed(ctx *gin.Context, req ListMaxIdReq) (ginx.Result, error) {
 	u := jwt.MustGetUserClaims(ctx)
-	views, err := handler.interactiveSvc.ListView(ctx, inkBiz, u.UserId, req.MaxId, req.Limit)
+	views, err := h.interactiveSvc.ListView(ctx, bizInk, u.UserId, req.MaxId, req.Limit)
 	if err != nil {
 		return ginx.InternalError(), err
+	}
+	if len(views) == 0 {
+		return ginx.SuccessWithData([]InkVO{}), nil
 	}
 	inkIds := lo.Map(views, func(item interactive.ViewRecord, index int) int64 {
 		return item.BizId
 	})
 
-	eg := errgroup.Group{}
-	var inkMap map[int64]ink.Ink
-	var authorMap map[int64]user.User
-	eg.Go(func() error {
-		var er error
-		inkMap, er = handler.svc.FindByIds(ctx, inkIds)
-		return er
-	})
-	eg.Go(func() error {
-		var er error
-		authorMap, er = handler.userSvc.FindByIds(ctx, inkIds)
-		return er
-	})
-	if err = eg.Wait(); err != nil {
+	inkVoMap, err := h.inkAggregate.GetInkList(ctx, inkIds, u.UserId)
+	if err != nil {
 		return ginx.InternalError(), err
 	}
-
-	res := make([]InkVO, 0, len(views))
+	inkVos := make([]InkVO, 0, len(views))
 	for _, item := range views {
-		i, ok := inkMap[item.BizId]
+		vo, ok := inkVoMap[item.BizId]
 		if !ok {
 			continue
 		}
-		author, ok := authorMap[item.BizId]
-		if !ok {
-			continue
+		inkVos = append(inkVos, vo)
+	}
+	return ginx.SuccessWithData(inkVos), nil
+}
+
+func (h *InkHandler) ListFavorited(ctx *gin.Context, req ListFavoriteReq) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	fs, err := h.interactiveSvc.ListFavoriteByFid(ctx, bizInk, uc.UserId, req.Fid, req.MaxId, req.Limit)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	if len(fs) == 0 {
+		return ginx.SuccessWithData([]InkVO{}), nil
+	}
+	inkVOs, err := h.inkAggregate.GetInkList(ctx, lo.Map(fs, func(item interactive.FavoriteRecord, index int) int64 {
+		return item.BizId
+	}), uc.UserId)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	res := make([]InkVO, 0, len(fs))
+	for _, f := range fs {
+		if vo, ok := inkVOs[f.BizId]; ok {
+			res = append(res, vo)
 		}
-		inkVO := inkToVO(i)
-		inkVO.Author = userToVO(author)
-		res = append(res, inkVO)
 	}
 	return ginx.SuccessWithData(res), nil
 }
-func (handler *InkHandler) ListPrivate(ctx *gin.Context, req ListSelfReq) (ginx.Result, error) {
+func (h *InkHandler) ListPrivate(ctx *gin.Context, req ListSelfReq) (ginx.Result, error) {
 	u := jwt.MustGetUserClaims(ctx)
-	inks, err := handler.svc.ListPrivateByAuthorId(ctx, u.UserId, req.Offset, req.Limit)
+	inks, err := h.svc.ListPrivateByAuthorId(ctx, u.UserId, req.Offset, req.Limit)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
@@ -488,4 +491,56 @@ func (handler *InkHandler) ListPrivate(ctx *gin.Context, req ListSelfReq) (ginx.
 		res = append(res, inkToVO(item))
 	}
 	return ginx.SuccessWithData(res), nil
+}
+
+func (h *InkHandler) Like(ctx *gin.Context) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+	if err != nil {
+		return ginx.InvalidParam(), err
+	}
+	err = h.interactiveSvc.Like(ctx, bizInk, id, uc.UserId)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.Success(), nil
+}
+
+func (h *InkHandler) CancelLike(ctx *gin.Context) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+	if err != nil {
+		return ginx.InvalidParam(), err
+	}
+	err = h.interactiveSvc.CancelLike(ctx, bizInk, id, uc.UserId)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.Success(), nil
+}
+
+func (h *InkHandler) Favorite(ctx *gin.Context, req FavoriteReq) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+	if err != nil {
+		return ginx.InvalidParam(), err
+	}
+	err = h.interactiveSvc.Favorite(ctx, bizInk, id, uc.UserId, req.FavoriteId)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.Success(), nil
+}
+
+func (h *InkHandler) CancelFavorite(ctx *gin.Context) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+	if err != nil {
+		return ginx.InvalidParam(), err
+	}
+	err = h.interactiveSvc.CancelFavorite(ctx, bizInk, id, uc.UserId)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.Success(), nil
 }

@@ -13,12 +13,12 @@ const ReviewSignal = "review-signal"
 
 const bizInk = "ink"
 
-func InkPublish(ctx workflow.Context, inkId int64) error {
+func InkPublish(ctx workflow.Context, inkId int64, uid int64) error {
 	ao := workflow.ActivityOptions{
 		StartToCloseTimeout: time.Minute,
 		RetryPolicy: &temporal.RetryPolicy{
 			InitialInterval: time.Second,
-			MaximumAttempts: 3,
+			MaximumAttempts: 5,
 		},
 	}
 	ctx = workflow.WithActivityOptions(ctx, ao)
@@ -27,7 +27,7 @@ func InkPublish(ctx workflow.Context, inkId int64) error {
 	var inkInfo ink.Ink
 	l := workflow.GetLogger(ctx)
 
-	err := workflow.ExecuteActivity(ctx, activities.FindInkInfo, inkId).
+	err := workflow.ExecuteActivity(ctx, activities.FindInkInfo, inkId, uid).
 		Get(ctx, &inkInfo)
 	if err != nil {
 		return err
@@ -58,15 +58,24 @@ func InkPublish(ctx workflow.Context, inkId int64) error {
 	if reviewResult.Passed {
 		// 通过
 		inkInfo.AiTags = reviewResult.ReviewTags
+		// 更新草稿状态
 		err = workflow.ExecuteActivity(ctx, activities.UpdateToPublished, inkInfo.Id, inkInfo.Author.Id).Get(ctx, nil)
 		if err != nil {
 			l.Error("update ink status to published error", "error", err, "inkId", inkInfo.Id)
 			return err
 		}
+
 		// 提前创建交互记录
 		err = workflow.ExecuteActivity(ctx, activities.CreateIntr, bizInk, inkInfo.Id).Get(ctx, nil)
 		if err != nil {
 			l.Error("create interactive error", "error", err, "inkId", inkInfo.Id)
+			return err
+		}
+
+		// 同步到线上库
+		err = workflow.ExecuteActivity(ctx, activities.SyncToLive, inkInfo).Get(ctx, nil)
+		if err != nil {
+			l.Error("sync ink to live error", "error", err, "inkId", inkInfo.Id)
 			return err
 		}
 
@@ -94,7 +103,7 @@ func InkPublish(ctx workflow.Context, inkId int64) error {
 		// 未通过审核
 
 		// 更新文章状态为已拒绝
-		err = workflow.ExecuteActivity(ctx, activities.UpdateInkToRejected, inkInfo.Id).Get(ctx, nil)
+		err = workflow.ExecuteActivity(ctx, activities.UpdateInkToRejected, inkInfo.Id, uid).Get(ctx, nil)
 		if err != nil {
 			l.Error("update ink status to rejected error", "error", err, "inkId", inkInfo.Id)
 			return err
