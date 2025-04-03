@@ -39,7 +39,8 @@ type NotificationDAO interface {
 	Delete(ctx context.Context, ids []int64, uid int64) error
 	DeleteAll(ctx context.Context, uid int64, notificationType ...string) error
 	FindByType(ctx context.Context, uid int64, notificationType []string, maxId int64, limit int) ([]Notification, error)
-	FindLikeMerge(ctx context.Context, uid int64, offset, limit int) ([]MergedLike, error)
+	FindMergedLike(ctx context.Context, uid int64, offset, limit int) ([]MergedLike, error)
+	DeleteMergedLike(ctx context.Context, uid int64, subjectType string, subjectId int64) error
 	ReadAll(ctx context.Context, userId int64, notificationType ...string) error
 	CountTotalUnread(ctx context.Context, userId int64) (int64, error)
 	CountUnreadByType(ctx context.Context, userId int64, types []string) (map[string]int64, error)
@@ -65,15 +66,20 @@ func (dao *GormNotificationDAO) Insert(ctx context.Context, no Notification) err
 
 func (dao *GormNotificationDAO) FindByType(ctx context.Context, uid int64, notificationType []string, maxId int64, limit int) ([]Notification, error) {
 	var notifications []Notification
-	err := dao.db.WithContext(ctx).Where("recipient_id = ? AND notification_type IN ? AND id < ?", uid, notificationType, maxId).
-		Order("id desc").Limit(limit).Find(&notifications).Error
+	var tx *gorm.DB
+	if maxId == 0 {
+		tx = dao.db.WithContext(ctx).Where("recipient_id = ? AND notification_type IN ?", uid, notificationType)
+	} else {
+		tx = dao.db.WithContext(ctx).Where("recipient_id = ? AND notification_type IN ? AND id < ?", uid, notificationType, maxId)
+	}
+	err := tx.Order("id desc").Limit(limit).Find(&notifications).Error
 	if err != nil {
 		return nil, err
 	}
 	return notifications, nil
 }
 
-func (dao *GormNotificationDAO) FindLikeMerge(ctx context.Context, uid int64, offset, limit int) ([]MergedLike, error) {
+func (dao *GormNotificationDAO) FindMergedLike(ctx context.Context, uid int64, offset, limit int) ([]MergedLike, error) {
 	// 按subject_type和subject_id分组，查出前n个用户id和总数量
 	type subject struct {
 		SubjectType string
@@ -152,6 +158,11 @@ func (dao *GormNotificationDAO) FindLikeMerge(ctx context.Context, uid int64, of
 		res = append(res, ml)
 	}
 	return res, err
+}
+
+func (dao *GormNotificationDAO) DeleteMergedLike(ctx context.Context, uid int64, subjectType string, subjectId int64) error {
+	return dao.db.WithContext(ctx).Where("recipient_id = ? AND notification_type = ? AND subject_type = ? AND subject_id = ?",
+		uid, "like", subjectType, subjectId).Delete(&Notification{}).Error
 }
 
 func (dao *GormNotificationDAO) ReadAll(ctx context.Context, userId int64, notificationType ...string) error {

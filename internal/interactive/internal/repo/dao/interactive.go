@@ -18,6 +18,10 @@ var (
 type InteractiveDAO interface {
 	InsertInteractive(ctx context.Context, biz string, bizId int64) error
 	InsertView(ctx context.Context, biz string, bizId, uid int64) error
+
+	IncrReply(ctx context.Context, biz string, bizId int64) error
+	DecrReply(ctx context.Context, biz string, bizId int64) error
+
 	InsertFavorite(ctx context.Context, biz string, bizId, uid, fid int64) error
 	InsertLike(ctx context.Context, biz string, bizId, uid int64) error
 	DeleteLike(ctx context.Context, biz string, bizId, uid int64) error
@@ -106,6 +110,21 @@ func (dao *GormInteractiveDAO) InsertView(ctx context.Context, biz string, bizId
 		BizId:     bizId,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
+	}).Error
+}
+
+func (dao *GormInteractiveDAO) IncrReply(ctx context.Context, biz string, bizId int64) error {
+	return dao.db.WithContext(ctx).Where("biz = ? AND biz_id = ?", biz, bizId).UpdateColumns(map[string]any{
+		"reply_cnt":  gorm.Expr("interactive.reply_cnt + 1"),
+		"updated_at": time.Now(),
+	}).Error
+
+}
+
+func (dao *GormInteractiveDAO) DecrReply(ctx context.Context, biz string, bizId int64) error {
+	return dao.db.WithContext(ctx).Where("biz = ? AND biz_id = ?", biz, bizId).UpdateColumns(map[string]any{
+		"reply_cnt":  gorm.Expr("interactive.reply_cnt - 1"),
+		"updated_at": time.Now(),
 	}).Error
 }
 
@@ -390,6 +409,7 @@ type Interactive struct {
 	ViewCnt     int64  `gorm:"index"`
 	LikeCnt     int64  `gorm:"index"`
 	UnlikeCnt   int64
+	ReplyCnt    int64
 	FavoriteCnt int64 `gorm:"index"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

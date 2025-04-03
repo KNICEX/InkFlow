@@ -1,10 +1,12 @@
 package web
 
 import (
+	"github.com/KNICEX/InkFlow/internal/comment"
 	"github.com/KNICEX/InkFlow/internal/feed"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/interactive"
 	"github.com/KNICEX/InkFlow/internal/recommend"
+	"github.com/KNICEX/InkFlow/internal/relation"
 	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/KNICEX/InkFlow/pkg/ginx"
 	"github.com/KNICEX/InkFlow/pkg/ginx/jwt"
@@ -12,7 +14,6 @@ import (
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
-	"golang.org/x/sync/errgroup"
 )
 
 type FeedHandler struct {
@@ -28,14 +29,16 @@ func NewFeedHandler(
 	inkSvc ink.Service,
 	intrSvc interactive.Service,
 	userSvc user.Service,
+	followSvc relation.FollowService,
 	recommendSvc recommend.Service,
 	auth middleware.Authentication,
+	commentSvc comment.Service,
 	l logx.Logger,
 ) *FeedHandler {
 	return &FeedHandler{
 		svc:          svc,
 		recommendSvc: recommendSvc,
-		inkAggregate: newInkAggregate(inkSvc, userSvc, intrSvc),
+		inkAggregate: newInkAggregate(inkSvc, userSvc, followSvc, intrSvc, commentSvc),
 		auth:         auth,
 		l:            l,
 	}
@@ -64,33 +67,21 @@ func (h *FeedHandler) Follow(ctx *gin.Context, req FeedFollowReq) (ginx.Result, 
 	inkIds := lo.Map(feeds, func(item feed.Feed, index int) int64 {
 		return item.BizId
 	})
-	authorIds := lo.Map(feeds, func(item feed.Feed, index int) int64 {
-		return item.Content.(feed.Ink).AuthorId
-	})
-	var intrs map[int64]interactive.Interactive
-	var authors map[int64]user.User
-	eg := errgroup.Group{}
-	eg.Go(func() error {
-		var er error
-		intrs, er = h.intrSvc.GetMulti(ctx, bizInk, inkIds, uc.UserId)
-		return er
-	})
-	eg.Go(func() error {
-		var er error
-		authors, er = h.userSvc.FindByIds(ctx, authorIds)
-		return er
-	})
-	if err = eg.Wait(); err != nil {
+
+	inksMap, err := h.inkAggregate.GetInkList(ctx, inkIds, uc.UserId)
+	if err != nil {
 		return ginx.InternalError(), err
 	}
 
 	inkVos := make([]InkVO, 0, len(feeds))
 	for _, f := range feeds {
-		vo := feedInkToVO(f.Content.(feed.Ink))
-		vo.Interactive = intrToVo(intrs[f.BizId])
-		vo.Author = userToVO(authors[f.Content.(feed.Ink).AuthorId])
-		inkVos = append(inkVos, vo)
+		inkVo, ok := inksMap[f.BizId]
+		if !ok {
+			continue
+		}
+		inkVos = append(inkVos, inkVo)
 	}
+
 	return ginx.SuccessWithData(inkVos), nil
 }
 

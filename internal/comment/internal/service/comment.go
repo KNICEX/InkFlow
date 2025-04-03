@@ -25,6 +25,7 @@ type CommentService interface {
 	Create(ctx context.Context, comment domain.Comment) (int64, error)
 	Delete(ctx context.Context, id int64, uid int64) error
 	Like(ctx context.Context, uid, cid int64) error
+	CancelLike(ctx context.Context, uid, cid int64) error
 
 	FindById(ctx context.Context, commentId, uid int64) (domain.Comment, error)
 	FindByIds(ctx context.Context, ids []int64, uid int64) (map[int64]domain.Comment, error)
@@ -35,6 +36,8 @@ type CommentService interface {
 	LoadMoreRepliesByRid(ctx context.Context, rid int64, uid, maxId int64, limit int) ([]domain.Comment, error)
 	// LoadMoreRepliesByPid 根据parentId加载所有子评论
 	LoadMoreRepliesByPid(ctx context.Context, pid int64, uid, maxId int64, limit int) ([]domain.Comment, error)
+
+	FindBizReplyCount(ctx context.Context, biz string, bizIds []int64) (map[int64]int64, error)
 }
 
 type commentService struct {
@@ -185,6 +188,26 @@ func (svc *commentService) Like(ctx context.Context, uid, cid int64) error {
 	return nil
 }
 
+func (svc *commentService) CancelLike(ctx context.Context, uid, cid int64) error {
+	err := svc.repo.CancelLike(ctx, uid, cid)
+	if err != nil {
+		return err
+	}
+	go func() {
+		er := svc.producer.ProduceCancelLike(ctx, event.LikeEvent{
+			CommentId: cid,
+			LikeUid:   uid,
+			CreatedAt: time.Now(),
+		})
+		if er != nil {
+			svc.l.WithCtx(ctx).Error("produce cancel like event error", logx.Error(er),
+				logx.Int64("commentId", cid),
+				logx.Int64("likeUid", uid))
+		}
+	}()
+	return nil
+}
+
 func (svc *commentService) FindById(ctx context.Context, commentId, uid int64) (domain.Comment, error) {
 	eg := errgroup.Group{}
 	var comment domain.Comment
@@ -262,4 +285,8 @@ func (svc *commentService) LoadMoreRepliesByPid(ctx context.Context, pid int64, 
 		comments[i] = comment
 	}
 	return comments, nil
+}
+
+func (svc *commentService) FindBizReplyCount(ctx context.Context, biz string, bizIds []int64) (map[int64]int64, error) {
+	return svc.repo.BizReplyCount(ctx, biz, bizIds)
 }

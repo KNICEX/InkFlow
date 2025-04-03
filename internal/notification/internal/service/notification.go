@@ -11,6 +11,8 @@ type NotificationService interface {
 	DeleteByType(ctx context.Context, recipientId int64, types ...domain.NotificationType) error
 	ListNotification(ctx context.Context, recipientId int64, types []domain.NotificationType, maxId int64, limit int) ([]domain.Notification, error)
 	ListMergedLike(ctx context.Context, recipientId int64, offset, limit int) ([]domain.MergedLikeNotification, error)
+	DeleteMergedLike(ctx context.Context, recipientId int64, subjectType domain.SubjectType, subjectId int64) error
+	DeleteById(ctx context.Context, recipientId int64, id int64) error
 	ReadAll(ctx context.Context, recipientId int64, types ...domain.NotificationType) error
 	UnreadCount(ctx context.Context, recipientId int64) (map[domain.NotificationType]int64, error)
 }
@@ -31,6 +33,14 @@ func (svc *notificationService) SendNotification(ctx context.Context, n domain.N
 
 func (svc *notificationService) DeleteByType(ctx context.Context, recipientId int64, types ...domain.NotificationType) error {
 	return svc.repo.DeleteByType(ctx, recipientId, types...)
+}
+
+func (svc *notificationService) DeleteById(ctx context.Context, recipientId int64, id int64) error {
+	return svc.repo.Delete(ctx, recipientId, []int64{id})
+}
+
+func (svc *notificationService) DeleteMergedLike(ctx context.Context, recipientId int64, subjectType domain.SubjectType, subjectId int64) error {
+	return svc.repo.DeleteMergedLike(ctx, recipientId, subjectType, subjectId)
 }
 
 func (svc *notificationService) ListNotification(ctx context.Context, recipientId int64, types []domain.NotificationType, maxId int64, limit int) ([]domain.Notification, error) {

@@ -10,14 +10,14 @@ import (
 
 type NotificationRepo interface {
 	CreateNotification(ctx context.Context, n domain.Notification) error
-	DelNotification(ctx context.Context, ids []int64, recipientId int64) error
 	DelByType(ctx context.Context, recipientId int64, types ...domain.NotificationType) error
 	FindByType(ctx context.Context, recipientId int64, types []domain.NotificationType, maxId int64, limit int) ([]domain.Notification, error)
 	FindMergedLike(ctx context.Context, recipient int64, offset, limit int) ([]domain.MergedLikeNotification, error)
+	DeleteMergedLike(ctx context.Context, recipient int64, subjectType domain.SubjectType, subjectId int64) error
 	CountUnreadByType(ctx context.Context, recipientId int64, types []domain.NotificationType) (map[domain.NotificationType]int64, error)
 	CountTotalUnread(ctx context.Context, recipientId int64) (int64, error)
 	MarkAllRead(ctx context.Context, recipientId int64, types ...domain.NotificationType) error
-	Delete(ctx context.Context, ids []int64, recipientId int64) error
+	Delete(ctx context.Context, recipientId int64, ids []int64) error
 	DeleteByType(ctx context.Context, recipientId int64, types ...domain.NotificationType) error
 }
 
@@ -37,10 +37,6 @@ func (repo *NoCacheNotificationRepo) CreateNotification(ctx context.Context, n d
 		return err
 	}
 	return repo.dao.Insert(ctx, entity)
-}
-
-func (repo *NoCacheNotificationRepo) DelNotification(ctx context.Context, ids []int64, recipientId int64) error {
-	return repo.dao.Delete(ctx, ids, recipientId)
 }
 
 func (repo *NoCacheNotificationRepo) DelByType(ctx context.Context, recipientId int64, types ...domain.NotificationType) error {
@@ -63,7 +59,7 @@ func (repo *NoCacheNotificationRepo) FindByType(ctx context.Context, recipientId
 }
 
 func (repo *NoCacheNotificationRepo) FindMergedLike(ctx context.Context, recipient int64, offset, limit int) ([]domain.MergedLikeNotification, error) {
-	ml, err := repo.dao.FindLikeMerge(ctx, recipient, offset, limit)
+	ml, err := repo.dao.FindMergedLike(ctx, recipient, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -77,6 +73,10 @@ func (repo *NoCacheNotificationRepo) FindMergedLike(ctx context.Context, recipie
 			UpdatedAt:   item.UpdatedAt,
 		}
 	}), nil
+}
+
+func (repo *NoCacheNotificationRepo) DeleteMergedLike(ctx context.Context, recipient int64, subjectType domain.SubjectType, subjectId int64) error {
+	return repo.dao.DeleteMergedLike(ctx, recipient, subjectType.ToString(), subjectId)
 }
 
 func (repo *NoCacheNotificationRepo) CountUnreadByType(ctx context.Context, recipientId int64, types []domain.NotificationType) (map[domain.NotificationType]int64, error) {
@@ -106,7 +106,7 @@ func (repo *NoCacheNotificationRepo) MarkAllRead(ctx context.Context, recipientI
 	})...)
 }
 
-func (repo *NoCacheNotificationRepo) Delete(ctx context.Context, ids []int64, recipientId int64) error {
+func (repo *NoCacheNotificationRepo) Delete(ctx context.Context, recipientId int64, ids []int64) error {
 	return repo.dao.Delete(ctx, ids, recipientId)
 }
 

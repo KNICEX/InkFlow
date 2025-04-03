@@ -2,11 +2,13 @@ package web
 
 import (
 	"github.com/KNICEX/InkFlow/internal/comment"
+	"github.com/KNICEX/InkFlow/internal/relation"
 	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/KNICEX/InkFlow/pkg/ginx"
 	"github.com/KNICEX/InkFlow/pkg/ginx/jwt"
 	"github.com/KNICEX/InkFlow/pkg/ginx/middleware"
 	"github.com/KNICEX/InkFlow/pkg/logx"
+	"github.com/KNICEX/InkFlow/pkg/mapx"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 	"strconv"
@@ -15,26 +17,32 @@ import (
 type CommentHandler struct {
 	svc     comment.Service
 	userSvc user.Service
-	auth    middleware.Authentication
+	*userAggregate
+	auth middleware.Authentication
 
 	l logx.Logger
 }
 
-func NewCommentHandler(svc comment.Service, userSvc user.Service, auth middleware.Authentication, l logx.Logger) *CommentHandler {
+func NewCommentHandler(svc comment.Service, followSvc relation.FollowService, userSvc user.Service, auth middleware.Authentication, l logx.Logger) *CommentHandler {
 	return &CommentHandler{
-		svc:     svc,
-		userSvc: userSvc,
-		auth:    auth,
-		l:       l,
+		svc:           svc,
+		userSvc:       userSvc,
+		userAggregate: newUserAggregate(userSvc, followSvc),
+		auth:          auth,
+		l:             l,
 	}
 }
 
 func (h *CommentHandler) RegisterRoutes(server *gin.RouterGroup) {
 	commentGroup := server.Group("/comment")
 	{
-		commentGroup.GET("", ginx.WrapBody(h.l, h.List))
-		commentGroup.GET("/child/:rid", ginx.WrapBody(h.l, h.LoadMoreChild))
-		commentGroup.POST("", h.auth.CheckLogin(), ginx.WrapBody(h.l, h.Reply))
+		commentGroup.GET("", h.auth.ExtractPayload(), ginx.WrapBody(h.l, h.List))
+		commentGroup.GET("/child/:rid", h.auth.ExtractPayload(), ginx.WrapBody(h.l, h.LoadMoreChild))
+		commentGroup.POST("/reply", h.auth.CheckLogin(), ginx.WrapBody(h.l, h.Reply))
+		commentGroup.DELETE("/:id", h.auth.CheckLogin(), ginx.Wrap(h.l, h.DelComment))
+
+		commentGroup.POST("/like/:id", h.auth.CheckLogin(), ginx.Wrap(h.l, h.Like))
+		commentGroup.DELETE("/like/:id", h.auth.CheckLogin(), ginx.Wrap(h.l, h.CancelLike))
 	}
 }
 
@@ -64,6 +72,18 @@ func (h *CommentHandler) Reply(ctx *gin.Context, req PostReplyReq) (ginx.Result,
 	return ginx.SuccessWithData(id), nil
 }
 
+func (h *CommentHandler) DelComment(ctx *gin.Context) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+	if err != nil {
+		return ginx.InvalidParam(), err
+	}
+	if err = h.svc.Delete(ctx, id, uc.UserId); err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.Success(), nil
+}
+
 func (h *CommentHandler) List(ctx *gin.Context, req BizCommentReq) (ginx.Result, error) {
 	uc, _ := jwt.GetUserClaims(ctx)
 	coms, err := h.svc.LoadLastedList(ctx, req.Biz, req.BizId, uc.UserId, req.MaxId, req.Limit)
@@ -75,10 +95,14 @@ func (h *CommentHandler) List(ctx *gin.Context, req BizCommentReq) (ginx.Result,
 		return ginx.SuccessWithData([]CommentVO{}), nil
 	}
 
-	uids := lo.UniqMap(coms, func(item comment.Comment, index int) int64 {
-		return item.Commentator.Id
-	})
-	users, err := h.userSvc.FindByIds(ctx, uids)
+	uidSet := mapx.NewSet[int64]()
+	for _, com := range coms {
+		uidSet.Add(com.Commentator.Id)
+		for _, child := range com.Children {
+			uidSet.Add(child.Commentator.Id)
+		}
+	}
+	users, err := h.userAggregate.GetUserList(ctx, uidSet.Values(), uc.UserId)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
@@ -86,7 +110,14 @@ func (h *CommentHandler) List(ctx *gin.Context, req BizCommentReq) (ginx.Result,
 	res := make([]CommentVO, 0, len(coms))
 	for _, com := range coms {
 		vo := commentToVO(com)
-		vo.Commentator = userToVO(users[com.Commentator.Id])
+		vo.Commentator = users[com.Commentator.Id]
+		if len(com.Children) > 0 {
+			vo.Children = make([]CommentVO, len(com.Children))
+			for i, child := range com.Children {
+				vo.Children[i] = commentToVO(child)
+				vo.Children[i].Commentator = users[child.Commentator.Id]
+			}
+		}
 		res = append(res, vo)
 	}
 	return ginx.SuccessWithData(res), nil
@@ -106,7 +137,7 @@ func (h *CommentHandler) LoadMoreChild(ctx *gin.Context, req ChildCommentReq) (g
 	uids := lo.UniqMap(coms, func(item comment.Comment, index int) int64 {
 		return item.Commentator.Id
 	})
-	users, err := h.userSvc.FindByIds(ctx, uids)
+	users, err := h.userAggregate.GetUserList(ctx, uids, uc.UserId)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
@@ -114,8 +145,31 @@ func (h *CommentHandler) LoadMoreChild(ctx *gin.Context, req ChildCommentReq) (g
 	res := make([]CommentVO, 0, len(coms))
 	for _, com := range coms {
 		vo := commentToVO(com)
-		vo.Commentator = userToVO(users[com.Commentator.Id])
+		vo.Commentator = users[com.Commentator.Id]
 		res = append(res, vo)
 	}
 	return ginx.SuccessWithData(res), nil
+}
+
+func (h *CommentHandler) Like(ctx *gin.Context) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+	if err != nil {
+		return ginx.InvalidParam(), err
+	}
+	if err = h.svc.Like(ctx, uc.UserId, id); err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.Success(), nil
+}
+func (h *CommentHandler) CancelLike(ctx *gin.Context) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+	if err != nil {
+		return ginx.InvalidParam(), err
+	}
+	if err = h.svc.CancelLike(ctx, uc.UserId, id); err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.Success(), nil
 }

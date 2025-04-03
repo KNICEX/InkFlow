@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
+	"strconv"
 	"sync"
 )
 
@@ -48,6 +49,11 @@ func (handler *NotificationHandler) RegisterRoutes(server *gin.RouterGroup) {
 		notificationGroup.GET("/follow", ginx.WrapBody(handler.l, handler.ListFollow))
 		notificationGroup.GET("/system", ginx.WrapBody(handler.l, handler.ListSystem))
 		notificationGroup.GET("/count", ginx.Wrap(handler.l, handler.UnreadCount))
+
+		notificationGroup.POST("/read/:type", ginx.Wrap(handler.l, handler.Read))
+
+		notificationGroup.DELETE("/:id", ginx.Wrap(handler.l, handler.Delete))
+		notificationGroup.DELETE("/like", ginx.WrapBody(handler.l, handler.DeleteMergedLike))
 	}
 }
 
@@ -103,6 +109,15 @@ func (handler *NotificationHandler) ListMergedLike(ctx *gin.Context, req OffsetP
 		vo.Subject = subjects[like.SubjectType][like.SubjectId]
 	}
 	return ginx.SuccessWithData(likesVO), nil
+}
+
+func (handler *NotificationHandler) DeleteMergedLike(ctx *gin.Context, req SubjectReq) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	err := handler.svc.DeleteMergedLike(ctx, uc.UserId, notification.SubjectType(req.SubjectType), req.SubjectId)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.Success(), nil
 }
 
 func (handler *NotificationHandler) findSubjectsVO(ctx context.Context, subjectIds map[notification.SubjectType][]int64) (map[notification.SubjectType]map[int64]any, error) {
@@ -318,4 +333,26 @@ func (handler *NotificationHandler) UnreadCount(ctx *gin.Context) (ginx.Result, 
 		return ginx.InternalError(), err
 	}
 	return ginx.SuccessWithData(count), nil
+}
+func (handler *NotificationHandler) Delete(ctx *gin.Context) (ginx.Result, error) {
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+	if err != nil {
+		return ginx.InvalidParam(), err
+	}
+	uc := jwt.MustGetUserClaims(ctx)
+	err = handler.svc.DeleteById(ctx, uc.UserId, id)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.Success(), nil
+}
+
+func (handler *NotificationHandler) Read(ctx *gin.Context) (ginx.Result, error) {
+	uc := jwt.MustGetUserClaims(ctx)
+	tp := ctx.Param("type")
+	err := handler.svc.ReadAll(ctx, uc.UserId, notification.Type(tp))
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	return ginx.Success(), nil
 }

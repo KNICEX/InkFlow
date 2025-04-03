@@ -2,6 +2,7 @@ package web
 
 import (
 	"errors"
+	"github.com/KNICEX/InkFlow/internal/comment"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/interactive"
 	"github.com/KNICEX/InkFlow/internal/relation"
@@ -38,6 +39,7 @@ type InkHandler struct {
 
 func NewInkHandler(svc ink.Service, userSvc user.Service, interactiveSvc interactive.Service,
 	followService relation.FollowService, auth middleware.Authentication,
+	commentSvc comment.Service,
 	workflowCli client.Client, l logx.Logger) *InkHandler {
 	return &InkHandler{
 		svc:            svc,
@@ -46,7 +48,7 @@ func NewInkHandler(svc ink.Service, userSvc user.Service, interactiveSvc interac
 		interactiveSvc: interactiveSvc,
 		auth:           auth,
 		userAggregate:  newUserAggregate(userSvc, followService),
-		inkAggregate:   newInkAggregate(svc, userSvc, interactiveSvc),
+		inkAggregate:   newInkAggregate(svc, userSvc, followService, interactiveSvc, commentSvc),
 		l:              l,
 	}
 }
@@ -149,47 +151,12 @@ func (h *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 	if err != nil {
 		return ginx.InvalidParam(), err
 	}
-	inkDetail, err := h.svc.FindLiveInk(ctx, id)
+	uc, _ := jwt.GetUserClaims(ctx)
+	inkVo, err := h.inkAggregate.GetInk(ctx, id, uc.UserId)
 	if err != nil {
-		return ginx.InternalError(), nil
-	}
-
-	// 无所谓是否登录，id为0就是没登录
-	readUser, _ := jwt.GetUserClaims(ctx)
-	readUserId := readUser.UserId
-
-	eg := errgroup.Group{}
-	var author UserVO
-	var intr interactive.Interactive
-	eg.Go(func() error {
-		var er error
-		author, er = h.GetUserDetail(ctx, inkDetail.Author.Id, readUserId)
-		return er
-	})
-	eg.Go(func() error {
-		var er error
-		intr, er = h.interactiveSvc.Get(ctx, bizInk, inkDetail.Id, readUserId)
-		return er
-	})
-
-	if err = eg.Wait(); err != nil {
 		return ginx.InternalError(), err
 	}
-
-	go func() {
-		er := h.interactiveSvc.View(ctx, bizInk, inkDetail.Id, readUserId)
-		if er != nil {
-			h.l.WithCtx(ctx).Error("send read event failed when get live article",
-				logx.Int64("user_id", readUserId),
-				logx.Int64("ink_id", inkDetail.Id),
-				logx.Error(er))
-		}
-	}()
-
-	res := inkToVO(inkDetail)
-	res.Author = author
-	res.Interactive = intrToVo(intr)
-	return ginx.SuccessWithData(res), nil
+	return ginx.SuccessWithData(inkVo), nil
 }
 
 func (h *InkHandler) DetailDraft(ctx *gin.Context) (ginx.Result, error) {
@@ -281,21 +248,20 @@ func (h *InkHandler) List(ctx *gin.Context, req ListReq) (ginx.Result, error) {
 		return item.Id
 	})
 
-	readUser, _ := jwt.GetUserClaims(ctx)
-	readUserId := readUser.UserId
+	uc, _ := jwt.GetUserClaims(ctx)
 
 	eg := errgroup.Group{}
 	var author UserVO
-	var intrs map[int64]interactive.Interactive
+	var intrs map[int64]InteractiveVO
 	eg.Go(func() error {
 		var er error
-		author, er = h.userAggregate.GetUserDetail(ctx, req.AuthorId, readUserId)
+		author, er = h.userAggregate.GetUser(ctx, req.AuthorId, uc.UserId)
 		return er
 	})
 
 	eg.Go(func() error {
 		var er error
-		intrs, er = h.interactiveSvc.GetMulti(ctx, bizInk, inkIds, readUserId)
+		intrs, er = h.intrAggregate.GetInteractiveList(ctx, bizInk, inkIds, uc.UserId)
 		return er
 	})
 
@@ -310,13 +276,9 @@ func (h *InkHandler) List(ctx *gin.Context, req ListReq) (ginx.Result, error) {
 
 	res := make([]InkVO, 0, len(inks))
 	for _, item := range inks {
-		intr, ok := intrs[item.Id]
-		if !ok {
-			continue
-		}
 		inkVO := inkToVO(item)
 		inkVO.Author = author
-		inkVO.Interactive = intrToVo(intr)
+		inkVO.Interactive = intrs[item.Id]
 		res = append(res, inkVO)
 	}
 

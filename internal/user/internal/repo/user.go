@@ -99,7 +99,7 @@ func (r *CachedUserRepo) FindByIds(ctx context.Context, ids []int64) (map[int64]
 
 	if len(users) > 0 {
 		// 去除缓存命中的
-		ids = lo.WithoutBy(ids, func(item int64) bool {
+		ids = lo.Reject(ids, func(item int64, index int) bool {
 			_, ok := users[item]
 			return ok
 		})

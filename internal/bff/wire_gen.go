@@ -32,13 +32,13 @@ func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
 	notificationSvc notification.Service, recommendSvc recommend.Service, feedSvc feed.Service,
 	searchSvc search.Service, workflowCli client.Client, jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
 	userHandler := web.NewUserHandler(userSvc, codeSvc, followService, jwtHandler, auth, log)
-	inkHandler := web.NewInkHandler(inkService, userSvc, interactiveSvc, followService, auth, workflowCli, log)
+	inkHandler := web.NewInkHandler(inkService, userSvc, interactiveSvc, followService, auth, commentSvc, workflowCli, log)
 	cloudinary := initCloudinary()
 	fileHandler := web.NewFileHandler(cloudinary, auth, log)
-	commentHandler := web.NewCommentHandler(commentSvc, userSvc, auth, log)
+	commentHandler := web.NewCommentHandler(commentSvc, followService, userSvc, auth, log)
 	notificationHandler := web.NewNotificationHandler(notificationSvc, userSvc, inkService, commentSvc, auth, log)
 	searchHandler := web.NewSearchHandler(auth, searchSvc, followService, log)
-	feedHandler := web.NewFeedHandler(feedSvc, inkService, interactiveSvc, userSvc, recommendSvc, auth, log)
+	feedHandler := web.NewFeedHandler(feedSvc, inkService, interactiveSvc, userSvc, followService, recommendSvc, auth, commentSvc, log)
 	interactiveHandler := web.NewInteractiveHandler(interactiveSvc, auth, log)
 	v := InitHandlers(userHandler, inkHandler, fileHandler, commentHandler, notificationHandler, searchHandler, feedHandler, interactiveHandler)
 	return v

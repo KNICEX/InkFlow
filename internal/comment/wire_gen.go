@@ -26,7 +26,7 @@ func InitCommentService(db *gorm.DB, cmd redis.Cmdable, inkSvc ink.Service, prod
 	node := initSnowflakeNode()
 	commentDAO := initDAO(db, node, l)
 	commentCache := cache.NewRedisCommentCache(cmd)
-	commentRepo := repo.NewCachedCommentRepo(commentDAO, commentCache)
+	commentRepo := repo.NewCachedCommentRepo(commentDAO, commentCache, l)
 	commentEvtProducer := event.NewKafkaCommentEvtProducer(producer)
 	commentService := service2.NewCommentService(commentRepo, inkSvc, commentEvtProducer, l)
 	return commentService

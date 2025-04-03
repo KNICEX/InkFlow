@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"errors"
 	"github.com/KNICEX/InkFlow/pkg/gormx"
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/KNICEX/InkFlow/pkg/snowflakex"
@@ -63,6 +64,7 @@ type CommentDAO interface {
 	FindAuthorReplyIn(ctx context.Context, ids []int64) (map[int64][]Comment, error)
 	FindStats(ctx context.Context, ids []int64) (map[int64]CommentStats, error)
 	Liked(ctx context.Context, uid int64, cids []int64) (map[int64]bool, error)
+	ReplyCount(ctx context.Context, biz string, bizIds []int64) (map[int64]int64, error)
 }
 
 type GormCommentDAO struct {
@@ -118,11 +120,27 @@ func (dao *GormCommentDAO) Insert(ctx context.Context, c Comment) (int64, error)
 
 func (dao *GormCommentDAO) Delete(ctx context.Context, id int64) error {
 	return dao.db.Transaction(func(tx *gorm.DB) error {
-		err := tx.WithContext(ctx).Where("id = ?", id).Delete(&Comment{}).Error
+		c := Comment{}
+		err := tx.WithContext(ctx).Where("id = ?", id).First(&c).Error
 		if err != nil {
 			return err
 		}
-		// TODO 考虑清除统计数据
+
+		if c.RootId != 0 {
+			// 扣除根评论的回复数
+			err = tx.WithContext(ctx).Model(&CommentStats{}).Where("comment_id = ?", c.RootId).Updates(map[string]any{
+				"reply_count": gorm.Expr("reply_count - 1"),
+				"updated_at":  time.Now(),
+			}).Error
+			if err != nil {
+				return err
+			}
+		}
+
+		err = tx.WithContext(ctx).Where("id = ?", id).Delete(&Comment{}).Error
+		if err != nil {
+			return err
+		}
 		return tx.WithContext(ctx).Where("parent_id = ? OR root_id = ?", id, id).Delete(&Comment{}).Error
 	})
 }
@@ -185,7 +203,7 @@ func (dao *GormCommentDAO) FindRepliesByRid(ctx context.Context, rid int64, maxI
 }
 
 func (dao *GormCommentDAO) Like(ctx context.Context, userId int64, cid int64) error {
-	return dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		now := time.Now()
 		err := tx.WithContext(ctx).Create(&CommentLike{
 			Id:        dao.node.NextID(),
@@ -194,11 +212,7 @@ func (dao *GormCommentDAO) Like(ctx context.Context, userId int64, cid int64) er
 			CreatedAt: now,
 			UpdatedAt: now,
 		}).Error
-		err, dup := gormx.CheckDuplicateErr(err)
-		if dup {
-			// 已经存在点赞记录
-			return nil
-		}
+		err, _ = gormx.CheckDuplicateErr(err)
 		if err != nil {
 			return err
 		}
@@ -219,6 +233,11 @@ func (dao *GormCommentDAO) Like(ctx context.Context, userId int64, cid int64) er
 			UpdatedAt: now,
 		}).Error
 	})
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		// 重复插入，说明已经点赞了
+		return nil
+	}
+	return err
 }
 
 func (dao *GormCommentDAO) CancelLike(ctx context.Context, userId int64, cid int64) error {
@@ -226,7 +245,7 @@ func (dao *GormCommentDAO) CancelLike(ctx context.Context, userId int64, cid int
 	if err != nil {
 		return nil
 	}
-	err = dao.db.WithContext(ctx).Where("comment_id = ?", cid).
+	err = dao.db.WithContext(ctx).Model(&CommentStats{}).Where("comment_id = ?", cid).
 		Update("like_count", gorm.Expr("like_count - 1")).Error
 	if err != nil {
 		// 这里失败了不影响业务逻辑，记录日志即可
@@ -260,7 +279,7 @@ func (dao *GormCommentDAO) FindById(ctx context.Context, id int64) (Comment, err
 
 func (dao *GormCommentDAO) FindAuthorReplyIn(ctx context.Context, ids []int64) (map[int64][]Comment, error) {
 	var res []Comment
-	err := dao.db.WithContext(ctx).Where("parent_id IN ? AND is_author = true", ids).Find(&res).Error
+	err := dao.db.WithContext(ctx).Where("root_id IN ? AND is_author = true", ids).Find(&res).Error
 	if err != nil {
 		return nil, err
 	}
@@ -295,4 +314,24 @@ func (dao *GormCommentDAO) Liked(ctx context.Context, uid int64, cids []int64) (
 		resMap[c.CommentId] = true
 	}
 	return resMap, nil
+}
+
+func (dao *GormCommentDAO) ReplyCount(ctx context.Context, biz string, bizIds []int64) (map[int64]int64, error) {
+	type ReplyCount struct {
+		BizId      int64 `gorm:"index:biz_type_id"`
+		ReplyCount int64
+	}
+	var res []ReplyCount
+	err := dao.db.WithContext(ctx).Model(&Comment{}).Select("biz_id, count(*) as reply_count").
+		Where("biz = ? AND biz_id IN ? AND parent_id = 0", biz, bizIds).
+		Group("biz_id").
+		Find(&res).Error
+	if err != nil {
+		return nil, err
+	}
+	replyCountMap := make(map[int64]int64, len(res))
+	for _, item := range res {
+		replyCountMap[item.BizId] = item.ReplyCount
+	}
+	return replyCountMap, nil
 }

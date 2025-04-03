@@ -8,11 +8,12 @@ const (
 )
 
 type Interactive struct {
-	Biz        string
-	BizId      int64
-	ViewCnt    int64
-	LikeCnt    int64
-	CollectCnt int64
+	Biz         string
+	BizId       int64
+	ViewCnt     int64
+	LikeCnt     int64
+	ReplyCnt    int64
+	FavoriteCnt int64
 
 	Liked     bool
 	Favorited bool

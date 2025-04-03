@@ -15,6 +15,8 @@ type InteractiveRepo interface {
 	IncrViewBatch(ctx context.Context, biz string, bizIds, uid []int64) error
 	IncrLike(ctx context.Context, biz string, bizId, uid int64) error
 	DecrLike(ctx context.Context, biz string, bizId, uid int64) error
+	IncrReply(ctx context.Context, biz string, bizId int64) error
+	DecrReply(ctx context.Context, biz string, bizId int64) error
 	IncrFavorite(ctx context.Context, biz string, bizId, uid, fid int64) error
 	DecrFavorite(ctx context.Context, biz string, bizId, uid int64) error
 
@@ -103,6 +105,34 @@ func (repo *CachedInteractiveRepo) DecrLike(ctx context.Context, biz string, biz
 				logx.String("biz", biz),
 				logx.Int64("bizId", bizId),
 				logx.Int64("uid", uid))
+		}
+	}()
+	return nil
+}
+
+func (repo *CachedInteractiveRepo) IncrReply(ctx context.Context, biz string, bizId int64) error {
+	if err := repo.dao.IncrReply(ctx, biz, bizId); err != nil {
+		return err
+	}
+	go func() {
+		if err := repo.cache.IncrReplyCnt(ctx, biz, bizId); err != nil {
+			repo.l.WithCtx(ctx).Error("incr reply cnt cache error", logx.Error(err),
+				logx.String("biz", biz),
+				logx.Int64("bizId", bizId))
+		}
+	}()
+	return nil
+}
+
+func (repo *CachedInteractiveRepo) DecrReply(ctx context.Context, biz string, bizId int64) error {
+	if err := repo.dao.DecrReply(ctx, biz, bizId); err != nil {
+		return err
+	}
+	go func() {
+		if err := repo.cache.DecrReplyCnt(ctx, biz, bizId); err != nil {
+			repo.l.WithCtx(ctx).Error("decr reply cnt cache error", logx.Error(err),
+				logx.String("biz", biz),
+				logx.Int64("bizId", bizId))
 		}
 	}()
 	return nil

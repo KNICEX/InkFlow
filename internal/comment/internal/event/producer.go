@@ -7,14 +7,16 @@ import (
 )
 
 const (
-	topicReply  = "comment-reply"
-	topicLike   = "comment-like"
-	topicDelete = "comment-delete"
+	topicReply      = "comment-reply"
+	topicLike       = "comment-like"
+	topicCancelLike = "comment-cancel-like"
+	topicDelete     = "comment-delete"
 )
 
 type CommentEvtProducer interface {
 	ProduceReply(ctx context.Context, event ReplyEvent) error
 	ProduceLike(ctx context.Context, event LikeEvent) error
+	ProduceCancelLike(ctx context.Context, event LikeEvent) error
 	ProduceDelete(ctx context.Context, event DeleteEvent) error
 }
 
@@ -38,6 +40,10 @@ func (p *KafkaCommentEvtProducer) ProduceLike(ctx context.Context, event LikeEve
 
 func (p *KafkaCommentEvtProducer) ProduceDelete(ctx context.Context, event DeleteEvent) error {
 	return p.produce(ctx, topicDelete, event)
+}
+
+func (p *KafkaCommentEvtProducer) ProduceCancelLike(ctx context.Context, event LikeEvent) error {
+	return p.produce(ctx, topicCancelLike, event)
 }
 
 func (p *KafkaCommentEvtProducer) produce(ctx context.Context, topic string, data any) error {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/KNICEX/InkFlow/internal/comment/internal/repo/cache"
 	"github.com/KNICEX/InkFlow/internal/comment/internal/repo/dao"
+	"github.com/KNICEX/InkFlow/pkg/logx"
+	"github.com/KNICEX/InkFlow/pkg/stringx"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 	"strings"
@@ -16,6 +18,7 @@ type CommentRepo interface {
 	CreateComment(ctx context.Context, comment domain.Comment) (int64, error)
 	DelComment(ctx context.Context, id int64) error
 	LikeComment(ctx context.Context, uid, cid int64) error
+	CancelLike(ctx context.Context, uid, cid int64) error
 
 	FindByBiz(ctx context.Context, biz string, bizId int64, maxId int64, limit int) ([]domain.Comment, error)
 	FindByRootId(ctx context.Context, rootId int64, maxId int64, limit int) ([]domain.Comment, error)
@@ -25,31 +28,52 @@ type CommentRepo interface {
 	FindAuthorReplyIn(ctx context.Context, ids []int64) (map[int64][]domain.Comment, error)
 
 	FindStats(ctx context.Context, ids []int64, uid int64) (map[int64]domain.CommentStats, error)
+	BizReplyCount(ctx context.Context, biz string, bizIds []int64) (map[int64]int64, error)
 }
 
 type CachedCommentRepo struct {
 	dao   dao.CommentDAO
 	cache cache.CommentCache
+	l     logx.Logger
 }
 
-func NewCachedCommentRepo(dao dao.CommentDAO, cache cache.CommentCache) CommentRepo {
+func NewCachedCommentRepo(dao dao.CommentDAO, cache cache.CommentCache, l logx.Logger) CommentRepo {
 	return &CachedCommentRepo{
 		dao:   dao,
 		cache: cache,
+		l:     l,
 	}
 }
 
 func (repo *CachedCommentRepo) CreateComment(ctx context.Context, comment domain.Comment) (int64, error) {
+	if comment.Root == nil {
+		// 一级评论, 增加评论数
+		go func() {
+			er := repo.cache.IncrBizReply(ctx, comment.Biz, comment.BizId)
+			if er != nil {
+				repo.l.WithCtx(ctx).Error("comment cache incr biz reply error",
+					logx.String("biz", comment.Biz),
+					logx.Int64("bizId", comment.BizId),
+					logx.Error(er))
+			}
+		}()
+	}
 	return repo.dao.Insert(ctx, repo.toEntity(comment))
 }
 
 func (repo *CachedCommentRepo) DelComment(ctx context.Context, id int64) error {
+	// TODO 这里需要减少对应biz的评论数缓存
 	return repo.dao.Delete(ctx, id)
 }
 
 func (repo *CachedCommentRepo) LikeComment(ctx context.Context, uid, cid int64) error {
 	return repo.dao.Like(ctx, uid, cid)
 }
+
+func (repo *CachedCommentRepo) CancelLike(ctx context.Context, uid, cid int64) error {
+	return repo.dao.CancelLike(ctx, uid, cid)
+}
+
 func (repo *CachedCommentRepo) FindByBiz(ctx context.Context, biz string, bizId int64, maxId int64, limit int) ([]domain.Comment, error) {
 	comments, err := repo.dao.FindByBiz(ctx, biz, bizId, maxId, limit)
 	if err != nil {
@@ -104,12 +128,54 @@ func (repo *CachedCommentRepo) FindAuthorReplyIn(ctx context.Context, ids []int6
 		return nil, err
 	}
 	res := make(map[int64][]domain.Comment)
-	for _, replies := range comments {
-		for _, item := range replies {
-			res[item.Id] = append(res[item.Id], repo.toDomain(item))
-		}
+	for key, replies := range comments {
+		res[key] = lo.Map(replies, func(item dao.Comment, index int) domain.Comment {
+			return repo.toDomain(item)
+		})
 	}
 	return res, nil
+}
+func (repo *CachedCommentRepo) BizReplyCount(ctx context.Context, biz string, bizIds []int64) (map[int64]int64, error) {
+	cachedCounts, err := repo.cache.BizReplyCount(ctx, biz, bizIds)
+	if err != nil {
+		repo.l.WithCtx(ctx).Error("comment cache get biz reply count error",
+			logx.String("biz", biz),
+			logx.Any("bizIds", bizIds),
+			logx.Error(err))
+	}
+	if len(cachedCounts) == len(bizIds) {
+		// 全部命中缓存
+		return cachedCounts, nil
+	}
+
+	if len(cachedCounts) > 0 {
+		// 过滤掉已经缓存的bizIds
+		bizIds = lo.Reject(bizIds, func(item int64, index int) bool {
+			_, ok := cachedCounts[item]
+			return ok
+		})
+	}
+
+	counts, err := repo.dao.ReplyCount(ctx, biz, bizIds)
+	if err != nil {
+		return nil, err
+	}
+
+	// 更新缓存
+	go func() {
+		er := repo.cache.SetBizReplyCount(ctx, biz, counts)
+		if er != nil {
+			repo.l.WithCtx(ctx).Error("comment cache set biz reply count error",
+				logx.String("biz", biz),
+				logx.Any("bizIds", bizIds),
+				logx.Error(er))
+		}
+	}()
+
+	for id, cnt := range cachedCounts {
+		counts[id] = cnt
+	}
+	return counts, nil
 }
 
 func (repo *CachedCommentRepo) FindStats(ctx context.Context, ids []int64, uid int64) (map[int64]domain.CommentStats, error) {
@@ -132,10 +198,10 @@ func (repo *CachedCommentRepo) FindStats(ctx context.Context, ids []int64, uid i
 
 	res := make(map[int64]domain.CommentStats)
 	for _, item := range stats {
-		res[item.Id] = domain.CommentStats{
+		res[item.CommentId] = domain.CommentStats{
 			LikeCnt:  item.LikeCount,
 			ReplyCnt: item.ReplyCount,
-			Liked:    likedMap[item.Id],
+			Liked:    likedMap[item.CommentId],
 		}
 	}
 	return res, nil
@@ -165,7 +231,7 @@ func (repo *CachedCommentRepo) toDomain(en dao.Comment) domain.Comment {
 		Parent: parent,
 		Payload: domain.Payload{
 			Content: en.Content,
-			Images:  strings.Split(en.Images, ","),
+			Images:  stringx.Split(en.Images, ","),
 		},
 		CreatedAt: en.CreatedAt,
 	}

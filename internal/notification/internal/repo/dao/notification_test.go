@@ -38,7 +38,7 @@ func TestGormNotificationDAO_FindLikeMerge(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	res, err := dao.FindLikeMerge(context.Background(), 1, time.Now().UnixMilli(), 0, 10)
+	res, err := dao.FindMergedLike(context.Background(), 1, time.Now().UnixMilli(), 0, 10)
 	require.NoError(t, err)
 
 	fmt.Printf("res: %+v\n", res)

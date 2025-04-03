@@ -16,6 +16,8 @@ type InteractiveCache interface {
 	IncrViewCntBatch(ctx context.Context, biz string, bizIds []int64) error
 	IncrLikeCnt(ctx context.Context, biz string, bizId int64) error
 	DecrLikeCnt(ctx context.Context, biz string, bizId int64) error
+	IncrReplyCnt(ctx context.Context, biz string, bizId int64) error
+	DecrReplyCnt(ctx context.Context, biz string, bizId int64) error
 	IncrFavoriteCnt(ctx context.Context, biz string, bizId int64) error
 	DecrFavoriteCnt(ctx context.Context, biz string, bizId int64) error
 
@@ -36,6 +38,7 @@ const (
 	fieldReadCnt     = "read_cnt"
 	fieldFavoriteCnt = "favorite_cnt"
 	fieldLikeCnt     = "like_cnt"
+	fieldReplyCnt    = "reply_cnt"
 )
 
 type RedisInteractiveCache struct {
@@ -73,6 +76,14 @@ func (cache *RedisInteractiveCache) DecrLikeCnt(ctx context.Context, biz string,
 	return cache.cmd.Eval(ctx, luaIncrCnt, []string{cache.key(biz, bizId)}, fieldLikeCnt, -1).Err()
 }
 
+func (cache *RedisInteractiveCache) IncrReplyCnt(ctx context.Context, biz string, bizId int64) error {
+	return cache.cmd.Eval(ctx, luaIncrCnt, []string{cache.key(biz, bizId)}, fieldReplyCnt, 1).Err()
+}
+
+func (cache *RedisInteractiveCache) DecrReplyCnt(ctx context.Context, biz string, bizId int64) error {
+	return cache.cmd.Eval(ctx, luaIncrCnt, []string{cache.key(biz, bizId)}, fieldReplyCnt, -1).Err()
+}
+
 func (cache *RedisInteractiveCache) IncrFavoriteCnt(ctx context.Context, biz string, bizId int64) error {
 	return cache.cmd.Eval(ctx, luaIncrCnt, []string{cache.key(biz, bizId)}, fieldFavoriteCnt, 1).Err()
 }
@@ -87,7 +98,8 @@ func (cache *RedisInteractiveCache) Set(ctx context.Context, biz string, bizId i
 	pipeline.HMSet(ctx, key,
 		fieldReadCnt, intr.ViewCnt,
 		fieldLikeCnt, intr.LikeCnt,
-		fieldFavoriteCnt, intr.CollectCnt)
+		fieldFavoriteCnt, intr.FavoriteCnt,
+	)
 
 	pipeline.Expire(ctx, key, cache.expiration)
 	_, err := pipeline.Exec(ctx)
@@ -103,15 +115,15 @@ func (cache *RedisInteractiveCache) Get(ctx context.Context, biz string, bizId i
 		return domain.Interactive{}, ErrKeyNotFound
 	}
 
-	collectCnt, _ := strconv.ParseInt(data[fieldFavoriteCnt], 10, 64)
+	favoriteCnt, _ := strconv.ParseInt(data[fieldFavoriteCnt], 10, 64)
 	likeCnt, _ := strconv.ParseInt(data[fieldLikeCnt], 10, 64)
 	readCnt, _ := strconv.ParseInt(data[fieldReadCnt], 10, 64)
 	return domain.Interactive{
-		Biz:        biz,
-		BizId:      bizId,
-		ViewCnt:    readCnt,
-		LikeCnt:    likeCnt,
-		CollectCnt: collectCnt,
+		Biz:         biz,
+		BizId:       bizId,
+		ViewCnt:     readCnt,
+		LikeCnt:     likeCnt,
+		FavoriteCnt: favoriteCnt,
 	}, nil
 }
 
@@ -136,11 +148,11 @@ func (cache *RedisInteractiveCache) GetBatch(ctx context.Context, biz string, bi
 		likeCnt, _ := strconv.ParseInt(data[fieldLikeCnt], 10, 64)
 		readCnt, _ := strconv.ParseInt(data[fieldReadCnt], 10, 64)
 		res[bizId] = domain.Interactive{
-			Biz:        biz,
-			BizId:      bizId,
-			ViewCnt:    readCnt,
-			LikeCnt:    likeCnt,
-			CollectCnt: collectCnt,
+			Biz:         biz,
+			BizId:       bizId,
+			ViewCnt:     readCnt,
+			LikeCnt:     likeCnt,
+			FavoriteCnt: collectCnt,
 		}
 	}
 	return res, nil
@@ -153,7 +165,7 @@ func (cache *RedisInteractiveCache) SetBatch(ctx context.Context, intrs []domain
 		pipeline.HMSet(ctx, key,
 			fieldReadCnt, intr.ViewCnt,
 			fieldLikeCnt, intr.LikeCnt,
-			fieldFavoriteCnt, intr.CollectCnt)
+			fieldFavoriteCnt, intr.FavoriteCnt)
 		pipeline.Expire(ctx, key, cache.expiration)
 	}
 	_, err := pipeline.Exec(ctx)
