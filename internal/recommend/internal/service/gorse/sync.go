@@ -4,16 +4,17 @@ import (
 	"context"
 	"github.com/KNICEX/InkFlow/internal/recommend/internal/domain"
 	"github.com/KNICEX/InkFlow/internal/recommend/internal/service"
+	"github.com/KNICEX/InkFlow/pkg/gorsex"
 	client "github.com/gorse-io/gorse-go"
 	"strconv"
 	"time"
 )
 
 type SyncService struct {
-	cli *client.GorseClient
+	cli *gorsex.Client
 }
 
-func NewSyncService(cli *client.GorseClient) service.SyncService {
+func NewSyncService(cli *gorsex.Client) service.SyncService {
 	return &SyncService{cli: cli}
 }
 
@@ -42,6 +43,15 @@ func (s SyncService) InputFeedback(ctx context.Context, feedback domain.Feedback
 			FeedbackType: feedback.FeedbackType.ToString(),
 			Timestamp:    feedback.CreatedAt.Format(time.RFC3339),
 		},
+	})
+	return err
+}
+
+func (s SyncService) DeleteFeedback(ctx context.Context, feedback domain.Feedback) error {
+	_, err := s.cli.DeleteFeedback(ctx, client.Feedback{
+		UserId:       strconv.FormatInt(feedback.UserId, 10),
+		ItemId:       strconv.FormatInt(feedback.InkId, 10),
+		FeedbackType: feedback.FeedbackType.ToString(),
 	})
 	return err
 }

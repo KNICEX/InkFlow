@@ -9,7 +9,9 @@ import (
 )
 
 const (
-	topicUserCreate = "user-create"
+	topicUserCreate    = "user-create"
+	topicInkLike       = "ink-like"
+	topicInkCancelLike = "ink-cancel-like"
 
 	recommendSyncGroup = "recommend-sync-group"
 )
@@ -34,7 +36,7 @@ func (s *SyncConsumer) Start() error {
 		return err
 	}
 	go func() {
-		err = cg.Consume(context.Background(), []string{topicUserCreate}, saramax.NewRawHandler(s.l, s))
+		err = cg.Consume(context.Background(), []string{topicUserCreate, topicInkLike, topicInkCancelLike}, saramax.NewRawHandler(s.l, s))
 		if err != nil {
 			s.l.Warn("recommend sync consumer quit...", logx.Error(err))
 		}

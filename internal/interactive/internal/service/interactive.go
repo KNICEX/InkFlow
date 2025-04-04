@@ -81,8 +81,9 @@ func (svc *interactiveService) Like(ctx context.Context, biz string, bizId int64
 	if biz == domain.BizInk {
 		go func() {
 			if err := svc.producer.ProduceInkLike(ctx, events.InkLikeEvent{
-				InkId:  bizId,
-				UserId: uid,
+				InkId:     bizId,
+				UserId:    uid,
+				CreatedAt: time.Now(),
 			}); err != nil {
 				svc.l.WithCtx(ctx).Error("produce ink like event error", logx.Error(err),
 					logx.String("biz", biz),
@@ -107,8 +108,9 @@ func (svc *interactiveService) CancelLike(ctx context.Context, biz string, bizId
 	if biz == domain.BizInk {
 		go func() {
 			if err := svc.producer.ProduceInkCancelLike(ctx, events.InkCancelLikeEvent{
-				InkId:  bizId,
-				UserId: uid,
+				InkId:     bizId,
+				UserId:    uid,
+				CreatedAt: time.Now(),
 			}); err != nil {
 				svc.l.WithCtx(ctx).Error("produce ink cancel like event error", logx.Error(err),
 					logx.String("biz", biz),

@@ -49,6 +49,8 @@ func (repo *CachedLiveInkRepo) Save(ctx context.Context, ink domain.Ink) (int64,
 	if err != nil {
 		return 0, err
 	}
+
+	ctx = context.WithoutCancel(ctx)
 	go func() {
 		// 更新了文章，删除首页缓存
 		er := repo.cache.DelFirstPage(ctx, ink.Author.Id)
@@ -77,6 +79,7 @@ func (repo *CachedLiveInkRepo) UpdateStatus(ctx context.Context, ink domain.Ink)
 	if err != nil {
 		return err
 	}
+	ctx = context.WithoutCancel(ctx)
 	switch ink.Status {
 	case domain.InkStatusPrivate, domain.InkStatusUnPublished:
 		// 如果是隐藏了文章或者退回到草稿，删除缓存
@@ -141,6 +144,7 @@ func (repo *CachedLiveInkRepo) Delete(ctx context.Context, id int64, authorId in
 		return err
 	}
 
+	ctx = context.WithoutCancel(ctx)
 	if len(status) == 0 || slices.Contains(status, domain.InkStatusPublished) {
 		// 如果是删除了已发布的文章，删除缓存
 		go func() {
@@ -180,7 +184,7 @@ func (repo *CachedLiveInkRepo) FindById(ctx context.Context, id int64, status ..
 	if ink.Status == domain.InkStatusPublished {
 		// 缓存未命中且是已发布的文章，设置缓存
 		go func() {
-			er := repo.cache.Set(ctx, ink)
+			er := repo.cache.Set(context.WithoutCancel(ctx), ink)
 			if er != nil {
 				repo.l.WithCtx(ctx).Error("set ink cache error", logx.Error(er),
 					logx.Int64("inkId", ink.Id),

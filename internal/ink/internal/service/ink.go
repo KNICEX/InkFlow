@@ -11,9 +11,8 @@ import (
 )
 
 var (
-	ErrDraftNotFound = repo.ErrDraftNotFound
-	ErrLiveNotFound  = repo.ErrLiveInkNotFound
-	ErrNoPermission  = errors.New("no permission")
+	ErrNotFound     = errors.New("ink not found")
+	ErrNoPermission = errors.New("no permission")
 )
 
 // InkService
@@ -31,7 +30,6 @@ type InkService interface {
 	DeleteDraft(ctx context.Context, ink domain.Ink) error // 删除草稿
 	DeleteLive(ctx context.Context, ink domain.Ink) error  // 删除线上文章
 
-	FindById(ctx context.Context, id int64) (domain.Ink, error)               // 无论状态获取一篇文章
 	FindByIds(ctx context.Context, ids []int64) (map[int64]domain.Ink, error) // 批量获取文章
 	FindLiveInk(ctx context.Context, id int64) (domain.Ink, error)            // 获取公开ink
 	FindDraftInk(ctx context.Context, id, authorId int64) (domain.Ink, error) // 获取草稿ink
@@ -167,9 +165,11 @@ func (svc *inkService) DeleteLive(ctx context.Context, ink domain.Ink) error {
 	return err
 }
 
-// FindById 无论ink的状态如何，均可以获取到， 不要暴露给客户端
-func (svc *inkService) FindById(ctx context.Context, id int64) (domain.Ink, error) {
-	return svc.liveRepo.FindById(ctx, id)
+func (svc *inkService) wrapNotFoundErr(err error) error {
+	if errors.Is(err, repo.ErrLiveInkNotFound) || errors.Is(err, repo.ErrDraftNotFound) {
+		return ErrNotFound
+	}
+	return err
 }
 
 func (svc *inkService) FindByIds(ctx context.Context, ids []int64) (map[int64]domain.Ink, error) {
@@ -185,24 +185,40 @@ func (svc *inkService) FindByIds(ctx context.Context, ids []int64) (map[int64]do
 }
 
 func (svc *inkService) FindLiveInk(ctx context.Context, id int64) (domain.Ink, error) {
-	return svc.liveRepo.FindById(ctx, id, domain.InkStatusPublished)
+	ink, err := svc.liveRepo.FindById(ctx, id, domain.InkStatusPublished)
+	if err != nil {
+		return domain.Ink{}, svc.wrapNotFoundErr(err)
+	}
+	return ink, nil
 }
 
 func (svc *inkService) FindDraftInk(ctx context.Context, id, authorId int64) (domain.Ink, error) {
-	return svc.draftRepo.FindByIdAndAuthorId(ctx, id, authorId, domain.InkStatusUnPublished)
+	draft, err := svc.draftRepo.FindByIdAndAuthorId(ctx, id, authorId, domain.InkStatusUnPublished)
+	if err != nil {
+		return domain.Ink{}, svc.wrapNotFoundErr(err)
+	}
+	return draft, nil
 }
 func (svc *inkService) FindPendingInk(ctx context.Context, id, authorId int64) (domain.Ink, error) {
-	return svc.draftRepo.FindByIdAndAuthorId(ctx, id, authorId, domain.InkStatusPending)
-
+	ink, err := svc.draftRepo.FindByIdAndAuthorId(ctx, id, authorId, domain.InkStatusPending)
+	if err != nil {
+		return domain.Ink{}, svc.wrapNotFoundErr(err)
+	}
+	return ink, nil
 }
 func (svc *inkService) FindRejectedInk(ctx context.Context, id, authorId int64) (domain.Ink, error) {
-	return svc.draftRepo.FindByIdAndAuthorId(ctx, id, authorId, domain.InkStatusRejected)
+	//return svc.draftRepo.FindByIdAndAuthorId(ctx, id, authorId, domain.InkStatusRejected)
+	ink, err := svc.liveRepo.FindById(ctx, id, domain.InkStatusRejected)
+	if err != nil {
+		return domain.Ink{}, svc.wrapNotFoundErr(err)
+	}
+	return ink, nil
 }
 
 func (svc *inkService) FindPrivateInk(ctx context.Context, id, authorId int64) (domain.Ink, error) {
 	ink, err := svc.liveRepo.FindById(ctx, id, domain.InkStatusPrivate)
 	if err != nil {
-		return domain.Ink{}, err
+		return domain.Ink{}, svc.wrapNotFoundErr(err)
 	}
 	if ink.Author.Id != authorId {
 		return domain.Ink{}, ErrNoPermission

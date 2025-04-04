@@ -79,7 +79,7 @@ func (r *CachedUserRepo) FindById(ctx context.Context, id int64) (domain.User, e
 	}
 	u = r.entityToDomain(ue)
 	go func() {
-		err = r.cache.Set(ctx, id, u)
+		err = r.cache.Set(context.WithoutCancel(ctx), id, u)
 		if err != nil {
 			r.l.Error("set user cache error", logx.Error(err), logx.Int64("UserId", id))
 		}

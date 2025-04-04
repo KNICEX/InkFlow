@@ -55,7 +55,7 @@ func (repo *CachedInteractiveRepo) IncrView(ctx context.Context, biz string, biz
 		return err
 	}
 	go func() {
-		if err := repo.cache.IncrViewCnt(ctx, biz, bizId); err != nil {
+		if err := repo.cache.IncrViewCnt(context.WithoutCancel(ctx), biz, bizId); err != nil {
 			repo.l.WithCtx(ctx).Error("incr read cnt cache error", logx.Error(err),
 				logx.String("biz", biz),
 				logx.Int64("bizId", bizId),
@@ -70,7 +70,7 @@ func (repo *CachedInteractiveRepo) IncrViewBatch(ctx context.Context, biz string
 		return err
 	}
 	go func() {
-		if err := repo.cache.IncrViewCntBatch(ctx, biz, bizIds); err != nil {
+		if err := repo.cache.IncrViewCntBatch(context.WithoutCancel(ctx), biz, bizIds); err != nil {
 			repo.l.WithCtx(ctx).Error("incr read cnt cache error", logx.Error(err),
 				logx.String("biz", biz),
 				logx.Any("bizIds", bizIds),
@@ -85,7 +85,7 @@ func (repo *CachedInteractiveRepo) IncrLike(ctx context.Context, biz string, biz
 		return err
 	}
 	go func() {
-		if err := repo.cache.IncrLikeCnt(ctx, biz, bizId); err != nil {
+		if err := repo.cache.IncrLikeCnt(context.WithoutCancel(ctx), biz, bizId); err != nil {
 			repo.l.WithCtx(ctx).Error("incr like cnt cache error", logx.Error(err),
 				logx.String("biz", biz),
 				logx.Int64("bizId", bizId),
@@ -100,7 +100,7 @@ func (repo *CachedInteractiveRepo) DecrLike(ctx context.Context, biz string, biz
 		return err
 	}
 	go func() {
-		if err := repo.cache.DecrLikeCnt(ctx, biz, bizId); err != nil {
+		if err := repo.cache.DecrLikeCnt(context.WithoutCancel(ctx), biz, bizId); err != nil {
 			repo.l.WithCtx(ctx).Error("decr like cnt cache error", logx.Error(err),
 				logx.String("biz", biz),
 				logx.Int64("bizId", bizId),
@@ -115,7 +115,7 @@ func (repo *CachedInteractiveRepo) IncrReply(ctx context.Context, biz string, bi
 		return err
 	}
 	go func() {
-		if err := repo.cache.IncrReplyCnt(ctx, biz, bizId); err != nil {
+		if err := repo.cache.IncrReplyCnt(context.WithoutCancel(ctx), biz, bizId); err != nil {
 			repo.l.WithCtx(ctx).Error("incr reply cnt cache error", logx.Error(err),
 				logx.String("biz", biz),
 				logx.Int64("bizId", bizId))
@@ -129,7 +129,7 @@ func (repo *CachedInteractiveRepo) DecrReply(ctx context.Context, biz string, bi
 		return err
 	}
 	go func() {
-		if err := repo.cache.DecrReplyCnt(ctx, biz, bizId); err != nil {
+		if err := repo.cache.DecrReplyCnt(context.WithoutCancel(ctx), biz, bizId); err != nil {
 			repo.l.WithCtx(ctx).Error("decr reply cnt cache error", logx.Error(err),
 				logx.String("biz", biz),
 				logx.Int64("bizId", bizId))
@@ -143,7 +143,7 @@ func (repo *CachedInteractiveRepo) IncrFavorite(ctx context.Context, biz string,
 		return err
 	}
 	go func() {
-		if err := repo.cache.IncrFavoriteCnt(ctx, biz, bizId); err != nil {
+		if err := repo.cache.IncrFavoriteCnt(context.WithoutCancel(ctx), biz, bizId); err != nil {
 			repo.l.WithCtx(ctx).Error("incr favorite cnt cache error", logx.Error(err),
 				logx.String("biz", biz),
 				logx.Int64("bizId", bizId),
@@ -158,7 +158,7 @@ func (repo *CachedInteractiveRepo) DecrFavorite(ctx context.Context, biz string,
 		return err
 	}
 	go func() {
-		if err := repo.cache.DecrFavoriteCnt(ctx, biz, bizId); err != nil {
+		if err := repo.cache.DecrFavoriteCnt(context.WithoutCancel(ctx), biz, bizId); err != nil {
 			repo.l.WithCtx(ctx).Error("decr favorite cnt cache error", logx.Error(err),
 				logx.String("biz", biz),
 				logx.Int64("bizId", bizId),
@@ -252,7 +252,7 @@ func (repo *CachedInteractiveRepo) Get(ctx context.Context, biz string, bizId in
 	intr = repo.interToDomain(entity)
 
 	go func() {
-		if er := repo.cache.Set(ctx, biz, bizId, intr); er != nil {
+		if er := repo.cache.Set(context.WithoutCancel(ctx), biz, bizId, intr); er != nil {
 			repo.l.WithCtx(ctx).Error("set interactive cache error", logx.Error(er),
 				logx.String("biz", biz),
 				logx.Int64("bizId", bizId))
@@ -292,7 +292,7 @@ func (repo *CachedInteractiveRepo) GetBatch(ctx context.Context, biz string, biz
 		intrMap[entity.BizId] = repo.interToDomain(entity)
 	}
 	go func() {
-		if er := repo.cache.SetBatch(ctx, lo.MapToSlice(intrMap, func(key int64, value domain.Interactive) domain.Interactive {
+		if er := repo.cache.SetBatch(context.WithoutCancel(ctx), lo.MapToSlice(intrMap, func(key int64, value domain.Interactive) domain.Interactive {
 			return value
 		})); er != nil {
 			repo.l.WithCtx(ctx).Error("set interactive cache error", logx.Error(er),

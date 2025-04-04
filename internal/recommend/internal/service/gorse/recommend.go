@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/KNICEX/InkFlow/internal/interactive"
 	"github.com/KNICEX/InkFlow/internal/relation"
+	"github.com/KNICEX/InkFlow/pkg/gorsex"
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/KNICEX/InkFlow/pkg/queuex"
 	client "github.com/gorse-io/gorse-go"
@@ -14,13 +15,13 @@ import (
 )
 
 type RecommendService struct {
-	cli       *client.GorseClient
+	cli       *gorsex.Client
 	l         logx.Logger
 	followSvc relation.FollowService
 	intrSvc   interactive.Service
 }
 
-func NewRecommendService(cli *client.GorseClient, followSvc relation.FollowService, intrSvc interactive.Service, l logx.Logger) *RecommendService {
+func NewRecommendService(cli *gorsex.Client, followSvc relation.FollowService, intrSvc interactive.Service, l logx.Logger) *RecommendService {
 	return &RecommendService{
 		cli:       cli,
 		l:         l,

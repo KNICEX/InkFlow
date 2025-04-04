@@ -98,7 +98,7 @@ func newInkAggregate(inkSvc ink.Service, userSvc user.Service, followSvc relatio
 func (i *inkAggregate) GetInk(ctx context.Context, id int64, viewUid int64) (InkVO, error) {
 	var author UserVO
 	var intr InteractiveVO
-	inkInfo, err := i.inkSvc.FindById(ctx, id)
+	inkInfo, err := i.inkSvc.FindLiveInk(ctx, id)
 	if err != nil {
 		return InkVO{}, err
 	}

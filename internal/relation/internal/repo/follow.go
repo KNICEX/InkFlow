@@ -181,7 +181,7 @@ func (repo *CachedFollowRepo) findFollowStats(ctx context.Context, uids []int64)
 		for _, stat := range followStatsMap {
 			stats = append(stats, repo.statsToDomain(stat))
 		}
-		if er := repo.cache.SetStatisticBatch(ctx, stats); er != nil {
+		if er := repo.cache.SetStatisticBatch(context.WithoutCancel(ctx), stats); er != nil {
 			repo.l.Error("set follow statistic batch cache error", logx.Error(er))
 		}
 	}()
@@ -259,7 +259,7 @@ func (repo *CachedFollowRepo) GetFollowStats(ctx context.Context, uid, viewUid i
 	}
 
 	go func() {
-		if er := repo.cache.SetStatistic(ctx, domain.FollowStatistic{
+		if er := repo.cache.SetStatistic(context.WithoutCancel(ctx), domain.FollowStatistic{
 			Uid:       uid,
 			Followers: followStats.Followers,
 			Following: followStats.Following,

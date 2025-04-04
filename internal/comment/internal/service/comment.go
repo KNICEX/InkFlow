@@ -135,7 +135,7 @@ func (svc *commentService) Create(ctx context.Context, comment domain.Comment) (
 func (svc *commentService) isAuthor(ctx context.Context, biz string, bizId int64, uid int64) (bool, error) {
 	switch biz {
 	case bizInk:
-		inkInfo, err := svc.inkSvc.FindById(ctx, bizId)
+		inkInfo, err := svc.inkSvc.FindLiveInk(ctx, bizId)
 		if err != nil {
 			return false, err
 		}

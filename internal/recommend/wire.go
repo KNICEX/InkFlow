@@ -6,23 +6,25 @@ import (
 	"github.com/KNICEX/InkFlow/internal/recommend/internal/event"
 	"github.com/KNICEX/InkFlow/internal/recommend/internal/service/gorse"
 	"github.com/KNICEX/InkFlow/internal/relation"
+	"github.com/KNICEX/InkFlow/pkg/gorsex"
 	"github.com/KNICEX/InkFlow/pkg/logx"
-	client "github.com/gorse-io/gorse-go"
 )
 
-func InitSyncService(cli *client.GorseClient) SyncService {
+func InitSyncService(cli *gorsex.Client) SyncService {
 	return gorse.NewSyncService(cli)
 }
 
 func InitSyncConsumer(cli sarama.Client, svc SyncService, l logx.Logger) *SyncConsumer {
 	userCreateHandler := event.NewUserCreateHandler(svc)
+	inkLikeHandler := event.NewInkLikeHandler(svc)
+	inkCancelLikeHandler := event.NewInkCancelLikeHandler(svc)
 	consumer := event.NewSyncConsumer(cli, l)
-	if err := consumer.RegisterHandler(userCreateHandler); err != nil {
+	if err := consumer.RegisterHandler(userCreateHandler, inkLikeHandler, inkCancelLikeHandler); err != nil {
 		panic(err)
 	}
 	return consumer
 }
 
-func InitService(cli *client.GorseClient, followSvc relation.FollowService, intrSvc interactive.Service, l logx.Logger) Service {
+func InitService(cli *gorsex.Client, followSvc relation.FollowService, intrSvc interactive.Service, l logx.Logger) Service {
 	return gorse.NewRecommendService(cli, followSvc, intrSvc, l)
 }

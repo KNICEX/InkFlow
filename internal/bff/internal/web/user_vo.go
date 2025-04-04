@@ -114,7 +114,6 @@ func userToVO(u user.User) UserVO {
 }
 
 type FollowListReq struct {
-	Uid   int64 `json:"uid" `
-	MaxId int64 `json:"maxId"`
-	Limit int   `json:"limit" binding:"required"`
+	MaxId int64 `json:"maxId" form:"maxId"`
+	Limit int   `json:"limit" form:"limit" binding:"required"`
 }

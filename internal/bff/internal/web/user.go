@@ -102,9 +102,9 @@ func (h *UserHandler) RegisterRoutes(server *gin.RouterGroup) {
 			// 取消关注
 			checkGroup.DELETE("/follow/:id", ginx.Wrap(h.l, h.CancelFollow))
 			// 关注列表
-			checkGroup.GET("/follow/:id/following", ginx.WrapBody(h.l, h.FollowingList))
+			checkGroup.GET("/:id/following", ginx.WrapBody(h.l, h.FollowingList))
 			// 粉丝列表
-			checkGroup.GET("/follow/:id/follower", ginx.WrapBody(h.l, h.FollowerList))
+			checkGroup.GET("/:id/follower", ginx.WrapBody(h.l, h.FollowerList))
 		}
 	}
 
@@ -481,8 +481,7 @@ func (h *UserHandler) FollowerList(ctx *gin.Context, req FollowListReq) (ginx.Re
 
 func (h *UserHandler) followList(ctx *gin.Context, req FollowListReq, following bool) (ginx.Result, error) {
 	uc := jwt.MustGetUserClaims(ctx)
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
+	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 	if err != nil {
 		return ginx.InvalidParam(), nil
 	}
@@ -492,6 +491,13 @@ func (h *UserHandler) followList(ctx *gin.Context, req FollowListReq, following 
 	} else {
 		follows, err = h.followService.FollowerList(ctx, id, uc.UserId, req.MaxId, req.Limit)
 	}
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	if len(follows) == 0 {
+		return ginx.SuccessWithData([]UserVO{}), nil
+	}
+
 	uids := lo.Map(follows, func(item relation.FollowStatistic, index int) int64 {
 		return item.Uid
 	})

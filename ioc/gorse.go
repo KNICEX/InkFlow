@@ -1,7 +1,9 @@
 package ioc
 
-import client "github.com/gorse-io/gorse-go"
+import (
+	"github.com/KNICEX/InkFlow/pkg/gorsex"
+)
 
-func InitGorseCli() *client.GorseClient {
-	return client.NewGorseClient("http://localhost:8088", "")
+func InitGorseCli() *gorsex.Client {
+	return gorsex.NewClient("http://localhost:8088", "")
 }

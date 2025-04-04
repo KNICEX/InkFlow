@@ -127,7 +127,7 @@ func (r *ReplyHandler) HandleMessage(ctx context.Context, msg *sarama.ConsumerMe
 		})
 	} else {
 		// 一级回复
-		inkInfo, err := r.inkSvc.FindById(ctx, evt.BizId)
+		inkInfo, err := r.inkSvc.FindLiveInk(ctx, evt.BizId)
 		if err != nil {
 			return err
 		}
@@ -227,7 +227,7 @@ func (i *InkLikeHandler) HandleMessage(ctx context.Context, msg *sarama.Consumer
 		return err
 	}
 
-	inkInfo, err := i.inkSvc.FindById(ctx, evt.InkId)
+	inkInfo, err := i.inkSvc.FindLiveInk(ctx, evt.InkId)
 	if err != nil {
 		return err
 	}

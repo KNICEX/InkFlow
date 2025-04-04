@@ -163,7 +163,7 @@ func (repo *CachedCommentRepo) BizReplyCount(ctx context.Context, biz string, bi
 
 	// 更新缓存
 	go func() {
-		er := repo.cache.SetBizReplyCount(ctx, biz, counts)
+		er := repo.cache.SetBizReplyCount(context.WithoutCancel(ctx), biz, counts)
 		if er != nil {
 			repo.l.WithCtx(ctx).Error("comment cache set biz reply count error",
 				logx.String("biz", biz),
