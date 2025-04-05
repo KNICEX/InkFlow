@@ -61,15 +61,7 @@ func (svc *RecommendService) FindSimilarAuthor(ctx context.Context, authorId int
 }
 
 func (svc *RecommendService) FindPopular(ctx context.Context, offset, limit int) ([]int64, error) {
-	scores, err := svc.cli.GetPopularItems(ctx, "", "", limit, offset)
-	if err != nil {
-		return nil, err
-	}
-	return lo.Map(scores, func(item client.Score, index int) int64 {
-		id, err := strconv.ParseInt(item.Id, 10, 64)
-		svc.l.WithCtx(ctx).Error("gorse recommend ink parse id error", logx.String("id", item.Id), logx.Error(err))
-		return id
-	}), nil
+	return nil, nil
 }
 
 func (svc *RecommendService) FindRecommendInk(ctx context.Context, userId int64, offset, limit int) ([]int64, error) {
