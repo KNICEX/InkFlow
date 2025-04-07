@@ -18,7 +18,7 @@ type ScoreFunc func(likeCnt int64, updateTime time.Time) float64
 
 type RankingService interface {
 	TopN(ctx context.Context, n int) error
-	FindTopN(ctx context.Context) ([]domain.Ink, error)
+	FindTopN(ctx context.Context, offset int, limit int) ([]domain.Ink, error)
 }
 type BatchRankingService struct {
 	inkSvc      inkService
@@ -38,22 +38,22 @@ func NewBatchRankingService(inkSvc inkService, intr interactive.Service, cmd red
 	return res
 }
 func (b *BatchRankingService) TopN(ctx context.Context, n int) error {
-	inks, err := b.rankTopN(ctx, n)
+	ids, err := b.rankTopN(ctx, n)
 	if err != nil {
 		return err
 	}
-	return b.rankingRepo.ReplaceTopN(ctx, inks)
+	return b.rankingRepo.ReplaceTopN(ctx, ids)
 }
 
-func (b *BatchRankingService) FindTopN(ctx context.Context) ([]domain.Ink, error) {
-	inks, err := b.rankingRepo.FindTopN(ctx)
+func (b *BatchRankingService) FindTopN(ctx context.Context, offset int, limit int) ([]domain.Ink, error) {
+	inks, err := b.rankingRepo.FindTopN(ctx, offset, limit)
 	if err != nil {
 		return nil, err
 	}
 	return inks, nil
 }
 
-func (b *BatchRankingService) rankTopN(ctx context.Context, n int) ([]domain.Ink, error) {
+func (b *BatchRankingService) rankTopN(ctx context.Context, n int) ([]int64, error) {
 	var (
 		lastId  int64
 		zsetKey = b.rankingKey()
@@ -101,7 +101,6 @@ func (b *BatchRankingService) rankTopN(ctx context.Context, n int) ([]domain.Ink
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all members from ZSET: %w", err)
 	}
-	var inks []domain.Ink
 	var ids []int64
 	for _, member := range members {
 		inkId, err := strconv.ParseInt(member.Member.(string), 10, 64)
@@ -110,16 +109,7 @@ func (b *BatchRankingService) rankTopN(ctx context.Context, n int) ([]domain.Ink
 		}
 		ids = append(ids, inkId)
 	}
-	inksMap, err := b.inkSvc.FindByIds(ctx, ids)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find inks by IDs: %w", err)
-	}
-	for _, id := range ids {
-		if ink, ok := inksMap[id]; ok {
-			inks = append(inks, ink)
-		}
-	}
-	return inks, nil
+	return ids, nil
 }
 
 func (b *BatchRankingService) score(likeCnt int64, updateTime time.Time) float64 {

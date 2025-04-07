@@ -3,14 +3,13 @@ package cache
 import (
 	"context"
 	"encoding/json"
-	"github.com/KNICEX/InkFlow/internal/ink/internal/domain"
 	"github.com/redis/go-redis/v9"
 	"time"
 )
 
 type RankingCache interface {
-	Set(ctx context.Context, inks []domain.Ink) error
-	Get(ctx context.Context) ([]domain.Ink, error)
+	Set(ctx context.Context, ids []int64) error
+	Get(ctx context.Context) ([]int64, error)
 }
 
 type RedisRankingCache struct {
@@ -24,11 +23,9 @@ func NewRedisRankingCache(cmd redis.Cmdable, expiration time.Duration) RankingCa
 		expiration: expiration,
 	}
 }
-func (r *RedisRankingCache) Set(ctx context.Context, inks []domain.Ink) error {
-	for i := 0; i < len(inks); i++ {
-		inks[i].ContentHtml = inks[i].Abstract()
-	}
-	val, err := json.Marshal(inks)
+func (r *RedisRankingCache) Set(ctx context.Context, ids []int64) error {
+
+	val, err := json.Marshal(ids)
 	if err != nil {
 		return err
 	}
@@ -37,17 +34,17 @@ func (r *RedisRankingCache) Set(ctx context.Context, inks []domain.Ink) error {
 		r.expiration).Err()
 }
 
-func (r *RedisRankingCache) Get(ctx context.Context) ([]domain.Ink, error) {
+func (r *RedisRankingCache) Get(ctx context.Context) ([]int64, error) {
 	val, err := r.cmd.Get(ctx, r.key()).Bytes()
 	if err != nil {
 		return nil, err
 	}
-	var inks []domain.Ink
-	err = json.Unmarshal(val, &inks)
+	var ids []int64
+	err = json.Unmarshal(val, &ids)
 	if err != nil {
 		return nil, err
 	}
-	return inks, nil
+	return ids, nil
 }
 
 func (r *RedisRankingCache) key() string {
