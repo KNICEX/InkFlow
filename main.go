@@ -32,6 +32,15 @@ func main() {
 		}()
 	}
 
+	for _, s := range app.Schedulers {
+		go func() {
+			err := s.Start()
+			if err != nil {
+				fmt.Println("scheduler run err", err)
+			}
+		}()
+	}
+
 	app.Server.Run(":8080")
 
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/KNICEX/InkFlow/internal/search"
 	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/KNICEX/InkFlow/internal/workflow/inkpub"
+	"github.com/KNICEX/InkFlow/internal/workflow/schedule"
 	"github.com/google/wire"
 )
 
@@ -47,11 +48,14 @@ func InitApp() *App {
 		user.InitUserService,
 		email.InitMemoryService,
 		code.InitEmailCodeService,
-		ink.InitInkService,
+
 		relation.InitFollowService,
 
 		interactive.InitInteractiveService,
 		interactive.InitInteractiveInkReadConsumer,
+
+		ink.InitInkService,
+		ink.InitRankingService,
 
 		notification.InitNotificationService,
 		notification.InitNotificationConsumer,
@@ -75,8 +79,15 @@ func InitApp() *App {
 		feed.InitService,
 
 		inkpub.NewActivities,
+		schedule.NewRankActivities,
 
+		InitRankTagWorker,
+		InitRankInkWorker,
 		InitInkPubWorker,
+
+		InitRankInkScheduler,
+		InitRankTagScheduler,
+		InitSchedulers,
 
 		bff.InitBff,
 		InitConsumers,

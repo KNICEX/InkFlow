@@ -24,11 +24,12 @@ import (
 
 func InitHandlers(uh *web.UserHandler, ih *web.InkHandler, fh *web.FileHandler,
 	ch *web.CommentHandler, nh *web.NotificationHandler, sh *web.SearchHandler, feedH *web.FeedHandler,
-	intrH *web.InteractiveHandler) []ginx.Handler {
+	statsH *web.StatsHandler, intrH *web.InteractiveHandler) []ginx.Handler {
 	return []ginx.Handler{uh, ih, fh, ch, nh, sh, feedH, intrH}
 }
 
 func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
+	inkRankService ink.RankingService,
 	followService relation.FollowService,
 	interactiveSvc interactive.Service,
 	commentSvc comment.Service,
@@ -46,6 +47,7 @@ func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
 		web.NewSearchHandler,
 		web.NewFeedHandler,
 		web.NewInteractiveHandler,
+		web.NewStatsHandler,
 		initCloudinary,
 		web.NewFileHandler,
 		InitHandlers,

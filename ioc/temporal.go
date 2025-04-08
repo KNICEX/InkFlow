@@ -1,14 +1,20 @@
 package ioc
 
 import (
+	"context"
 	"github.com/KNICEX/InkFlow/internal/workflow/inkpub"
+	"github.com/KNICEX/InkFlow/internal/workflow/schedule"
+	"github.com/KNICEX/InkFlow/pkg/schedulex"
+	"github.com/KNICEX/InkFlow/pkg/temporalx"
 	"github.com/spf13/viper"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 )
 
 const (
-	inkPubQueue = "ink-pub-queue"
+	inkPubQueue  = "ink-pub-queue"
+	rankInkQueue = "rank-ink-queue"
+	rankTagQueue = "rank-tag-queue"
 )
 
 func InitTemporalClient() client.Client {
@@ -41,8 +47,87 @@ func InitInkPubWorker(cli client.Client, activities *inkpub.Activities) *InkPubW
 	}
 }
 
-func InitWorkers(inkPub *InkPubWorker) []worker.Worker {
+type RankInkWorker struct {
+	worker.Worker
+}
+
+type RankTagWorker struct {
+	worker.Worker
+}
+
+func InitRankInkWorker(cli client.Client, activities *schedule.RankActivities) *RankInkWorker {
+	w := worker.New(cli, rankInkQueue, worker.Options{})
+	w.RegisterWorkflow(schedule.RankHotInk)
+	w.RegisterActivity(activities)
+	return &RankInkWorker{
+		Worker: w,
+	}
+}
+
+func InitRankTagWorker(cli client.Client, activities *schedule.RankActivities) *RankTagWorker {
+	w := worker.New(cli, rankTagQueue, worker.Options{})
+	w.RegisterWorkflow(schedule.RankHotTag)
+	w.RegisterActivity(activities)
+	return &RankTagWorker{
+		Worker: w,
+	}
+}
+
+func InitWorkers(inkPub *InkPubWorker, rankTag *RankTagWorker, rankInk *RankInkWorker) []worker.Worker {
 	return []worker.Worker{
 		inkPub.Worker,
+		rankTag.Worker,
+		rankInk.Worker,
+	}
+}
+
+type RankInkScheduler func() error
+
+func (r RankInkScheduler) Start() error {
+	return r()
+}
+
+func InitRankInkScheduler(cli client.Client) RankInkScheduler {
+	return func() error {
+		return temporalx.UpsertSchedule(context.Background(), cli, client.ScheduleOptions{
+			ID: "rank-ink-scheduler",
+			Spec: client.ScheduleSpec{
+				CronExpressions: []string{"@every 10m"},
+			},
+			Action: &client.ScheduleWorkflowAction{
+				ID:        "rank-ink-scheduler-action",
+				Workflow:  schedule.RankHotInk,
+				TaskQueue: rankInkQueue,
+			},
+		})
+	}
+}
+
+type RankTagScheduler func() error
+
+func (r RankTagScheduler) Start() error {
+	return r()
+}
+
+func InitRankTagScheduler(cli client.Client) RankTagScheduler {
+	return func() error {
+		return temporalx.UpsertSchedule(context.Background(), cli, client.ScheduleOptions{
+			ID: "rank-tag-scheduler",
+			Spec: client.ScheduleSpec{
+				CronExpressions: []string{"@every 8h"},
+			},
+			Action: &client.ScheduleWorkflowAction{
+				ID:        "rank-tag-scheduler-action",
+				Workflow:  schedule.RankHotTag,
+				TaskQueue: rankTagQueue,
+			},
+		})
+	}
+}
+
+func InitSchedulers(rankInk RankInkScheduler, rankTag RankTagScheduler) []schedulex.Scheduler {
+	return []schedulex.Scheduler{
+		rankInk,
+		rankTag,
 	}
 }

@@ -16,8 +16,11 @@ const inkBiz = "ink"
 type ScoreFunc func(likeCnt, favoriteCnt int64, createdAt time.Time) float64
 
 type RankingService interface {
-	TopN(ctx context.Context, n int) error
-	FindTopN(ctx context.Context, offset int, limit int) ([]domain.Ink, error)
+	TopNInk(ctx context.Context, n int) error
+	FindTopNInk(ctx context.Context, offset int, limit int) ([]domain.Ink, error)
+
+	TopNTag(ctx context.Context, n int) error
+	FindTopNTag(ctx context.Context, offset int, limit int) ([]domain.TagStats, error)
 }
 type BatchRankingService struct {
 	inkRepo     repo.LiveInkRepo
@@ -39,16 +42,16 @@ func NewBatchRankingService(inkRepo repo.LiveInkRepo, rankRepo repo.RankingRepo,
 		},
 	}
 }
-func (b *BatchRankingService) TopN(ctx context.Context, n int) error {
+func (b *BatchRankingService) TopNInk(ctx context.Context, n int) error {
 	ids, err := b.rankTopN(ctx, n, time.Now().Add(-time.Hour*24*7))
 	if err != nil {
 		return err
 	}
-	return b.rankingRepo.ReplaceTopN(ctx, ids)
+	return b.rankingRepo.ReplaceTopNInks(ctx, ids)
 }
 
-func (b *BatchRankingService) FindTopN(ctx context.Context, offset int, limit int) ([]domain.Ink, error) {
-	ids, err := b.rankingRepo.FindTop(ctx, offset, limit)
+func (b *BatchRankingService) FindTopNInk(ctx context.Context, offset int, limit int) ([]domain.Ink, error) {
+	ids, err := b.rankingRepo.FindTopInk(ctx, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -102,4 +105,57 @@ func (b *BatchRankingService) rankTopN(ctx context.Context, n int, startTime tim
 	return lo.Map(zq.AllValues(), func(item domain.Ink, index int) int64 {
 		return item.Id
 	}), nil
+}
+
+func (b *BatchRankingService) TopNTag(ctx context.Context, n int) error {
+	tags, err := b.rankTopNTag(ctx, n, time.Now().Add(-time.Hour*24))
+	if err != nil {
+		return err
+	}
+	return b.rankingRepo.ReplaceTopNTags(ctx, tags)
+}
+
+func (b *BatchRankingService) rankTopNTag(ctx context.Context, n int, startTime time.Time) ([]domain.TagStats, error) {
+	var (
+		maxId     int64 = 0
+		batchSize       = 100
+	)
+
+	tagMap := make(map[string]int64)
+
+	for {
+		inks, err := b.inkRepo.FindAll(ctx, maxId, batchSize)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(inks) == 0 {
+			break
+		}
+
+		for _, ink := range inks {
+			if ink.CreatedAt.Before(startTime) {
+				break
+			}
+			for _, tag := range ink.Tags {
+				tagMap[tag]++
+			}
+		}
+		maxId = inks[len(inks)-1].Id
+	}
+
+	zq := queuex.NewZQueue[int64, string](n)
+	for tag, cnt := range tagMap {
+		zq.Enqueue(cnt, tag)
+	}
+	return lo.Map(zq.All(), func(item queuex.ZQueueItem[int64, string], index int) domain.TagStats {
+		return domain.TagStats{
+			Name:      item.Value,
+			Reference: item.Score,
+		}
+	}), nil
+}
+
+func (b *BatchRankingService) FindTopNTag(ctx context.Context, offset int, limit int) ([]domain.TagStats, error) {
+	return b.rankingRepo.FindTopTag(ctx, offset, limit)
 }

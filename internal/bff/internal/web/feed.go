@@ -14,19 +14,24 @@ import (
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
+	"golang.org/x/sync/errgroup"
 )
 
 type FeedHandler struct {
-	svc          feed.Service
-	recommendSvc recommend.Service
-	*inkAggregate
-	auth middleware.Authentication
-	l    logx.Logger
+	svc            feed.Service
+	recommendSvc   recommend.Service
+	inkRankService ink.RankingService
+	inkAggregate   *inkAggregate
+	userAggregate  *userAggregate
+	intrAggregate  *interactiveAggregate
+	auth           middleware.Authentication
+	l              logx.Logger
 }
 
 func NewFeedHandler(
 	svc feed.Service,
 	inkSvc ink.Service,
+	inkRankService ink.RankingService,
 	intrSvc interactive.Service,
 	userSvc user.Service,
 	followSvc relation.FollowService,
@@ -36,11 +41,14 @@ func NewFeedHandler(
 	l logx.Logger,
 ) *FeedHandler {
 	return &FeedHandler{
-		svc:          svc,
-		recommendSvc: recommendSvc,
-		inkAggregate: newInkAggregate(inkSvc, userSvc, followSvc, intrSvc, commentSvc),
-		auth:         auth,
-		l:            l,
+		svc:            svc,
+		inkRankService: inkRankService,
+		recommendSvc:   recommendSvc,
+		inkAggregate:   newInkAggregate(inkSvc, userSvc, followSvc, intrSvc, commentSvc),
+		userAggregate:  newUserAggregate(userSvc, followSvc),
+		intrAggregate:  newInteractiveAggregate(intrSvc, commentSvc),
+		auth:           auth,
+		l:              l,
 	}
 }
 
@@ -112,25 +120,41 @@ func (h *FeedHandler) Recommend(ctx *gin.Context, req FeedRecommendReq) (ginx.Re
 
 func (h *FeedHandler) Hot(ctx *gin.Context, req FeedRecommendReq) (ginx.Result, error) {
 	uc := jwt.MustGetUserClaims(ctx)
-	inkIds, err := h.recommendSvc.FindPopular(ctx, req.Offset, req.Limit)
+	inks, err := h.inkRankService.FindTopNInk(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
-	if len(inkIds) == 0 {
+	if len(inks) == 0 {
 		return ginx.SuccessWithData([]InkVO{}), nil
 	}
+	inkIds := make([]int64, 0, len(inks))
+	authorIds := make([]int64, 0, len(inks))
+	for _, i := range inks {
+		inkIds = append(inkIds, i.Id)
+		authorIds = append(authorIds, i.Author.Id)
+	}
 
-	inkVos, err := h.inkAggregate.GetInkList(ctx, inkIds, uc.UserId)
-	if err != nil {
-		return ginx.InternalError(), err
+	var userVos map[int64]UserVO
+	var intrVos map[int64]InteractiveVO
+	eg := errgroup.Group{}
+	eg.Go(func() error {
+		var er error
+		userVos, er = h.userAggregate.GetUserList(ctx, authorIds, uc.UserId)
+		return er
+	})
+	eg.Go(func() error {
+		var er error
+		intrVos, er = h.intrAggregate.GetInteractiveList(ctx, bizInk, inkIds, uc.UserId)
+		return er
+	})
+
+	vos := make([]InkVO, 0, len(inks))
+	for _, i := range inks {
+		vo := inkToVO(i)
+		vo.Interactive = intrVos[i.Id]
+		vo.Author = userVos[i.Author.Id]
+		vos = append(vos, vo)
 	}
-	res := make([]InkVO, 0, len(inkVos))
-	for _, id := range inkIds {
-		vo, ok := inkVos[id]
-		if !ok {
-			continue
-		}
-		res = append(res, vo)
-	}
-	return ginx.SuccessWithData(res), nil
+
+	return ginx.SuccessWithData(vos), nil
 }

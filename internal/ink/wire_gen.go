@@ -11,6 +11,7 @@ import (
 	"github.com/KNICEX/InkFlow/internal/ink/internal/repo/cache"
 	"github.com/KNICEX/InkFlow/internal/ink/internal/repo/dao"
 	"github.com/KNICEX/InkFlow/internal/ink/internal/service"
+	"github.com/KNICEX/InkFlow/internal/interactive"
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/KNICEX/InkFlow/pkg/snowflakex"
 	"github.com/redis/go-redis/v9"
@@ -20,14 +21,20 @@ import (
 // Injectors from wire.go:
 
 func InitInkService(cmd redis.Cmdable, db *gorm.DB, l logx.Logger) service.InkService {
-	liveDAO := dao.NewLiveDAO(db)
-	inkCache := cache.NewRedisInkCache(cmd)
-	liveInkRepo := repo.NewCachedLiveInkRepo(liveDAO, inkCache, l)
+	liveInkRepo := initLiveRepo(db, cmd, l)
 	node := initSnowflakeNode()
 	draftDAO := initDraftDAO(db, node)
 	draftInkRepo := repo.NewNoCacheDraftInkRepo(draftDAO)
 	inkService := service.NewInkService(liveInkRepo, draftInkRepo, l)
 	return inkService
+}
+
+func InitRankingService(cmd redis.Cmdable, db *gorm.DB, l logx.Logger, intrSvc interactive.Service) service.RankingService {
+	liveInkRepo := initLiveRepo(db, cmd, l)
+	rankingCache := cache.NewRedisRankingCache(cmd, l)
+	rankingRepo := repo.NewRankingRepo(rankingCache)
+	rankingService := service.NewBatchRankingService(liveInkRepo, rankingRepo, intrSvc)
+	return rankingService
 }
 
 // wire.go:
@@ -41,4 +48,16 @@ func initDraftDAO(db *gorm.DB, node snowflakex.Node) dao.DraftDAO {
 		panic(err)
 	}
 	return dao.NewDraftDAO(db, node)
+}
+
+var likeRepo repo.LiveInkRepo
+
+func initLiveRepo(db *gorm.DB, cmd redis.Cmdable, l logx.Logger) repo.LiveInkRepo {
+	if likeRepo != nil {
+		return likeRepo
+	}
+	liveDao := dao.NewLiveDAO(db)
+	inkCache := cache.NewRedisInkCache(cmd)
+	likeRepo = repo.NewCachedLiveInkRepo(liveDao, inkCache, l)
+	return likeRepo
 }

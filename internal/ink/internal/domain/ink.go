@@ -84,3 +84,8 @@ func ContentTypeFromInt(i int) ContentType {
 func (c ContentType) ToInt() int {
 	return int(c)
 }
+
+type TagStats struct {
+	Name      string
+	Reference int64
+}

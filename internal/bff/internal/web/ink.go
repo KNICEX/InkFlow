@@ -28,13 +28,15 @@ const (
 
 type InkHandler struct {
 	svc            ink.Service
+	inkRankService ink.RankingService
 	userSvc        user.Service
 	workflowCli    client.Client
 	interactiveSvc interactive.Service
 	auth           middleware.Authentication
-	*userAggregate
-	*inkAggregate
-	l logx.Logger
+	userAggregate  *userAggregate
+	inkAggregate   *inkAggregate
+	intrAggregate  *interactiveAggregate
+	l              logx.Logger
 }
 
 func NewInkHandler(svc ink.Service, userSvc user.Service, interactiveSvc interactive.Service,
@@ -49,6 +51,7 @@ func NewInkHandler(svc ink.Service, userSvc user.Service, interactiveSvc interac
 		auth:           auth,
 		userAggregate:  newUserAggregate(userSvc, followService),
 		inkAggregate:   newInkAggregate(svc, userSvc, followService, interactiveSvc, commentSvc),
+		intrAggregate:  newInteractiveAggregate(interactiveSvc, commentSvc),
 		l:              l,
 	}
 }

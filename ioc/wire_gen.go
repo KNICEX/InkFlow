@@ -23,6 +23,7 @@ import (
 	"github.com/KNICEX/InkFlow/internal/search"
 	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/KNICEX/InkFlow/internal/workflow/inkpub"
+	"github.com/KNICEX/InkFlow/internal/workflow/schedule"
 	"github.com/google/wire"
 )
 
@@ -67,11 +68,19 @@ func InitApp() *App {
 	asyncService := review.InitAsyncService(syncProducer, logger)
 	activities := inkpub.NewActivities(inkService, interactiveService, asyncService, syncService, recommendSyncService, notificationService, feedService)
 	inkPubWorker := InitInkPubWorker(clientClient, activities)
-	v3 := InitWorkers(inkPubWorker)
+	rankingService := ink.InitRankingService(cmdable, db, logger, interactiveService)
+	rankActivities := schedule.NewRankActivities(rankingService)
+	rankTagWorker := InitRankTagWorker(clientClient, rankActivities)
+	rankInkWorker := InitRankInkWorker(clientClient, rankActivities)
+	v3 := InitWorkers(inkPubWorker, rankTagWorker, rankInkWorker)
+	rankInkScheduler := InitRankInkScheduler(clientClient)
+	rankTagScheduler := InitRankTagScheduler(clientClient)
+	v4 := InitSchedulers(rankInkScheduler, rankTagScheduler)
 	app := &App{
-		Server:    engine,
-		Consumers: v2,
-		Workers:   v3,
+		Server:     engine,
+		Consumers:  v2,
+		Workers:    v3,
+		Schedulers: v4,
 	}
 	return app
 }

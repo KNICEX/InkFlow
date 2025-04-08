@@ -18,6 +18,7 @@ import (
 	"github.com/KNICEX/InkFlow/internal/relation"
 	"github.com/KNICEX/InkFlow/internal/search"
 	"github.com/KNICEX/InkFlow/internal/user"
+
 	"github.com/KNICEX/InkFlow/pkg/ginx"
 	"github.com/KNICEX/InkFlow/pkg/ginx/jwt"
 	"github.com/KNICEX/InkFlow/pkg/ginx/middleware"
@@ -28,9 +29,9 @@ import (
 // Injectors from wire.go:
 
 func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
-	followService relation.FollowService, interactiveSvc interactive.Service, commentSvc comment.Service,
-	notificationSvc notification.Service, recommendSvc recommend.Service, feedSvc feed.Service,
-	searchSvc search.Service, workflowCli client.Client, jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
+	inkRankService ink.RankingService, followService relation.FollowService, interactiveSvc interactive.Service,
+	commentSvc comment.Service, notificationSvc notification.Service, recommendSvc recommend.Service,
+	feedSvc feed.Service, searchSvc search.Service, workflowCli client.Client, jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
 	userHandler := web.NewUserHandler(userSvc, codeSvc, followService, jwtHandler, auth, log)
 	inkHandler := web.NewInkHandler(inkService, userSvc, interactiveSvc, followService, auth, commentSvc, workflowCli, log)
 	cloudinary := initCloudinary()
@@ -38,9 +39,10 @@ func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
 	commentHandler := web.NewCommentHandler(commentSvc, followService, userSvc, auth, log)
 	notificationHandler := web.NewNotificationHandler(notificationSvc, userSvc, inkService, commentSvc, auth, log)
 	searchHandler := web.NewSearchHandler(auth, searchSvc, followService, log)
-	feedHandler := web.NewFeedHandler(feedSvc, inkService, interactiveSvc, userSvc, followService, recommendSvc, auth, commentSvc, log)
+	feedHandler := web.NewFeedHandler(feedSvc, inkService, inkRankService, interactiveSvc, userSvc, followService, recommendSvc, auth, commentSvc, log)
+	statsHandler := web.NewStatsHandler(inkRankService, log)
 	interactiveHandler := web.NewInteractiveHandler(interactiveSvc, auth, log)
-	v := InitHandlers(userHandler, inkHandler, fileHandler, commentHandler, notificationHandler, searchHandler, feedHandler, interactiveHandler)
+	v := InitHandlers(userHandler, inkHandler, fileHandler, commentHandler, notificationHandler, searchHandler, feedHandler, statsHandler, interactiveHandler)
 	return v
 }
 
@@ -48,6 +50,6 @@ func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
 
 func InitHandlers(uh *web.UserHandler, ih *web.InkHandler, fh *web.FileHandler,
 	ch *web.CommentHandler, nh *web.NotificationHandler, sh *web.SearchHandler, feedH *web.FeedHandler,
-	intrH *web.InteractiveHandler) []ginx.Handler {
+	statsH *web.StatsHandler, intrH *web.InteractiveHandler) []ginx.Handler {
 	return []ginx.Handler{uh, ih, fh, ch, nh, sh, feedH, intrH}
 }
