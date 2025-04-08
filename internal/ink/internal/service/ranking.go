@@ -47,6 +47,9 @@ func (b *BatchRankingService) TopNInk(ctx context.Context, n int) error {
 	if err != nil {
 		return err
 	}
+	if len(ids) == 0 {
+		return nil
+	}
 	return b.rankingRepo.ReplaceTopNInks(ctx, ids)
 }
 
@@ -111,6 +114,9 @@ func (b *BatchRankingService) TopNTag(ctx context.Context, n int) error {
 	tags, err := b.rankTopNTag(ctx, n, time.Now().Add(-time.Hour*24))
 	if err != nil {
 		return err
+	}
+	if len(tags) == 0 {
+		return nil
 	}
 	return b.rankingRepo.ReplaceTopNTags(ctx, tags)
 }

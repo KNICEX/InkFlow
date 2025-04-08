@@ -93,7 +93,7 @@ func (h *FeedHandler) Follow(ctx *gin.Context, req FeedFollowReq) (ginx.Result, 
 	return ginx.SuccessWithData(inkVos), nil
 }
 
-func (h *FeedHandler) Recommend(ctx *gin.Context, req FeedRecommendReq) (ginx.Result, error) {
+func (h *FeedHandler) Recommend(ctx *gin.Context, req OffsetPagedReq) (ginx.Result, error) {
 	uc := jwt.MustGetUserClaims(ctx)
 	inkIds, err := h.recommendSvc.FindRecommendInk(ctx, uc.UserId, req.Offset, req.Limit)
 	if err != nil {

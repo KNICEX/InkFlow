@@ -34,7 +34,7 @@ func (b *JwtLoginBuilder) CheckLogin() gin.HandlerFunc {
 		})
 		if err != nil || token == nil || !token.Valid {
 
-			ctx.Abort()
+			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 

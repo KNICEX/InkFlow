@@ -92,7 +92,7 @@ func InitRankInkScheduler(cli client.Client) RankInkScheduler {
 		return temporalx.UpsertSchedule(context.Background(), cli, client.ScheduleOptions{
 			ID: "rank-ink-scheduler",
 			Spec: client.ScheduleSpec{
-				CronExpressions: []string{"@every 10m"},
+				CronExpressions: []string{"@every 5m"},
 			},
 			Action: &client.ScheduleWorkflowAction{
 				ID:        "rank-ink-scheduler-action",
@@ -114,7 +114,7 @@ func InitRankTagScheduler(cli client.Client) RankTagScheduler {
 		return temporalx.UpsertSchedule(context.Background(), cli, client.ScheduleOptions{
 			ID: "rank-tag-scheduler",
 			Spec: client.ScheduleSpec{
-				CronExpressions: []string{"@every 8h"},
+				CronExpressions: []string{"@every 5m"},
 			},
 			Action: &client.ScheduleWorkflowAction{
 				ID:        "rank-tag-scheduler-action",
