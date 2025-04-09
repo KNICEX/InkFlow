@@ -10,6 +10,7 @@ import (
 
 const (
 	topicUserCreate    = "user-create"
+	topicInkView       = "ink-view"
 	topicInkLike       = "ink-like"
 	topicInkCancelLike = "ink-cancel-like"
 

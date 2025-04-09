@@ -31,7 +31,6 @@ func InitService(l logx.Logger) Service {
 	defer cancel()
 	if err = svc.Ping(ctx); err != nil {
 		l.Error("ping email service error", logx.Error(err))
-		//TODO 这个好像是邮件框架的问题，后续处理
 	}
 	return service.NewAsyncService(svc, l)
 }

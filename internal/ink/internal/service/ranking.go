@@ -5,6 +5,7 @@ import (
 	"github.com/KNICEX/InkFlow/internal/ink/internal/domain"
 	"github.com/KNICEX/InkFlow/internal/ink/internal/repo"
 	"github.com/KNICEX/InkFlow/internal/interactive"
+	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/KNICEX/InkFlow/pkg/queuex"
 	"github.com/samber/lo"
 	"math"
@@ -27,9 +28,10 @@ type BatchRankingService struct {
 	rankingRepo repo.RankingRepo
 	intrSvc     interactive.Service
 	scoreFunc   ScoreFunc
+	l           logx.Logger
 }
 
-func NewBatchRankingService(inkRepo repo.LiveInkRepo, rankRepo repo.RankingRepo, intrSvc interactive.Service) RankingService {
+func NewBatchRankingService(inkRepo repo.LiveInkRepo, rankRepo repo.RankingRepo, intrSvc interactive.Service, l logx.Logger) RankingService {
 	return &BatchRankingService{
 		inkRepo:     inkRepo,
 		rankingRepo: rankRepo,
@@ -37,16 +39,20 @@ func NewBatchRankingService(inkRepo repo.LiveInkRepo, rankRepo repo.RankingRepo,
 		scoreFunc: func(likeCnt, favoriteCnt int64, createdAt time.Time) float64 {
 			// 这个 factor 也可以做成一个参数
 			const factor = 1.5
-			return float64(likeCnt-1) + float64(favoriteCnt-1)*1.2/
+			return float64(likeCnt+1) + float64(favoriteCnt+1)*1.2/
 				math.Pow(time.Since(createdAt).Hours()+2, factor)
 		},
+		l: l,
 	}
 }
 func (b *BatchRankingService) TopNInk(ctx context.Context, n int) error {
+	b.l.Info("start calc topN ink", logx.Int64("n", int64(n)))
 	ids, err := b.rankTopN(ctx, n, time.Now().Add(-time.Hour*24*7))
 	if err != nil {
+		b.l.Error("calc topN ink error", logx.Error(err))
 		return err
 	}
+	b.l.Info("end calc topN ink...", logx.Int64("total", int64(len(ids))))
 	if len(ids) == 0 {
 		return nil
 	}
@@ -111,10 +117,13 @@ func (b *BatchRankingService) rankTopN(ctx context.Context, n int, startTime tim
 }
 
 func (b *BatchRankingService) TopNTag(ctx context.Context, n int) error {
+	b.l.Info("start calc topN tag")
 	tags, err := b.rankTopNTag(ctx, n, time.Now().Add(-time.Hour*24))
 	if err != nil {
+		b.l.Error("calc topN tag error", logx.Error(err))
 		return err
 	}
+	b.l.Info("end calc topN tag", logx.Int64("total", int64(len(tags))))
 	if len(tags) == 0 {
 		return nil
 	}

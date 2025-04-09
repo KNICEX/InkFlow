@@ -32,10 +32,37 @@ func (h *UserCreateHandler) HandleMessage(ctx context.Context, msg *sarama.Consu
 	if err := json.Unmarshal(msg.Value, &evt); err != nil {
 		return err
 	}
-	return h.svc.InputUser(context.Background(), domain.User{
+	return h.svc.InputUser(ctx, domain.User{
 		Id:        evt.UserId,
 		Account:   evt.Account,
 		CreatedAt: evt.CreatedAt,
+	})
+}
+
+type InkViewHandler struct {
+	svc service.SyncService
+}
+
+func NewInkViewHandler(svc service.SyncService) Handler {
+	return &InkViewHandler{
+		svc: svc,
+	}
+}
+
+func (h *InkViewHandler) Topic() string {
+	return topicInkView
+}
+
+func (h *InkViewHandler) HandleMessage(ctx context.Context, msg *sarama.ConsumerMessage) error {
+	var evt InkViewEvent
+	if err := json.Unmarshal(msg.Value, &evt); err != nil {
+		return err
+	}
+	return h.svc.InputFeedback(ctx, domain.Feedback{
+		UserId:       evt.UserId,
+		InkId:        evt.InkId,
+		FeedbackType: domain.FeedbackTypeView,
+		CreatedAt:    evt.CreatedAt,
 	})
 }
 

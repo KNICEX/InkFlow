@@ -19,6 +19,7 @@ func NewAsyncService(svc Service, l logx.Logger) Service {
 }
 
 func (a *AsyncService) SendString(ctx context.Context, email, title string, body string) error {
+	ctx = context.WithoutCancel(ctx)
 	go func() {
 		if err := a.svc.SendString(ctx, email, title, body); err != nil {
 			a.l.WithCtx(ctx).Error("failed to async send string email",
@@ -30,6 +31,7 @@ func (a *AsyncService) SendString(ctx context.Context, email, title string, body
 }
 
 func (a *AsyncService) SendHTML(ctx context.Context, email, title string, body string) error {
+	ctx = context.WithoutCancel(ctx)
 	go func() {
 		if err := a.svc.SendHTML(ctx, email, title, body); err != nil {
 			a.l.Error("failed to async send html email",

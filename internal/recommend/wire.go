@@ -16,10 +16,11 @@ func InitSyncService(cli *gorsex.Client) SyncService {
 
 func InitSyncConsumer(cli sarama.Client, svc SyncService, l logx.Logger) *SyncConsumer {
 	userCreateHandler := event.NewUserCreateHandler(svc)
+	inkViewHandler := event.NewInkViewHandler(svc)
 	inkLikeHandler := event.NewInkLikeHandler(svc)
 	inkCancelLikeHandler := event.NewInkCancelLikeHandler(svc)
 	consumer := event.NewSyncConsumer(cli, l)
-	if err := consumer.RegisterHandler(userCreateHandler, inkLikeHandler, inkCancelLikeHandler); err != nil {
+	if err := consumer.RegisterHandler(userCreateHandler, inkViewHandler, inkLikeHandler, inkCancelLikeHandler); err != nil {
 		panic(err)
 	}
 	return consumer

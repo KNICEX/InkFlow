@@ -1,13 +1,14 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
 	"fmt"
 	"github.com/KNICEX/InkFlow/internal/code/internal/repo"
 	"github.com/KNICEX/InkFlow/internal/email"
+	"html/template"
 	"math/rand"
-	"strings"
 	"time"
 )
 
@@ -29,7 +30,7 @@ type CachedEmailCodeService struct {
 	emailSvc email.Service
 
 	title    string
-	template string // 密码将使用{code}替换
+	template *template.Template // 密码将使用{code}替换
 
 	effectiveTime  time.Duration
 	resendInterval time.Duration
@@ -37,12 +38,16 @@ type CachedEmailCodeService struct {
 }
 
 func NewCachedEmailCodeService(repo repo.CodeRepo, emailSvc email.Service, opts ...CodeServiceOption) Service {
+	temp, err := template.New("code").Parse(defaultTemplate)
+	if err != nil {
+		panic(err)
+	}
 	svc := &CachedEmailCodeService{
 		repo:     repo,
 		emailSvc: emailSvc,
 
 		title:    "InkFlow",
-		template: defaultTemplate,
+		template: temp,
 
 		effectiveTime:  time.Minute * 5,
 		resendInterval: time.Second * 10,
@@ -73,10 +78,10 @@ func WithMaxRetry(maxRetry int) CodeServiceOption {
 	}
 }
 
-func WithTemplate(title, template string) CodeServiceOption {
+func WithTemplate(title string, temp *template.Template) CodeServiceOption {
 	return func(option *CachedEmailCodeService) {
 		option.title = title
-		option.template = template
+		option.template = temp
 	}
 }
 
@@ -90,7 +95,13 @@ func (c *CachedEmailCodeService) Send(ctx context.Context, biz, recipient string
 	if err := c.repo.Store(ctx, biz, recipient, code, c.effectiveTime, c.resendInterval, c.maxRetry); err != nil {
 		return err
 	}
-	return c.emailSvc.SendHTML(ctx, recipient, c.title, strings.Replace(c.template, "{code}", code, 1))
+	var tempBuf bytes.Buffer
+	if err := c.template.Execute(&tempBuf, map[string]string{
+		"code": code,
+	}); err != nil {
+		return err
+	}
+	return c.emailSvc.SendHTML(ctx, recipient, c.title, tempBuf.String())
 }
 
 func (c *CachedEmailCodeService) Verify(ctx context.Context, biz, recipient, inputCode string) (bool, error) {

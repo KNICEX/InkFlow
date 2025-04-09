@@ -110,6 +110,7 @@ func (svc *userService) UpdateNonSensitiveInfo(ctx context.Context, user domain.
 		return err
 	}
 
+	ctx = context.WithoutCancel(ctx)
 	go func() {
 		// TODO 可能需要重新查询出最新的用户信息
 		er := svc.producer.ProduceUpdate(ctx, event.UserUpdateEvent{

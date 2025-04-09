@@ -169,6 +169,8 @@ func (r *CachedUserRepo) entityToDomain(u dao.User) domain.User {
 		Username:   u.Username,
 		Account:    u.Account,
 		AboutMe:    u.AboutMe,
+		Avatar:     u.Avatar,
+		Banner:     u.Banner,
 		Links:      domain.LinksFromString(u.Links),
 		GithubInfo: u.GithubInfo,
 		Birthday:   u.Birthday.Time,
@@ -190,6 +192,8 @@ func (r *CachedUserRepo) domainToEntity(u domain.User) dao.User {
 		},
 
 		Account:  u.Account,
+		Avatar:   u.Avatar,
+		Banner:   u.Banner,
 		Username: u.Username,
 		AboutMe:  u.AboutMe,
 		Links:    u.Links.ToString(),

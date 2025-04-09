@@ -7,12 +7,13 @@ import (
 
 func InitMeiliSearch() meilisearch.ServiceManager {
 	type Config struct {
-		Addr string `mapstructure:"addr"`
+		Addr      string `mapstructure:"addr"`
+		MasterKey string `mapstructure:"master_key"`
 	}
 	var cfg Config
 	err := viper.UnmarshalKey("meilisearch", &cfg)
 	if err != nil {
 		panic(err)
 	}
-	return meilisearch.New(cfg.Addr)
+	return meilisearch.New(cfg.Addr, meilisearch.WithAPIKey(cfg.MasterKey))
 }

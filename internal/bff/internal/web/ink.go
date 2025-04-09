@@ -73,7 +73,7 @@ func (h *InkHandler) RegisterRoutes(server *gin.RouterGroup) {
 		checkGroup.GET("/rejected", ginx.WrapBody(h.l, h.ListReviewRejected))
 
 		checkGroup.GET("/draft/:id", ginx.Wrap(h.l, h.DetailDraft))
-		checkGroup.GET("/reviewing/:id", ginx.Wrap(h.l, h.DetailPending))
+		checkGroup.GET("/pending/:id", ginx.Wrap(h.l, h.DetailPending))
 		checkGroup.GET("/private/:id", ginx.Wrap(h.l, h.DetailPrivate))
 
 		checkGroup.DELETE("/draft/:id", ginx.Wrap(h.l, h.DeleteDraft))
@@ -159,6 +159,11 @@ func (h *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 	if err != nil {
 		return ginx.InternalError(), err
 	}
+	go func() {
+		if err = h.interactiveSvc.View(ctx.Copy(), bizInk, id, uc.UserId); err != nil {
+			h.l.Error("ink handler call interactive view error", logx.Error(err), logx.Int64("ink_id", id))
+		}
+	}()
 	return ginx.SuccessWithData(inkVo), nil
 }
 

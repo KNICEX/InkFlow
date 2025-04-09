@@ -33,7 +33,7 @@ func InitRankingService(cmd redis.Cmdable, db *gorm.DB, l logx.Logger, intrSvc i
 	liveInkRepo := initLiveRepo(db, cmd, l)
 	rankingCache := cache.NewRedisRankingCache(cmd, l)
 	rankingRepo := repo.NewRankingRepo(rankingCache)
-	rankingService := service.NewBatchRankingService(liveInkRepo, rankingRepo, intrSvc)
+	rankingService := service.NewBatchRankingService(liveInkRepo, rankingRepo, intrSvc, l)
 	return rankingService
 }
 

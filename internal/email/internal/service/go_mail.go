@@ -29,7 +29,8 @@ func NewMailService(host string, port int, username, password, fromName string) 
 		from:     fromName, // 发件人(自定义昵称)
 	}
 
-	c, err := mail.NewClient(svc.host, mail.WithPort(svc.port),
+	c, err := mail.NewClient(svc.host,
+		mail.WithPort(svc.port),
 		mail.WithSSLPort(true),
 		mail.WithSMTPAuth(svc.authType),
 		mail.WithUsername(svc.username),

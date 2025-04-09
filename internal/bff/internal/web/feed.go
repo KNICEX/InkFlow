@@ -58,7 +58,7 @@ func (h *FeedHandler) RegisterRoutes(server *gin.RouterGroup) {
 		feedGroup.GET("/ink/follow", h.auth.CheckLogin(), ginx.WrapBody(h.l, h.Follow))
 		feedGroup.GET("/ink/recommend", h.auth.CheckLogin(), ginx.WrapBody(h.l, h.Recommend))
 
-		feedGroup.GET("/ink/hot", ginx.WrapBody(h.l, h.Hot))
+		feedGroup.GET("/ink/hot", h.auth.ExtractPayload(), ginx.WrapBody(h.l, h.Hot))
 	}
 }
 
@@ -119,7 +119,7 @@ func (h *FeedHandler) Recommend(ctx *gin.Context, req OffsetPagedReq) (ginx.Resu
 }
 
 func (h *FeedHandler) Hot(ctx *gin.Context, req FeedRecommendReq) (ginx.Result, error) {
-	uc := jwt.MustGetUserClaims(ctx)
+	uc, _ := jwt.GetUserClaims(ctx)
 	inks, err := h.inkRankService.FindTopNInk(ctx, req.Offset, req.Limit)
 	if err != nil {
 		return ginx.InternalError(), err
@@ -147,6 +147,9 @@ func (h *FeedHandler) Hot(ctx *gin.Context, req FeedRecommendReq) (ginx.Result, 
 		intrVos, er = h.intrAggregate.GetInteractiveList(ctx, bizInk, inkIds, uc.UserId)
 		return er
 	})
+	if err = eg.Wait(); err != nil {
+		return ginx.InternalError(), err
+	}
 
 	vos := make([]InkVO, 0, len(inks))
 	for _, i := range inks {

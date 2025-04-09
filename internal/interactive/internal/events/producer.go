@@ -10,6 +10,7 @@ const (
 	topicInkView       = "ink-view"
 	topicInkLike       = "ink-like"
 	topicInkCancelLike = "ink-cancel-like"
+	topicInkFavorite   = "ink-favorite"
 )
 
 type InteractiveProducer interface {

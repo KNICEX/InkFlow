@@ -123,14 +123,16 @@ func (dao *liveDAO) FindByAuthorId(ctx context.Context, authorId int64, offset, 
 
 func (dao *liveDAO) FindAll(ctx context.Context, maxId int64, limit int, status ...int) ([]LiveInk, error) {
 	var inks []LiveInk
-	var err error
-	if len(status) > 0 {
-		err = dao.db.WithContext(ctx).Where("id < ? AND status IN ?", maxId, status).
-			Order("id DESC").Limit(limit).Find(&inks).Error
-	} else {
-		err = dao.db.WithContext(ctx).Where("id < ?", maxId).
-			Order("id DESC").Limit(limit).Find(&inks).Error
+
+	var tx = dao.db
+	if maxId != 0 {
+		tx = tx.Where("id < ?", maxId)
 	}
+	if len(status) > 0 {
+		tx = tx.Where("status IN ?", status)
+	}
+
+	err := tx.WithContext(ctx).Order("id DESC").Limit(limit).Find(&inks).Error
 	if err != nil {
 		return nil, err
 	}

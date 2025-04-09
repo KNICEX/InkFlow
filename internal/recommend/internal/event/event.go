@@ -10,6 +10,12 @@ type UserCreateEvent struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+type InkViewEvent struct {
+	InkId     int64     `json:"inkId"`
+	UserId    int64     `json:"userId"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
 type InkLikeEvent struct {
 	InkId     int64     `json:"inkId"`
 	UserId    int64     `json:"userId"`

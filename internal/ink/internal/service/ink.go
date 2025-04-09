@@ -193,7 +193,7 @@ func (svc *inkService) FindLiveInk(ctx context.Context, id int64) (domain.Ink, e
 }
 
 func (svc *inkService) FindDraftInk(ctx context.Context, id, authorId int64) (domain.Ink, error) {
-	draft, err := svc.draftRepo.FindByIdAndAuthorId(ctx, id, authorId, domain.InkStatusUnPublished)
+	draft, err := svc.draftRepo.FindByIdAndAuthorId(ctx, id, authorId)
 	if err != nil {
 		return domain.Ink{}, svc.wrapNotFoundErr(err)
 	}
