@@ -30,6 +30,8 @@ type InteractiveRepo interface {
 	FavoritedBatch(ctx context.Context, biz string, bizIds []int64, uid int64) (map[int64]bool, error)
 	Get(ctx context.Context, biz string, bizId int64) (domain.Interactive, error)
 	GetBatch(ctx context.Context, biz string, bizIds []int64) (map[int64]domain.Interactive, error)
+	CountUserLikes(ctx context.Context, uid int64) (int64, error)
+	CountUserViews(ctx context.Context, uid int64) (int64, error)
 }
 
 type CachedInteractiveRepo struct {
@@ -301,6 +303,14 @@ func (repo *CachedInteractiveRepo) GetBatch(ctx context.Context, biz string, biz
 		}
 	}()
 	return intrMap, nil
+}
+
+func (repo *CachedInteractiveRepo) CountUserLikes(ctx context.Context, uid int64) (int64, error) {
+	return repo.dao.CountUserLikes(ctx, uid)
+}
+
+func (repo *CachedInteractiveRepo) CountUserViews(ctx context.Context, uid int64) (int64, error) {
+	return repo.dao.CountUserViews(ctx, uid)
 }
 
 func (repo *CachedInteractiveRepo) interToDomain(entity dao.Interactive) domain.Interactive {

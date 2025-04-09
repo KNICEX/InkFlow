@@ -26,6 +26,7 @@ type LiveInkRepo interface {
 	FindByAuthorId(ctx context.Context, authorId int64, offset, limit int, status ...domain.Status) ([]domain.Ink, error)
 	FindAll(ctx context.Context, maxId int64, limit int, status ...domain.Status) ([]domain.Ink, error)
 	FindByIds(ctx context.Context, ids []int64, status ...domain.Status) (map[int64]domain.Ink, error)
+	CountByAuthorId(ctx context.Context, authorId int64, status ...domain.Status) (int64, error)
 }
 
 // CachedLiveInkRepo
@@ -262,6 +263,10 @@ func (repo *CachedLiveInkRepo) parseStatus(status []domain.Status) []int {
 	return lo.Map(status, func(item domain.Status, index int) int {
 		return item.ToInt()
 	})
+}
+
+func (repo *CachedLiveInkRepo) CountByAuthorId(ctx context.Context, authorId int64, status ...domain.Status) (int64, error) {
+	return repo.dao.CountByAuthorId(ctx, authorId, repo.parseStatus(status)...)
 }
 
 func (repo *CachedLiveInkRepo) domainToEntity(ink domain.Ink) dao.LiveInk {

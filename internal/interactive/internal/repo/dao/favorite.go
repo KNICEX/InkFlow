@@ -27,6 +27,7 @@ type FavoriteDAO interface {
 	Delete(ctx context.Context, id, uid int64) error
 	FindByUserId(ctx context.Context, biz string, uid int64) ([]Favorite, error)
 	Update(ctx context.Context, f Favorite) error
+	CountUserFavorites(ctx context.Context, uid int64) (int64, error)
 }
 
 type GormFavoriteDAO struct {
@@ -67,4 +68,9 @@ func (dao *GormFavoriteDAO) FindByUserId(ctx context.Context, biz string, uid in
 
 func (dao *GormFavoriteDAO) Update(ctx context.Context, f Favorite) error {
 	return dao.db.WithContext(ctx).Model(&f).Updates(f).Error
+}
+func (dao *GormFavoriteDAO) CountUserFavorites(ctx context.Context, uid int64) (int64, error) {
+	var count int64
+	err := dao.db.WithContext(ctx).Model(&Favorite{}).Where("user_id = ?", uid).Count(&count).Error
+	return count, err
 }

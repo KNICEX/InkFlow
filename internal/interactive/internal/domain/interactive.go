@@ -18,6 +18,11 @@ type Interactive struct {
 	Liked     bool
 	Favorited bool
 }
+type UserStats struct {
+	Likes     int64
+	Favorites int64
+	Views     int64
+}
 
 type ViewRecord struct {
 	Biz       string

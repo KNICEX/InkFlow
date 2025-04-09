@@ -38,6 +38,8 @@ type CommentService interface {
 	LoadMoreRepliesByPid(ctx context.Context, pid int64, uid, maxId int64, limit int) ([]domain.Comment, error)
 
 	FindBizReplyCount(ctx context.Context, biz string, bizIds []int64) (map[int64]int64, error)
+
+	CountUserComments(ctx context.Context, uid int64) (int64, error)
 }
 
 type commentService struct {
@@ -289,4 +291,7 @@ func (svc *commentService) LoadMoreRepliesByPid(ctx context.Context, pid int64, 
 
 func (svc *commentService) FindBizReplyCount(ctx context.Context, biz string, bizIds []int64) (map[int64]int64, error) {
 	return svc.repo.BizReplyCount(ctx, biz, bizIds)
+}
+func (svc *commentService) CountUserComments(ctx context.Context, uid int64) (int64, error) {
+	return svc.repo.CountUserComments(ctx, uid)
 }

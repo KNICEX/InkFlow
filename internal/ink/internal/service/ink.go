@@ -43,6 +43,7 @@ type InkService interface {
 	ListPrivateByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error)
 	ListAllLive(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
 	ListAllReviewRejected(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
+	CountUserInks(ctx context.Context, authorId int64) (int64, error)
 }
 
 type inkService struct {
@@ -253,6 +254,10 @@ func (svc *inkService) ListAllLive(ctx context.Context, maxId int64, limit int) 
 
 func (svc *inkService) ListAllReviewRejected(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error) {
 	return svc.liveRepo.FindAll(ctx, maxId, limit, domain.InkStatusRejected)
+}
+
+func (svc *inkService) CountUserInks(ctx context.Context, authorId int64) (int64, error) {
+	return svc.liveRepo.CountByAuthorId(ctx, authorId, domain.InkStatusPublished)
 }
 
 type InkServiceV1 interface {

@@ -3,6 +3,9 @@ package web
 import (
 	"errors"
 	"github.com/KNICEX/InkFlow/internal/code"
+	"github.com/KNICEX/InkFlow/internal/comment"
+	"github.com/KNICEX/InkFlow/internal/ink"
+	"github.com/KNICEX/InkFlow/internal/interactive"
 	"github.com/KNICEX/InkFlow/internal/relation"
 	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/KNICEX/InkFlow/pkg/ginx"
@@ -32,6 +35,9 @@ type UserHandler struct {
 	svc           user.Service
 	codeSvc       code.Service
 	followService relation.FollowService
+	interactive   interactive.Service
+	comment       comment.Service
+	ink           ink.Service
 	phoneReg      *regexp.Regexp
 	emailReg      *regexp.Regexp
 	l             logx.Logger
@@ -106,6 +112,10 @@ func (h *UserHandler) RegisterRoutes(server *gin.RouterGroup) {
 			// 粉丝列表
 			checkGroup.GET("/:id/follower", ginx.WrapBody(h.l, h.FollowerList))
 		}
+	}
+	{
+		userGroup.GET("/:id/dashboard", ginx.Wrap(h.l, h.ListDashboard))
+
 	}
 
 }
@@ -516,4 +526,40 @@ func (h *UserHandler) followList(ctx *gin.Context, req FollowListReq, following 
 		}
 	}
 	return ginx.SuccessWithData(res), nil
+}
+
+func (h *UserHandler) ListDashboard(ctx *gin.Context) (ginx.Result, error) {
+
+	uc := jwt.MustGetUserClaims(ctx)
+	inksCount, err := h.ink.CountUserInks(ctx, uc.UserId)
+	commentCount, err := h.comment.CountUserComments(ctx, uc.UserId)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	userStats, err := h.interactive.GetUserStats(ctx, uc.UserId)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	followStats, err := h.followService.GetFollowStats(ctx, uc.UserId)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	u, err := h.svc.FindById(ctx, uc.UserId)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	now := time.Now()
+	duration := now.Sub(u.CreatedAt)
+	joinDays := int64(duration.Hours() / 24)
+	dashboardInfo := DashboardInfo{
+		InksCount:      inksCount,
+		CommentCount:   commentCount,
+		ViewsCount:     userStats.Views,
+		FavoritesCount: userStats.Favorites,
+		LikesCount:     userStats.Likes,
+		FollowersCount: followStats.Followers,
+		FollowingCount: followStats.Following,
+		JoinDays:       joinDays,
+	}
+	return ginx.SuccessWithData(dashboardInfo), nil
 }

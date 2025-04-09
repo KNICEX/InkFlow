@@ -29,6 +29,7 @@ type CommentRepo interface {
 
 	FindStats(ctx context.Context, ids []int64, uid int64) (map[int64]domain.CommentStats, error)
 	BizReplyCount(ctx context.Context, biz string, bizIds []int64) (map[int64]int64, error)
+	CountUserComments(ctx context.Context, uid int64) (int64, error)
 }
 
 type CachedCommentRepo struct {
@@ -257,4 +258,12 @@ func (repo *CachedCommentRepo) toEntity(comment domain.Comment) dao.Comment {
 		IsAuthor:      comment.Commentator.IsAuthor,
 		CreatedAt:     comment.CreatedAt,
 	}
+}
+
+func (repo *CachedCommentRepo) CountUserComments(ctx context.Context, uid int64) (int64, error) {
+	count, err := repo.dao.CountUserComments(ctx, uid)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }

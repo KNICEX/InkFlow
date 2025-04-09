@@ -21,6 +21,7 @@ type FollowService interface {
 	FollowerIds(ctx context.Context, uid int64, maxId int64, limit int) ([]int64, error)
 	FindFollowStats(ctx context.Context, uid, viewUid int64) (domain.FollowStatistic, error)
 	FindFollowStatsBatch(ctx context.Context, uids []int64, viewUid int64) (map[int64]domain.FollowStatistic, error)
+	GetFollowStats(ctx context.Context, uid int64) (domain.FollowStats, error)
 }
 
 type followService struct {
@@ -74,7 +75,7 @@ func (svc *followService) FollowingList(ctx context.Context, uid, viewUid int64,
 }
 
 func (svc *followService) FollowerList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowStatistic, error) {
-	return svc.repo.FindFlowerList(ctx, uid, viewUid, maxId, limit)
+	return svc.repo.FindFollowerList(ctx, uid, viewUid, maxId, limit)
 }
 
 func (svc *followService) FindFollowStats(ctx context.Context, uid, viewUid int64) (domain.FollowStatistic, error) {
@@ -90,4 +91,7 @@ func (svc *followService) FollowingIds(ctx context.Context, uid int64, maxId int
 
 func (svc *followService) FollowerIds(ctx context.Context, uid int64, maxId int64, limit int) ([]int64, error) {
 	return svc.repo.GetFollowerIds(ctx, uid, maxId, limit)
+}
+func (svc *followService) GetFollowStats(ctx context.Context, uid int64) (domain.FollowStats, error) {
+	return svc.repo.CountFollowStats(ctx, uid)
 }

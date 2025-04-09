@@ -30,6 +30,7 @@ type InteractiveService interface {
 
 	Get(ctx context.Context, biz string, bizId int64, uid int64) (domain.Interactive, error)
 	GetMulti(ctx context.Context, biz string, bizIds []int64, uid int64) (map[int64]domain.Interactive, error)
+	GetUserStats(ctx context.Context, uid int64) (domain.UserStats, error)
 }
 
 type interactiveService struct {
@@ -222,4 +223,24 @@ func (svc *interactiveService) GetMulti(ctx context.Context, biz string, bizIds 
 		}
 	}
 	return intrs, nil
+}
+
+func (svc *interactiveService) GetUserStats(ctx context.Context, uid int64) (domain.UserStats, error) {
+	favoritesCount, err := svc.favRepo.CountUserFavorites(ctx, uid)
+	if err != nil {
+		return domain.UserStats{}, err
+	}
+	likesCount, err := svc.repo.CountUserLikes(ctx, uid)
+	if err != nil {
+		return domain.UserStats{}, err
+	}
+	viewsCount, err := svc.repo.CountUserViews(ctx, uid)
+	if err != nil {
+		return domain.UserStats{}, err
+	}
+	return domain.UserStats{
+		Favorites: favoritesCount,
+		Likes:     likesCount,
+		Views:     viewsCount,
+	}, nil
 }
