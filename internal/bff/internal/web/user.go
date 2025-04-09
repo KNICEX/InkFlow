@@ -114,7 +114,7 @@ func (h *UserHandler) RegisterRoutes(server *gin.RouterGroup) {
 		}
 	}
 	{
-		userGroup.GET("/:id/dashboard", ginx.Wrap(h.l, h.ListDashboard))
+		userGroup.GET("/dashboard", ginx.Wrap(h.l, h.ListDashboard))
 
 	}
 
