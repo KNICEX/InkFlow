@@ -20,6 +20,7 @@ type LiveDAO interface {
 	FindByAuthorId(ctx context.Context, authorId int64, offset, limit int, status ...int) ([]LiveInk, error)
 	FindAll(ctx context.Context, maxId int64, limit int, status ...int) ([]LiveInk, error)
 	FindByIds(ctx context.Context, ids []int64, status ...int) (map[int64]LiveInk, error)
+	CountByAuthorId(ctx context.Context, authorId int64, status ...int) (int64, error)
 }
 
 var _ LiveDAO = (*liveDAO)(nil)
@@ -155,4 +156,13 @@ func (dao *liveDAO) FindByIds(ctx context.Context, ids []int64, status ...int) (
 		idMap[ink.Id] = ink
 	}
 	return idMap, nil
+}
+
+func (dao *liveDAO) CountByAuthorId(ctx context.Context, authorId int64, status ...int) (int64, error) {
+	var count int64
+	err := dao.db.WithContext(ctx).Model(&LiveInk{}).Where("author_id = ? AND status IN ?", authorId, status).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }

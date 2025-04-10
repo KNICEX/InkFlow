@@ -117,3 +117,14 @@ type FollowListReq struct {
 	MaxId int64 `json:"maxId" form:"maxId"`
 	Limit int   `json:"limit" form:"limit" binding:"required"`
 }
+
+type DashboardInfo struct {
+	InksCount      int64
+	CommentCount   int64
+	FollowersCount int64
+	FollowingCount int64
+	FavoritesCount int64
+	ViewsCount     int64
+	LikesCount     int64
+	JoinDays       int64
+}

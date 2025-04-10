@@ -65,6 +65,7 @@ type CommentDAO interface {
 	FindStats(ctx context.Context, ids []int64) (map[int64]CommentStats, error)
 	Liked(ctx context.Context, uid int64, cids []int64) (map[int64]bool, error)
 	ReplyCount(ctx context.Context, biz string, bizIds []int64) (map[int64]int64, error)
+	CountUserComments(ctx context.Context, uid int64) (int64, error)
 }
 
 type GormCommentDAO struct {
@@ -334,4 +335,10 @@ func (dao *GormCommentDAO) ReplyCount(ctx context.Context, biz string, bizIds []
 		replyCountMap[item.BizId] = item.ReplyCount
 	}
 	return replyCountMap, nil
+}
+
+func (dao *GormCommentDAO) CountUserComments(ctx context.Context, uid int64) (int64, error) {
+	var count int64
+	err := dao.db.WithContext(ctx).Model(&Comment{}).Where("commentator_id = ?", uid).Count(&count).Error
+	return count, err
 }

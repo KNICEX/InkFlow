@@ -12,6 +12,7 @@ type FavoriteRepo interface {
 	Update(ctx context.Context, favorite domain.Favorite) error
 	Delete(ctx context.Context, id, uid int64) error
 	FindByUid(ctx context.Context, biz string, uid int64) ([]domain.Favorite, error)
+	CountUserFavorites(ctx context.Context, uid int64) (int64, error)
 }
 
 type NoCacheFavoriteRepo struct {
@@ -68,4 +69,7 @@ func (repo *NoCacheFavoriteRepo) entityToDomain(favorite dao.Favorite) domain.Fa
 		CreatedAt: favorite.CreatedAt,
 		UpdatedAt: favorite.UpdatedAt,
 	}
+}
+func (repo *NoCacheFavoriteRepo) CountUserFavorites(ctx context.Context, uid int64) (int64, error) {
+	return repo.dao.CountUserFavorites(ctx, uid)
 }

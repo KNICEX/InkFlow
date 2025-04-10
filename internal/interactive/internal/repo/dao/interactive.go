@@ -42,6 +42,8 @@ type InteractiveDAO interface {
 
 	ListViewRecord(ctx context.Context, biz string, userId int64, maxId int64, limit int) ([]UserView, error)
 	ListLikeRecord(ctx context.Context, biz string, userId int64, maxId int64, limit int) ([]UserLike, error)
+	CountUserLikes(ctx context.Context, userId int64) (int64, error)
+	CountUserViews(ctx context.Context, userId int64) (int64, error)
 }
 
 type GormInteractiveDAO struct {
@@ -371,6 +373,18 @@ func (dao *GormInteractiveDAO) ListLikeRecord(ctx context.Context, biz string, u
 	}
 	err := tx.Order("id DESC").Limit(limit).Find(&records).Error
 	return records, err
+}
+
+func (dao *GormInteractiveDAO) CountUserLikes(ctx context.Context, userId int64) (int64, error) {
+	var count int64
+	err := dao.db.WithContext(ctx).Where("user_id = ?", userId).Model(&UserLike{}).Count(&count).Error
+	return count, err
+}
+
+func (dao *GormInteractiveDAO) CountUserViews(ctx context.Context, userId int64) (int64, error) {
+	var count int64
+	err := dao.db.WithContext(ctx).Where("user_id = ?", userId).Model(&UserView{}).Count(&count).Error
+	return count, err
 }
 
 type UserView struct {

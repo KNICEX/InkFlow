@@ -19,12 +19,13 @@ type FollowRepo interface {
 	AddFollowRelation(ctx context.Context, c domain.FollowRelation) error
 	RemoveFollowRelation(ctx context.Context, c domain.FollowRelation) error
 	FindFollowingList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowStatistic, error)
-	FindFlowerList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowStatistic, error)
+	FindFollowerList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowStatistic, error)
 	GetFollowStats(ctx context.Context, uid, viewUid int64) (domain.FollowStatistic, error)
 	GetFollowStatBatch(ctx context.Context, uids []int64, viewUid int64) (map[int64]domain.FollowStatistic, error)
 
 	GetFollowingIds(ctx context.Context, uid int64, maxId int64, limit int) ([]int64, error)
 	GetFollowerIds(ctx context.Context, uid int64, maxId int64, limit int) ([]int64, error)
+	CountFollowStats(ctx context.Context, uid int64) (domain.FollowStats, error)
 }
 
 type CachedFollowRepo struct {
@@ -189,7 +190,7 @@ func (repo *CachedFollowRepo) findFollowStats(ctx context.Context, uids []int64)
 	return cachedStatsMap, nil
 }
 
-func (repo *CachedFollowRepo) FindFlowerList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowStatistic, error) {
+func (repo *CachedFollowRepo) FindFollowerList(ctx context.Context, uid, viewUid int64, maxId int64, limit int) ([]domain.FollowStatistic, error) {
 	followers, err := repo.dao.FollowerList(ctx, uid, maxId, limit)
 	if err != nil {
 		return nil, err
@@ -327,6 +328,16 @@ func (repo *CachedFollowRepo) GetFollowerIds(ctx context.Context, uid int64, max
 	return lo.Map(followers, func(item dao.UserFollow, index int) int64 {
 		return item.FollowerId
 	}), nil
+}
+func (repo *CachedFollowRepo) CountFollowStats(ctx context.Context, uid int64) (domain.FollowStats, error) {
+	res, err := repo.dao.FindFollowStats(ctx, uid)
+	if err != nil {
+		return domain.FollowStats{}, err
+	}
+	return domain.FollowStats{
+		Followers: res.Followers,
+		Following: res.Following,
+	}, nil
 }
 
 func (repo *CachedFollowRepo) statsToDomain(stats dao.FollowStats) domain.FollowStatistic {
