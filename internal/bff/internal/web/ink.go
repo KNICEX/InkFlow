@@ -21,9 +21,9 @@ import (
 )
 
 const (
-	bizInk = "inkSvc"
+	bizInk = "ink"
 
-	inkPubQueue = "inkSvc-pub-queue"
+	inkPubQueue = "ink-pub-queue"
 )
 
 type InkHandler struct {
@@ -57,7 +57,7 @@ func NewInkHandler(svc ink.Service, userSvc user.Service, interactiveSvc interac
 }
 
 func (h *InkHandler) RegisterRoutes(server *gin.RouterGroup) {
-	inkGroup := server.Group("/inkSvc")
+	inkGroup := server.Group("/ink")
 
 	inkGroup.GET("/detail/:id", h.auth.ExtractPayload(), ginx.Wrap(h.l, h.Detail))
 	inkGroup.POST("/list", ginx.WrapBody(h.l, h.List))
@@ -135,7 +135,7 @@ func (h *InkHandler) Publish(ctx *gin.Context) (ginx.Result, error) {
 		TaskQueue: inkPubQueue,
 	}, inkpub.InkPublish, id, uc.UserId)
 	if err != nil {
-		h.l.WithCtx(ctx).Error("start inkSvc publish workflow failed",
+		h.l.WithCtx(ctx).Error("start ink publish workflow failed",
 			logx.Int64("inkId", id),
 			logx.Error(err))
 		return ginx.InternalError(), err
@@ -161,7 +161,7 @@ func (h *InkHandler) Detail(ctx *gin.Context) (ginx.Result, error) {
 	}
 	go func() {
 		if err = h.interactiveSvc.View(ctx.Copy(), bizInk, id, uc.UserId); err != nil {
-			h.l.Error("inkSvc handler call intrSvc view error", logx.Error(err), logx.Int64("ink_id", id))
+			h.l.Error("ink handler call intrSvc view error", logx.Error(err), logx.Int64("ink_id", id))
 		}
 	}()
 	return ginx.SuccessWithData(inkVo), nil
