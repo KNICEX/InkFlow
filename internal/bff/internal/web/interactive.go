@@ -24,7 +24,7 @@ func NewInteractiveHandler(svc interactive.Service, auth middleware.Authenticati
 	}
 }
 func (h *InteractiveHandler) RegisterRoutes(server *gin.RouterGroup) {
-	interactiveGroup := server.Group("/interactive", h.auth.CheckLogin())
+	interactiveGroup := server.Group("/intrSvc", h.auth.CheckLogin())
 	{
 		interactiveGroup.GET("/favorite/:biz", ginx.Wrap(h.l, h.Favorites))
 		interactiveGroup.POST("/favorite", ginx.WrapBody(h.l, h.CreateFavorite))

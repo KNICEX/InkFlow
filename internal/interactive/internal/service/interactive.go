@@ -226,21 +226,30 @@ func (svc *interactiveService) GetMulti(ctx context.Context, biz string, bizIds 
 }
 
 func (svc *interactiveService) GetUserStats(ctx context.Context, uid int64) (domain.UserStats, error) {
-	favoritesCount, err := svc.favRepo.CountUserFavorites(ctx, uid)
-	if err != nil {
+	var favCount, likeCount, viewCount int64
+	eg := errgroup.Group{}
+	eg.Go(func() error {
+		var er error
+		favCount, er = svc.favRepo.CountUserFavorites(ctx, uid)
+		return er
+	})
+	eg.Go(func() error {
+		var er error
+		likeCount, er = svc.repo.CountUserLikes(ctx, uid)
+		return er
+	})
+	eg.Go(func() error {
+		var er error
+		viewCount, er = svc.repo.CountUserViews(ctx, uid)
+		return er
+	})
+	if err := eg.Wait(); err != nil {
 		return domain.UserStats{}, err
 	}
-	likesCount, err := svc.repo.CountUserLikes(ctx, uid)
-	if err != nil {
-		return domain.UserStats{}, err
-	}
-	viewsCount, err := svc.repo.CountUserViews(ctx, uid)
-	if err != nil {
-		return domain.UserStats{}, err
-	}
+
 	return domain.UserStats{
-		Favorites: favoritesCount,
-		Likes:     likesCount,
-		Views:     viewsCount,
+		FavoriteCnt: favCount,
+		LikeCnt:     likeCount,
+		ViewCnt:     viewCount,
 	}, nil
 }

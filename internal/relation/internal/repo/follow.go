@@ -25,7 +25,6 @@ type FollowRepo interface {
 
 	GetFollowingIds(ctx context.Context, uid int64, maxId int64, limit int) ([]int64, error)
 	GetFollowerIds(ctx context.Context, uid int64, maxId int64, limit int) ([]int64, error)
-	CountFollowStats(ctx context.Context, uid int64) (domain.FollowStats, error)
 }
 
 type CachedFollowRepo struct {
@@ -329,17 +328,6 @@ func (repo *CachedFollowRepo) GetFollowerIds(ctx context.Context, uid int64, max
 		return item.FollowerId
 	}), nil
 }
-func (repo *CachedFollowRepo) CountFollowStats(ctx context.Context, uid int64) (domain.FollowStats, error) {
-	res, err := repo.dao.FindFollowStats(ctx, uid)
-	if err != nil {
-		return domain.FollowStats{}, err
-	}
-	return domain.FollowStats{
-		Followers: res.Followers,
-		Following: res.Following,
-	}, nil
-}
-
 func (repo *CachedFollowRepo) statsToDomain(stats dao.FollowStats) domain.FollowStatistic {
 	return domain.FollowStatistic{
 		Uid:       stats.UserId,

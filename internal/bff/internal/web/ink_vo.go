@@ -29,7 +29,7 @@ type InkVO struct {
 	Status      int           `json:"status"`
 	CreatedAt   time.Time     `json:"createdAt"`
 	UpdatedAt   time.Time     `json:"updatedAt"`
-	Interactive InteractiveVO `json:"interactive"`
+	Interactive InteractiveVO `json:"intrSvc"`
 }
 
 type InkCategory struct {

@@ -19,9 +19,9 @@ type Interactive struct {
 	Favorited bool
 }
 type UserStats struct {
-	Likes     int64
-	Favorites int64
-	Views     int64
+	LikeCnt     int64
+	FavoriteCnt int64
+	ViewCnt     int64
 }
 
 type ViewRecord struct {

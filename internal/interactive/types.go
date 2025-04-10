@@ -10,6 +10,7 @@ type Interactive = domain.Interactive
 type Favorite = domain.Favorite
 type ViewRecord = domain.ViewRecord
 type LikeRecord = domain.LikeRecord
+type UserStats = domain.UserStats
 type FavoriteRecord = domain.FavoriteRecord
 
 type Service = service.InteractiveService

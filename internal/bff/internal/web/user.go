@@ -35,9 +35,9 @@ type UserHandler struct {
 	svc           user.Service
 	codeSvc       code.Service
 	followService relation.FollowService
-	interactive   interactive.Service
-	comment       comment.Service
-	ink           ink.Service
+	intrSvc       interactive.Service
+	commentSvc    comment.Service
+	inkSvc        ink.Service
 	phoneReg      *regexp.Regexp
 	emailReg      *regexp.Regexp
 	l             logx.Logger
@@ -45,13 +45,17 @@ type UserHandler struct {
 	jwt.Handler
 }
 
-func NewUserHandler(svc user.Service,
+func NewUserHandler(svc user.Service, inkSvc ink.Service,
+	comment comment.Service, intrSvc interactive.Service,
 	codeSvc code.Service, followService relation.FollowService,
 	jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) *UserHandler {
 	return &UserHandler{
 		svc:           svc,
 		codeSvc:       codeSvc,
 		followService: followService,
+		inkSvc:        inkSvc,
+		commentSvc:    comment,
+		intrSvc:       intrSvc,
 		phoneReg:      regexp.MustCompile(`^1[3456789]\d{9}$`),
 		emailReg:      regexp.MustCompile(`^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$`),
 		Handler:       jwtHandler,
@@ -112,12 +116,9 @@ func (h *UserHandler) RegisterRoutes(server *gin.RouterGroup) {
 			// 粉丝列表
 			checkGroup.GET("/:id/follower", ginx.WrapBody(h.l, h.FollowerList))
 		}
-	}
-	{
-		userGroup.GET("/dashboard", ginx.Wrap(h.l, h.ListDashboard))
 
+		checkGroup.GET("/action-stats", ginx.Wrap(h.l, h.ActionStats))
 	}
-
 }
 
 func (h *UserHandler) sendCodeWithSvc(ctx *gin.Context, biz, recipient string) (ginx.Result, error) {
@@ -528,38 +529,44 @@ func (h *UserHandler) followList(ctx *gin.Context, req FollowListReq, following 
 	return ginx.SuccessWithData(res), nil
 }
 
-func (h *UserHandler) ListDashboard(ctx *gin.Context) (ginx.Result, error) {
-
+func (h *UserHandler) ActionStats(ctx *gin.Context) (ginx.Result, error) {
 	uc := jwt.MustGetUserClaims(ctx)
-	inksCount, err := h.ink.CountUserInks(ctx, uc.UserId)
-	commentCount, err := h.comment.CountUserComments(ctx, uc.UserId)
-	if err != nil {
+	eg := errgroup.Group{}
+	var inksCount, commentCount int64
+	eg.Go(func() error {
+		var err error
+		inksCount, err = h.inkSvc.CountUserInks(ctx, uc.UserId)
+		return err
+	})
+	eg.Go(func() error {
+		var err error
+		commentCount, err = h.commentSvc.CountUserComments(ctx, uc.UserId)
+		return err
+	})
+	var userIntrStats interactive.UserStats
+	eg.Go(func() error {
+		var err error
+		userIntrStats, err = h.intrSvc.GetUserStats(ctx, uc.UserId)
+		return err
+	})
+	var followStats relation.FollowStatistic
+	eg.Go(func() error {
+		var err error
+		followStats, err = h.followService.FindFollowStats(ctx, uc.UserId, 0)
+		return err
+	})
+	if err := eg.Wait(); err != nil {
 		return ginx.InternalError(), err
 	}
-	userStats, err := h.interactive.GetUserStats(ctx, uc.UserId)
-	if err != nil {
-		return ginx.InternalError(), err
-	}
-	followStats, err := h.followService.GetFollowStats(ctx, uc.UserId)
-	if err != nil {
-		return ginx.InternalError(), err
-	}
-	u, err := h.svc.FindById(ctx, uc.UserId)
-	if err != nil {
-		return ginx.InternalError(), err
-	}
-	now := time.Now()
-	duration := now.Sub(u.CreatedAt)
-	joinDays := int64(duration.Hours() / 24)
+
 	dashboardInfo := DashboardInfo{
-		InksCount:      inksCount,
+		InkCount:       inksCount,
 		CommentCount:   commentCount,
-		ViewsCount:     userStats.Views,
-		FavoritesCount: userStats.Favorites,
-		LikesCount:     userStats.Likes,
-		FollowersCount: followStats.Followers,
+		ViewCount:      userIntrStats.ViewCnt,
+		FavoriteCount:  userIntrStats.FavoriteCnt,
+		LikeCount:      userIntrStats.LikeCnt,
+		FollowerCount:  followStats.Followers,
 		FollowingCount: followStats.Following,
-		JoinDays:       joinDays,
 	}
 	return ginx.SuccessWithData(dashboardInfo), nil
 }

@@ -34,7 +34,7 @@ func NewCommentHandler(svc comment.Service, followSvc relation.FollowService, us
 }
 
 func (h *CommentHandler) RegisterRoutes(server *gin.RouterGroup) {
-	commentGroup := server.Group("/comment")
+	commentGroup := server.Group("/commentSvc")
 	{
 		commentGroup.GET("", h.auth.ExtractPayload(), ginx.WrapBody(h.l, h.List))
 		commentGroup.GET("/child/:rid", h.auth.ExtractPayload(), ginx.WrapBody(h.l, h.LoadMoreChild))

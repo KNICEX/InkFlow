@@ -261,9 +261,5 @@ func (repo *CachedCommentRepo) toEntity(comment domain.Comment) dao.Comment {
 }
 
 func (repo *CachedCommentRepo) CountUserComments(ctx context.Context, uid int64) (int64, error) {
-	count, err := repo.dao.CountUserComments(ctx, uid)
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
+	return repo.dao.CountUserComments(ctx, uid)
 }

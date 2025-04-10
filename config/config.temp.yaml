@@ -43,3 +43,8 @@ temporal:
   addr: localhost:7233
   namespace: inkflow
   domain: default
+
+gorse:
+  addr: http://localhost:8088
+#  default is empty
+  api_key: your_api_key

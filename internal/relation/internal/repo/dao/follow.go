@@ -43,7 +43,6 @@ type FollowRelationDAO interface {
 	FindFollowStatsBatch(ctx context.Context, uids []int64) (map[int64]FollowStats, error)
 	Followed(ctx context.Context, uid, followeeId int64) (bool, error)
 	FollowedBatch(ctx context.Context, uid int64, followeeIds []int64) (map[int64]bool, error)
-	//FollowStats(ctx context.Context, uid int64) (FollowStats, error)
 }
 
 type GormFollowRelationDAO struct {

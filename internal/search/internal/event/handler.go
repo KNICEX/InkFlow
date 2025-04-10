@@ -32,7 +32,7 @@ func (h *ReplyHandler) HandleMessage(ctx context.Context, msg *sarama.ConsumerMe
 	if err := json.Unmarshal(msg.Value, &evt); err != nil {
 		return err
 	}
-	return h.svc.InputComment(context.Background(), []domain.Comment{
+	return h.svc.InputComment(ctx, []domain.Comment{
 		{
 			Id: evt.CommentId,
 			Commentator: domain.User{
@@ -68,7 +68,7 @@ func (h *UserCreateHandler) HandleMessage(ctx context.Context, msg *sarama.Consu
 	if err := json.Unmarshal(msg.Value, &evt); err != nil {
 		return err
 	}
-	return h.svc.InputUser(context.Background(), []domain.User{
+	return h.svc.InputUser(ctx, []domain.User{
 		{
 			Id:        evt.UserId,
 			Account:   evt.Account,
@@ -98,7 +98,7 @@ func (h *UserUpdateHandler) HandleMessage(ctx context.Context, msg *sarama.Consu
 	if err := json.Unmarshal(msg.Value, &evt); err != nil {
 		return err
 	}
-	return h.svc.InputUser(context.Background(), []domain.User{
+	return h.svc.InputUser(ctx, []domain.User{
 		{
 			Id:        evt.UserId,
 			Account:   evt.Account,

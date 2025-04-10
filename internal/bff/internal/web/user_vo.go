@@ -119,12 +119,11 @@ type FollowListReq struct {
 }
 
 type DashboardInfo struct {
-	InksCount      int64
-	CommentCount   int64
-	FollowersCount int64
-	FollowingCount int64
-	FavoritesCount int64
-	ViewsCount     int64
-	LikesCount     int64
-	JoinDays       int64
+	InkCount       int64 `json:"inkCount"`
+	CommentCount   int64 `json:"commentCount"`
+	FollowerCount  int64 `json:"followerCount"`
+	FollowingCount int64 `json:"followingCount"`
+	FavoriteCount  int64 `json:"favoriteCount"`
+	ViewCount      int64 `json:"viewCount"`
+	LikeCount      int64 `json:"likeCount"`
 }
