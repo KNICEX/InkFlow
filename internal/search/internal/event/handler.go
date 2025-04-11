@@ -73,6 +73,7 @@ func (h *UserCreateHandler) HandleMessage(ctx context.Context, msg *sarama.Consu
 			Id:        evt.UserId,
 			Account:   evt.Account,
 			Avatar:    evt.Avatar,
+			AboutMe:   evt.AboutMe,
 			Username:  evt.Username,
 			CreatedAt: evt.CreatedAt,
 		},

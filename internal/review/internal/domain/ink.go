@@ -13,8 +13,8 @@ type Ink struct {
 }
 
 type ReviewResult struct {
-	Passed      bool
-	Reason      string
-	ReviewScore int64
-	ReviewTags  []string
+	Passed      bool     `json:"passed"`
+	Reason      string   `json:"reason"`
+	ReviewScore int64    `json:"reviewScore"`
+	ReviewTags  []string `json:"reviewTags"`
 }

@@ -86,7 +86,7 @@ func (h *UserHandler) RegisterRoutes(server *gin.RouterGroup) {
 	// 刷新token
 	userGroup.POST("/refresh_token", h.RefreshToken)
 	// 获取用户基础信息
-	userGroup.POST("/profile", h.auth.ExtractPayload(), ginx.WrapBody(h.l, h.Profile))
+	userGroup.GET("/profile", h.auth.ExtractPayload(), ginx.WrapBody(h.l, h.Profile))
 
 	// 需要登录
 	checkGroup := userGroup.Group("")
@@ -219,6 +219,7 @@ func (h *UserHandler) RegisterByEmail(ctx *gin.Context, req RegisterByEmailReq) 
 		Username: req.Username,
 		Account:  req.Account,
 		Password: req.Password,
+		AboutMe:  req.AboutMe,
 	})
 	if err != nil {
 		if errors.Is(err, user.ErrUserDuplicate) {

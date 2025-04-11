@@ -5,6 +5,7 @@ import "time"
 type UserCreateEvent struct {
 	UserId    int64     `json:"userId"`
 	Avatar    string    `json:"avatar"`
+	AboutMe   string    `json:"aboutMe"`
 	Account   string    `json:"account"`
 	Username  string    `json:"username"`
 	CreatedAt time.Time `json:"createdAt"`

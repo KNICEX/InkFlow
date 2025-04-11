@@ -25,6 +25,14 @@ services:
 #    volumes:
 #      - ./script/meilisearch:/data.ms
 
+  meilisearch-ui:
+    image: riccoxie/meilisearch-ui:latest
+    container_name: ink-flow-meilisearch-ui
+    ports:
+      - "24900:24900"
+
+
+
   prometheus:
     image: prom/prometheus:v3.2.1
     container_name: ink-flow-prometheus

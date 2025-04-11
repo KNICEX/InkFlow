@@ -32,6 +32,16 @@ func (c *Client) DeleteFeedback(ctx context.Context, feedback client.Feedback) (
 	return request[client.RowAffected, any](ctx, c, http.MethodDelete, fmt.Sprintf("%s/api/feedback/%s/%s/%s", c.entrypoint, feedback.FeedbackType, feedback.UserId, feedback.ItemId), nil)
 }
 
+func (c *Client) GetRecommend(ctx context.Context, userId string, category string, n, offset int) ([]string, error) {
+	var url string
+	if category != "" {
+		url = fmt.Sprintf("%s/api/recommend/%s/%s?n=%d&offset=%d", c.entrypoint, userId, category, n, offset)
+	} else {
+		url = fmt.Sprintf("%s/api/recommend/%s?n=%d&offset=%d", c.entrypoint, userId, n, offset)
+	}
+	return request[[]string, any](ctx, c, http.MethodGet, url, nil)
+}
+
 func request[Response any, Body any](ctx context.Context, c *Client, method, url string, body Body) (result Response, err error) {
 	bodyByte, marshalErr := json.Marshal(body)
 	if marshalErr != nil {

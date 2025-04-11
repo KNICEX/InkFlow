@@ -86,6 +86,6 @@ func (c ContentType) ToInt() int {
 }
 
 type TagStats struct {
-	Name      string
-	Reference int64
+	Name      string `json:"name"`
+	Reference int64  `json:"reference"`
 }

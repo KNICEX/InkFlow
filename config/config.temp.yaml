@@ -22,7 +22,8 @@ email:
 
 llm:
   gemini:
-    key: key
+    key:
+      - key
 
 otel:
   grpc:

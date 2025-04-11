@@ -185,6 +185,7 @@ func (svc *userService) Create(ctx context.Context, user domain.User) (domain.Us
 			Account:   user.Account,
 			Username:  user.Username,
 			Avatar:    user.Avatar,
+			AboutMe:   user.AboutMe,
 			CreatedAt: time.Now(),
 		})
 		if er != nil {

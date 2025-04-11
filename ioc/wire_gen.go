@@ -37,7 +37,7 @@ func InitApp() *App {
 	client := InitKafka()
 	syncProducer := InitSyncProducer(client)
 	userService := user.InitUserService(db, cmdable, syncProducer, logger)
-	service := email.InitService(logger)
+	service := email.InitMemoryService()
 	serviceService := code.InitEmailCodeService(cmdable, service)
 	inkService := ink.InitInkService(cmdable, db, logger)
 	interactiveService := interactive.InitInteractiveService(cmdable, syncProducer, db, logger)

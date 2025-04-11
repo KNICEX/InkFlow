@@ -76,7 +76,7 @@ func (h *SearchHandler) SearchUser(ctx *gin.Context, req SearchReq) (ginx.Result
 func (h *SearchHandler) SearchInK(ctx *gin.Context, req SearchReq) (ginx.Result, error) {
 	inks, err := h.svc.SearchInk(ctx, req.Keyword, req.Offset, req.Limit)
 	if err != nil {
-		return ginx.InvalidParam(), err
+		return ginx.InternalError(), err
 	}
 	return ginx.SuccessWithData(lo.Map(inks, func(item search.Ink, index int) InkVO {
 		return searchInkToInkVO(item)

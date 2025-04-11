@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"github.com/KNICEX/InkFlow/pkg/mapstructurex"
 	"github.com/meilisearch/meilisearch-go"
 	"github.com/mitchellh/mapstructure"
 	"github.com/samber/lo"
@@ -11,13 +12,13 @@ import (
 )
 
 type User struct {
-	Id        int64     `json:"id"`
-	Avatar    string    `json:"avatar"`
-	Account   string    `json:"account"`
-	Username  string    `json:"username"`
-	AboutMe   string    `json:"about_me"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Id        int64     `json:"id" mapstructure:"id"`
+	Avatar    string    `json:"avatar" mapstructure:"avatar"`
+	Account   string    `json:"account" mapstructure:"account"`
+	Username  string    `json:"username" mapstructure:"username"`
+	AboutMe   string    `json:"about_me" mapstructure:"about_me"`
+	CreatedAt time.Time `json:"created_at" mapstructure:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" mapstructure:"updated_at"`
 }
 
 type UserDAO interface {
@@ -69,7 +70,7 @@ func (dao *MeiliUserDAO) SearchByIds(ctx context.Context, ids []int64) (map[int6
 		return nil, nil
 	}
 	var users []User
-	err = mapstructure.Decode(res.Hits, &users)
+	err = mapstructurex.Decode(res.Hits, &users)
 	if err != nil {
 		return nil, err
 	}

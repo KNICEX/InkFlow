@@ -24,7 +24,7 @@ func initRepo(meili meilisearch.ServiceManager) {
 			panic(err)
 		}
 		userDao := dao.NewMeiliUserDAO(meili)
-		inkRepo = repo.NewInkRepo(dao.NewMeiliInkDAO(meili))
+		inkRepo = repo.NewInkRepo(dao.NewMeiliInkDAO(meili), userDao)
 		commentRepo = repo.NewCommentRepo(dao.NewMeiliCommentDAO(meili), userDao)
 		userRepo = repo.NewUserRepo(userDao)
 	})

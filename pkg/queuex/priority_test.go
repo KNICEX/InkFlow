@@ -11,7 +11,7 @@ func TestPriority(t *testing.T) {
 	})
 
 	for i := 0; i < 10000; i++ {
-		q.Enqueue(i)
+		q.Enqueue(100000 - i)
 	}
 
 	fmt.Println(q.All())

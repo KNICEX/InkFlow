@@ -9,7 +9,6 @@ import (
 	"github.com/KNICEX/InkFlow/internal/user/internal/repo/dao"
 	"github.com/KNICEX/InkFlow/pkg/logx"
 	"github.com/samber/lo"
-	"time"
 )
 
 var (
@@ -137,27 +136,57 @@ func (r *CachedUserRepo) UpdateNonZeroFields(ctx context.Context, u domain.User)
 	if err := r.dao.UpdateById(ctx, r.domainToEntity(u)); err != nil {
 		return err
 	}
-	// 延时双删
-	defer time.AfterFunc(time.Second*3, func() {
-		er := r.cache.Delete(ctx, u.Id)
-		if er != nil {
-			r.l.Error("delayed delete user cache error", logx.Error(er), logx.Int64("UserId", u.Id))
-		}
-	})
+	//// 延时双删
+	//defer time.AfterFunc(time.Second*3, func() {
+	//	er := r.cache.Delete(ctx, u.Id)
+	//	if er != nil {
+	//		r.l.Error("delayed delete user cache error", logx.Error(er), logx.Int64("UserId", u.Id))
+	//	}
+	//})
 
-	if err := r.cache.Delete(ctx, u.Id); err != nil {
-		// 删除缓存错误，不认为操作失败
-		r.l.Error("delete user cache error", logx.Error(err), logx.Int64("UserId", u.Id))
+	//if err := r.cache.Delete(ctx, u.Id); err != nil {
+	//	// 删除缓存错误，不认为操作失败
+	//	r.l.Error("delete user cache error", logx.Error(err), logx.Int64("UserId", u.Id))
+	//}
+	//
+	//go func() {
+	//	r.cache
+	//}()
+
+	user, err := r.dao.FindById(ctx, u.Id)
+	if err != nil {
+		r.l.Error("find user by id error", logx.Error(err), logx.Int64("UserId", u.Id))
+		return err
+	}
+	u = r.entityToDomain(user)
+	err = r.cache.Set(ctx, u.Id, u)
+	if err != nil {
+		r.l.Error("set user cache error", logx.Error(err), logx.Int64("UserId", u.Id))
+	}
+	err = r.cache.SetByAccount(ctx, u.Account, u)
+	if err != nil {
+		r.l.Error("set user cache by account error", logx.Error(err), logx.Int64("UserId", u.Id))
 	}
 	return nil
 }
 
 func (r *CachedUserRepo) FindByAccount(ctx context.Context, accountName string) (domain.User, error) {
+	user, err := r.cache.GetByAccount(ctx, accountName)
+	if err == nil {
+		return user, nil
+	}
 	u, err := r.dao.FindByAccountName(ctx, accountName)
 	if err != nil {
 		return domain.User{}, err
 	}
-	return r.entityToDomain(u), nil
+	user = r.entityToDomain(u)
+	go func() {
+		err = r.cache.SetByAccount(context.WithoutCancel(ctx), user.Account, user)
+		if err != nil {
+			r.l.Error("set user cache error", logx.Error(err), logx.Int64("UserId", user.Id))
+		}
+	}()
+	return user, nil
 }
 
 func (r *CachedUserRepo) entityToDomain(u dao.User) domain.User {

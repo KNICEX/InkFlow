@@ -46,7 +46,8 @@ func InitApp() *App {
 		thirdPartSet,
 		webSet,
 		user.InitUserService,
-		email.InitService,
+		//email.InitService,
+		email.InitMemoryService,
 		code.InitEmailCodeService,
 
 		relation.InitFollowService,

@@ -12,6 +12,8 @@ type PriorityQueue[T any] struct {
 	q *queue.PriorityQueue[T]
 }
 
+// NewPriorityQueue creates a new priority queue with the given capacity and comparator.
+// cmp if a > b return -1 then 小顶堆
 func NewPriorityQueue[T any](cap int, cmp Comparable[T]) *PriorityQueue[T] {
 	return &PriorityQueue[T]{
 		q: queue.NewPriorityQueue[T](cap, ekit.Comparator[T](cmp)),
@@ -47,13 +49,12 @@ type ZQueue[S cmp.Ordered, V any] struct {
 func NewZQueue[S cmp.Ordered, V any](cap int) *ZQueue[S, V] {
 	return &ZQueue[S, V]{
 		q: queue.NewPriorityQueue[ZQueueItem[S, V]](cap, func(a, b ZQueueItem[S, V]) int {
-			if a.Score == b.Score {
-				return 0
-			}
-			if a.Score < b.Score {
+			if a.Score > b.Score {
+				return 1
+			} else if a.Score < b.Score {
 				return -1
 			}
-			return 1
+			return 0
 		}),
 	}
 }

@@ -19,9 +19,10 @@ type inkRepo struct {
 	userDAO dao.UserDAO
 }
 
-func NewInkRepo(dao dao.InkDAO) InkRepo {
+func NewInkRepo(dao dao.InkDAO, userDao dao.UserDAO) InkRepo {
 	return &inkRepo{
-		dao: dao,
+		dao:     dao,
+		userDAO: userDao,
 	}
 }
 

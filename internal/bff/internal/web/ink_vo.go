@@ -29,7 +29,7 @@ type InkVO struct {
 	Status      int           `json:"status"`
 	CreatedAt   time.Time     `json:"createdAt"`
 	UpdatedAt   time.Time     `json:"updatedAt"`
-	Interactive InteractiveVO `json:"intrSvc"`
+	Interactive InteractiveVO `json:"interactive"`
 }
 
 type InkCategory struct {
@@ -61,7 +61,7 @@ type ListReq struct {
 	AuthorId int64 `json:"authorId" form:"authorId" binding:"required"`
 	Category int64 `json:"category" form:"category"`
 	Offset   int   `json:"offset" form:"offset"`
-	Limit    int   `json:"limit" form:"limit" binding:"required"`
+	Limit    int   `json:"limit" form:"limit" binding:"required,max=500"`
 }
 
 type ListSelfReq struct {

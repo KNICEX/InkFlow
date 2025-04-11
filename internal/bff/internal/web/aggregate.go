@@ -128,6 +128,9 @@ func (i *inkAggregate) GetInk(ctx context.Context, id int64, viewUid int64) (Ink
 }
 
 func (i *inkAggregate) GetInkList(ctx context.Context, ids []int64, viewUid int64) (map[int64]InkVO, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
 	var authors map[int64]UserVO
 	var intrs map[int64]InteractiveVO
 	inkMap, err := i.inkSvc.FindByIds(ctx, ids)
@@ -202,6 +205,9 @@ func (i *interactiveAggregate) GetInteractive(ctx context.Context, biz string, i
 }
 
 func (i *interactiveAggregate) GetInteractiveList(ctx context.Context, biz string, ids []int64, uid int64) (map[int64]InteractiveVO, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
 	var intrs map[int64]interactive.Interactive
 	var commentCounts map[int64]int64
 	eg := errgroup.Group{}

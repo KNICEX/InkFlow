@@ -2,23 +2,23 @@ package dao
 
 import (
 	"context"
+	"github.com/KNICEX/InkFlow/pkg/mapstructurex"
 	"github.com/meilisearch/meilisearch-go"
-	"github.com/mitchellh/mapstructure"
 	"github.com/samber/lo"
 	"strconv"
 	"time"
 )
 
 type Ink struct {
-	Id        int64     `json:"id"`
-	Title     string    `json:"title"`
-	Cover     string    `json:"cover"`
-	AuthorId  int64     `json:"author_id"`
-	Content   string    `json:"content"`
-	Tags      []string  `json:"tags"`
-	AiTags    []string  `json:"ai_tags"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Id        int64     `json:"id" mapstructure:"id"`
+	Title     string    `json:"title" mapstructure:"title"`
+	Cover     string    `json:"cover" mapstructure:"cover"`
+	AuthorId  int64     `json:"author_id" mapstructure:"author_id"`
+	Content   string    `json:"content" mapstructure:"content"`
+	Tags      []string  `json:"tags" mapstructure:"tags"`
+	AiTags    []string  `json:"ai_tags" mapstructure:"ai_tags"`
+	CreatedAt time.Time `json:"created_at" mapstructure:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" mapstructure:"updated_at"`
 }
 
 type InkDAO interface {
@@ -47,7 +47,7 @@ func (m *MeiliInkDAO) Search(ctx context.Context, key string, limit int, offset 
 		return nil, nil
 	}
 	var inks []Ink
-	err = mapstructure.Decode(res.Hits, inks)
+	err = mapstructurex.Decode(res.Hits, &inks)
 	return inks, err
 }
 

@@ -27,6 +27,7 @@ type RegisterByEmailReq struct {
 	Username string `json:"username" binding:"required,min=1,max=30"`
 	Email    string `json:"email" binding:"required,email"`
 	Token    string `json:"token" binding:"required"`
+	AboutMe  string `json:"aboutMe" binding:"max=1024"`
 	Password string `json:"password" binding:"required,min=6,max=30"`
 }
 
@@ -45,8 +46,8 @@ type EditProfileReq struct {
 }
 
 type ProfileReq struct {
-	Uid     int64  `json:"uid"`
-	Account string `json:"account" binding:"max=30"`
+	Uid     int64  `json:"uid" form:"uid"`
+	Account string `json:"account" form:"account" binding:"max=30"`
 }
 
 type SmsResetPwdReq struct {

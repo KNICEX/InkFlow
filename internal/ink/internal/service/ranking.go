@@ -14,7 +14,7 @@ import (
 
 const inkBiz = "ink"
 
-type ScoreFunc func(likeCnt, favoriteCnt int64, createdAt time.Time) float64
+type ScoreFunc func(viewCnt, likeCnt, favoriteCnt, commentCnt int64, createdAt time.Time) float64
 
 type RankingService interface {
 	TopNInk(ctx context.Context, n int) error
@@ -36,11 +36,17 @@ func NewBatchRankingService(inkRepo repo.LiveInkRepo, rankRepo repo.RankingRepo,
 		inkRepo:     inkRepo,
 		rankingRepo: rankRepo,
 		intrSvc:     intrSvc,
-		scoreFunc: func(likeCnt, favoriteCnt int64, createdAt time.Time) float64 {
-			// 这个 factor 也可以做成一个参数
-			const factor = 1.5
-			return float64(likeCnt+1) + float64(favoriteCnt+1)*1.2/
-				math.Pow(time.Since(createdAt).Hours()+2, factor)
+		scoreFunc: func(viewCnt, likeCnt, favoriteCnt, commentCnt int64, createdAt time.Time) float64 {
+			likeWeight := 0.5
+			favoriteWeight := 0.4
+			viewWeight := 0.1
+			timeWeight := 0.2
+
+			baseScore := float64(likeCnt)*likeWeight + float64(favoriteCnt)*favoriteWeight + float64(viewCnt+1)*viewWeight
+
+			timeFactor := 1 / math.Log(time.Since(createdAt).Minutes()+2)
+
+			return baseScore * (1 + timeFactor*timeWeight)
 		},
 		l: l,
 	}
@@ -103,7 +109,7 @@ func (b *BatchRankingService) rankTopN(ctx context.Context, n int, startTime tim
 				break
 			}
 
-			score := b.scoreFunc(intrs[ink.Id].LikeCnt, intrs[ink.Id].FavoriteCnt, ink.CreatedAt)
+			score := b.scoreFunc(intrs[ink.Id].ViewCnt, intrs[ink.Id].LikeCnt, intrs[ink.Id].FavoriteCnt, 0, ink.CreatedAt)
 			if score > 0 {
 				zq.Enqueue(score, ink)
 			}

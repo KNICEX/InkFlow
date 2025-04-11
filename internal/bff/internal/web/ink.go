@@ -60,7 +60,7 @@ func (h *InkHandler) RegisterRoutes(server *gin.RouterGroup) {
 	inkGroup := server.Group("/ink")
 
 	inkGroup.GET("/detail/:id", h.auth.ExtractPayload(), ginx.Wrap(h.l, h.Detail))
-	inkGroup.POST("/list", ginx.WrapBody(h.l, h.List))
+	inkGroup.GET("/list", ginx.WrapBody(h.l, h.List))
 
 	checkGroup := inkGroup.Use(h.auth.CheckLogin())
 	{
@@ -271,11 +271,6 @@ func (h *InkHandler) List(ctx *gin.Context, req ListReq) (ginx.Result, error) {
 		var er error
 		intrs, er = h.intrAggregate.GetInteractiveList(ctx, bizInk, inkIds, uc.UserId)
 		return er
-	})
-
-	eg.Go(func() error {
-		// TODO 批量获取用户关注信息
-		return nil
 	})
 
 	if err = eg.Wait(); err != nil {

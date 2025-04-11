@@ -45,7 +45,7 @@ func (r *RedisRankingCache) SetInkIds(ctx context.Context, ids []int64) error {
 }
 
 func (r *RedisRankingCache) GetInkIds(ctx context.Context, offset, limit int) ([]int64, error) {
-	res, err := r.cmd.ZRange(ctx, r.inkKey(), int64(offset), int64(limit)).Result()
+	res, err := r.cmd.ZRevRange(ctx, r.inkKey(), int64(offset), int64(offset+limit-1)).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (r *RedisRankingCache) SetTags(ctx context.Context, tags []domain.TagStats)
 }
 
 func (r *RedisRankingCache) GetTags(ctx context.Context, offset, limit int) ([]domain.TagStats, error) {
-	res, err := r.cmd.ZRangeWithScores(ctx, r.tagKey(), int64(offset), int64(limit)).Result()
+	res, err := r.cmd.ZRevRangeWithScores(ctx, r.tagKey(), int64(offset), int64(offset+limit-1)).Result()
 	if err != nil {
 		return nil, err
 	}

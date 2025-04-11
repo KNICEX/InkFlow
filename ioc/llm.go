@@ -8,9 +8,9 @@ import (
 	"time"
 )
 
-func InitGeminiClient() *genai.Client {
+func InitGeminiClient() []*genai.Client {
 	type Config struct {
-		Key string `mapstructure:"key"`
+		Key []string `mapstructure:"key"`
 	}
 	var cfg Config
 	if err := viper.UnmarshalKey("llm.gemini", &cfg); err != nil {
@@ -19,9 +19,15 @@ func InitGeminiClient() *genai.Client {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
-	cli, err := genai.NewClient(ctx, option.WithAPIKey(cfg.Key))
-	if err != nil {
-		panic(err)
+
+	clis := make([]*genai.Client, 0, len(cfg.Key))
+	for _, k := range cfg.Key {
+		cli, err := genai.NewClient(ctx, option.WithAPIKey(k))
+		if err != nil {
+			panic(err)
+		}
+		clis = append(clis, cli)
 	}
-	return cli
+
+	return clis
 }

@@ -7,6 +7,7 @@ type UserCreateEvent struct {
 	Avatar    string    `json:"avatar"`
 	Account   string    `json:"account"`
 	Username  string    `json:"username"`
+	AboutMe   string    `json:"aboutMe"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 

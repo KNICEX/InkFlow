@@ -52,5 +52,5 @@ func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
 func InitHandlers(uh *web.UserHandler, ih *web.InkHandler, fh *web.FileHandler,
 	ch *web.CommentHandler, nh *web.NotificationHandler, sh *web.SearchHandler, feedH *web.FeedHandler,
 	statsH *web.StatsHandler, intrH *web.InteractiveHandler) []ginx.Handler {
-	return []ginx.Handler{uh, ih, fh, ch, nh, sh, feedH, intrH}
+	return []ginx.Handler{uh, ih, fh, ch, nh, sh, statsH,feedH, intrH}
 }

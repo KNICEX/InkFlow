@@ -80,6 +80,8 @@ func (c *ReviewConsumer) Consume(msg *sarama.ConsumerMessage, event ReviewEvent)
 	ctx := context.Background()
 	result, err := c.svc.ReviewInk(ctx, event.Ink)
 	if err != nil {
+		c.l.Error("failed to review ink", logx.Error(err),
+			logx.String("workflowId", event.WorkflowId), logx.Any("ink", event.Ink))
 		return err
 	}
 	return c.workflowCli.SignalWorkflow(ctx, event.WorkflowId, "", reviewSignal, result)

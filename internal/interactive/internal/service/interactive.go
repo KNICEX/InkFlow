@@ -190,6 +190,7 @@ func (svc *interactiveService) Get(ctx context.Context, biz string, bizId int64,
 func (svc *interactiveService) GetMulti(ctx context.Context, biz string, bizIds []int64, uid int64) (map[int64]domain.Interactive, error) {
 	var likedMap map[int64]bool
 	var favoritedMap map[int64]bool
+	var intrMap map[int64]domain.Interactive
 
 	// 加载点赞和收藏状态
 	eg := errgroup.Group{}
@@ -205,24 +206,25 @@ func (svc *interactiveService) GetMulti(ctx context.Context, biz string, bizIds 
 			return er
 		})
 	}
+	eg.Go(func() error {
+		var er error
+		intrMap, er = svc.repo.GetBatch(ctx, biz, bizIds)
+		return er
+	})
 	if err := eg.Wait(); err != nil {
 		return nil, err
 	}
 
-	intrs, err := svc.repo.GetBatch(ctx, biz, bizIds)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, intr := range intrs {
+	for _, intr := range intrMap {
 		if liked, ok := likedMap[intr.BizId]; ok {
 			intr.Liked = liked
 		}
 		if favorited, ok := favoritedMap[intr.BizId]; ok {
 			intr.Favorited = favorited
 		}
+		intrMap[intr.BizId] = intr
 	}
-	return intrs, nil
+	return intrMap, nil
 }
 
 func (svc *interactiveService) GetUserStats(ctx context.Context, uid int64) (domain.UserStats, error) {

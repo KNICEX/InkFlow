@@ -19,8 +19,11 @@ type RedisUserCache struct {
 type UserCache interface {
 	Get(ctx context.Context, uid int64) (domain.User, error)
 	Set(ctx context.Context, uid int64, user domain.User) error
+	SetByAccount(ctx context.Context, account string, user domain.User) error
+	GetByAccount(ctx context.Context, account string) (domain.User, error)
 	GetByIds(ctx context.Context, uids []int64) (map[int64]domain.User, error)
 	Delete(ctx context.Context, uid int64) error
+	DeleteByAccount(ctx context.Context, account string) error
 }
 
 var _ UserCache = (*RedisUserCache)(nil)
@@ -48,6 +51,34 @@ func (cache *RedisUserCache) Get(ctx context.Context, uid int64) (domain.User, e
 	err = json.Unmarshal(val, &u)
 	return u, err
 
+}
+
+func (cache *RedisUserCache) accountKey(account string) string {
+	return fmt.Sprintf("user:account:%s", account)
+}
+
+func (cache *RedisUserCache) GetByAccount(ctx context.Context, account string) (domain.User, error) {
+	val, err := cache.client.GetEx(ctx, cache.accountKey(account), cache.expiration).Bytes()
+	if err != nil {
+		return domain.User{}, err
+	}
+	var u domain.User
+	err = json.Unmarshal(val, &u)
+	return u, err
+}
+
+func (cache *RedisUserCache) SetByAccount(ctx context.Context, account string, user domain.User) error {
+	val, err := json.Marshal(user)
+	if err != nil {
+		return err
+	}
+	key := cache.accountKey(account)
+	return cache.client.Set(ctx, key, val, cache.expiration).Err()
+}
+
+func (cache *RedisUserCache) DeleteByAccount(ctx context.Context, account string) error {
+	key := cache.accountKey(account)
+	return cache.client.Del(ctx, key).Err()
 }
 
 func (cache *RedisUserCache) GetByIds(ctx context.Context, uids []int64) (map[int64]domain.User, error) {

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/KNICEX/InkFlow/internal/user/internal/domain"
+	"github.com/KNICEX/InkFlow/pkg/gormx"
 	"github.com/KNICEX/InkFlow/pkg/snowflakex"
 	"gorm.io/gorm"
 	"time"
@@ -68,10 +69,7 @@ func (dao *GormUserDAO) Insert(ctx context.Context, u User) (int64, error) {
 	u.UpdatedAt = now
 	u.Id = dao.node.NextID()
 	err := dao.db.WithContext(ctx).Create(&u).Error
-	if errors.Is(err, gorm.ErrDuplicatedKey) {
-		return 0, ErrDuplicateKey
-	}
-
+	err, _ = gormx.CheckDuplicateErr(err)
 	return u.Id, err
 }
 

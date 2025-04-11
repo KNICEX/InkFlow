@@ -3,23 +3,23 @@ package dao
 import (
 	"context"
 	"fmt"
+	"github.com/KNICEX/InkFlow/pkg/mapstructurex"
 	"github.com/meilisearch/meilisearch-go"
-	"github.com/mitchellh/mapstructure"
 	"github.com/samber/lo"
 	"strconv"
 	"time"
 )
 
 type Comment struct {
-	Id            int64     `json:"id"`
-	Biz           string    `json:"biz"`
-	BizId         int64     `json:"biz_id"`
-	RootId        int64     `json:"root_id"`
-	ParentId      int64     `json:"parent_id"`
-	CommentatorId int64     `json:"commentator_id"`
-	Content       string    `json:"content"`
-	Images        string    `json:"images"`
-	CreatedAt     time.Time `json:"created_at"`
+	Id            int64     `json:"id" mapstructure:"id"`
+	Biz           string    `json:"biz" mapstructure:"biz"`
+	BizId         int64     `json:"biz_id" mapstructure:"biz_id"`
+	RootId        int64     `json:"root_id" mapstructure:"root_id"`
+	ParentId      int64     `json:"parent_id" mapstructure:"parent_id"`
+	CommentatorId int64     `json:"commentator_id" mapstructure:"commentator_id"`
+	Content       string    `json:"content" mapstructure:"content"`
+	Images        string    `json:"images" mapstructure:"images"`
+	CreatedAt     time.Time `json:"created_at" mapstructure:"created_at"`
 }
 
 type CommentDAO interface {
@@ -50,7 +50,7 @@ func (m *MeiliCommentDAO) Search(ctx context.Context, keyword string, offset, li
 		return nil, nil
 	}
 	var comments []Comment
-	err = mapstructure.Decode(res.Hits, &comments)
+	err = mapstructurex.Decode(res.Hits, &comments)
 	return comments, err
 }
 

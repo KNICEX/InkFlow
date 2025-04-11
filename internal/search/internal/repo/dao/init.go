@@ -89,6 +89,14 @@ func initIndexSetting(cli meilisearch.ServiceManager) error {
 	if err != nil {
 		return err
 	}
+	// 设置可过滤属性, 通过类sql语法进行过滤
+	_, err = cli.Index(userIndexName).UpdateFilterableAttributes(&[]string{
+		"id",
+		"account",
+	})
+	if err != nil {
+		return err
+	}
 	_, err = cli.Index(inkIndexName).UpdateSearchableAttributes(&[]string{
 		"title",
 		"content",
@@ -98,6 +106,10 @@ func initIndexSetting(cli meilisearch.ServiceManager) error {
 	if err != nil {
 		return err
 	}
+	_, err = cli.Index(inkIndexName).UpdateFilterableAttributes(&[]string{
+		"id",
+		"tags",
+	})
 	_, err = cli.Index(commentIndexName).UpdateFilterableAttributes(&[]string{
 		"content",
 	})
