@@ -293,10 +293,13 @@ func (repo *CachedInteractiveRepo) GetBatch(ctx context.Context, biz string, biz
 	for _, entity := range entities {
 		intrMap[entity.BizId] = repo.interToDomain(entity)
 	}
+
+	// 提前转切片，避免并发读写map
+	intrs := lo.MapToSlice(intrMap, func(key int64, value domain.Interactive) domain.Interactive {
+		return value
+	})
 	go func() {
-		if er := repo.cache.SetBatch(context.WithoutCancel(ctx), lo.MapToSlice(intrMap, func(key int64, value domain.Interactive) domain.Interactive {
-			return value
-		})); er != nil {
+		if er := repo.cache.SetBatch(context.WithoutCancel(ctx), intrs); er != nil {
 			repo.l.WithCtx(ctx).Error("set interactive cache error", logx.Error(er),
 				logx.String("biz", biz),
 				logx.Any("bizIds", bizIds))

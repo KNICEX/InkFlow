@@ -88,6 +88,7 @@ func (h *InkHandler) RegisterRoutes(server *gin.RouterGroup) {
 		checkGroup.DELETE("/like/:id", ginx.Wrap(h.l, h.CancelLike))
 		checkGroup.POST("/favorite/:id", ginx.WrapBody(h.l, h.Favorite))
 		checkGroup.DELETE("/favorite/:id", ginx.Wrap(h.l, h.CancelFavorite))
+
 	}
 }
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/KNICEX/InkFlow/pkg/mapstructurex"
 	"github.com/meilisearch/meilisearch-go"
-	"github.com/mitchellh/mapstructure"
 	"github.com/samber/lo"
 	"strconv"
 	"strings"
@@ -48,7 +47,7 @@ func (dao *MeiliUserDAO) Search(ctx context.Context, query string, offset, limit
 		return nil, nil
 	}
 	var users []User
-	err = mapstructure.Decode(res.Hits, &users)
+	err = mapstructurex.Decode(res.Hits, &users)
 	return users, err
 }
 

@@ -27,6 +27,12 @@ func NewJwtLoginBuilder(handler ijwt.Handler, l logx.Logger) Authentication {
 
 func (b *JwtLoginBuilder) CheckLogin() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		// 预检ctx是否已经有用户信息
+		if _, ok := ctx.Get(ijwt.UserClaimsCtxKey); ok {
+			ctx.Next()
+			return
+		}
+
 		tokenStr := b.Handler.ExtractToken(ctx)
 		claims := ijwt.UserClaims{}
 		token, err := jwt.ParseWithClaims(tokenStr, &claims, func(token *jwt.Token) (any, error) {

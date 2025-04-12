@@ -22,7 +22,7 @@ type Ink struct {
 }
 
 type InkDAO interface {
-	Search(ctx context.Context, key string, limit int, offset int) ([]Ink, error)
+	Search(ctx context.Context, key string, offset int, limit int) ([]Ink, error)
 	InputInk(ctx context.Context, inks []Ink) error
 	DeleteInk(ctx context.Context, ids []int64) error
 }
@@ -35,7 +35,7 @@ func NewMeiliInkDAO(cli meilisearch.ServiceManager) InkDAO {
 	return &MeiliInkDAO{cli: cli}
 }
 
-func (m *MeiliInkDAO) Search(ctx context.Context, key string, limit int, offset int) ([]Ink, error) {
+func (m *MeiliInkDAO) Search(ctx context.Context, key string, offset int, limit int) ([]Ink, error) {
 	res, err := m.cli.Index(inkIndexName).SearchWithContext(ctx, key, &meilisearch.SearchRequest{
 		Limit:  int64(limit),
 		Offset: int64(offset),
