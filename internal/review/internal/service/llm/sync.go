@@ -13,7 +13,7 @@ import (
 
 const reviewPrompt = `
 你是一个内容审核助手，专注于社交平台的内容合规性判断。
-请根据以下标准判断文本是否符合社区规范（例如：不得包含暴力、色情、歧视、诈骗、广告等内容）。
+请根据以下标准判断文本是否符合社区规范（例如：不得包含暴力、色情、歧视、诈骗、明显广告推销[可以接受商品推荐]等内容）。
 你的任务是判断是否通过审核，如果不通过,给出简洁明了的理由(reason)。
 如果通过,你还需要给内容打一个0-100的分数(reviewScore)，表示内容的充实度, 
 并且为文章内容打上标签(reviewTags),要求从大分类到小分类尽量全面, 10个左右, 例如：科技->AI->ChatGPT。
@@ -67,6 +67,8 @@ func (s *Service) ReviewInk(ctx context.Context, ink domain.Ink) (domain.ReviewR
 	if err != nil {
 		return domain.ReviewResult{}, err
 	}
+
+	result.Reason = strings.Trim(result.Reason, "\"")
 
 	return result, nil
 }

@@ -142,7 +142,9 @@ func (repo *NoCacheNotificationRepo) toDomain(n dao.Notification) (domain.Notifi
 		if err := json.Unmarshal([]byte(n.Content), &content); err != nil {
 			return domain.Notification{}, err
 		}
-		// TODO 更多类型
+	// TODO 更多类型
+	default:
+		content = n.Content
 	}
 
 	return domain.Notification{
