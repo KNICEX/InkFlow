@@ -19,6 +19,7 @@ type RedisUserCache struct {
 type UserCache interface {
 	Get(ctx context.Context, uid int64) (domain.User, error)
 	Set(ctx context.Context, uid int64, user domain.User) error
+	SetBatch(ctx context.Context, users []domain.User) error
 	SetByAccount(ctx context.Context, account string, user domain.User) error
 	GetByAccount(ctx context.Context, account string) (domain.User, error)
 	GetByIds(ctx context.Context, uids []int64) (map[int64]domain.User, error)
@@ -31,7 +32,7 @@ var _ UserCache = (*RedisUserCache)(nil)
 func NewRedisUserCache(client redis.Cmdable) UserCache {
 	return &RedisUserCache{
 		client:     client,
-		expiration: time.Minute * 3,
+		expiration: time.Minute * 5,
 	}
 }
 
@@ -112,6 +113,23 @@ func (cache *RedisUserCache) Set(ctx context.Context, uid int64, user domain.Use
 	}
 	key := cache.key(uid)
 	return cache.client.Set(ctx, key, val, cache.expiration).Err()
+}
+
+func (cache *RedisUserCache) SetBatch(ctx context.Context, users []domain.User) error {
+	if len(users) == 0 {
+		return nil
+	}
+	pipe := cache.client.Pipeline()
+	for _, user := range users {
+		val, err := json.Marshal(user)
+		if err != nil {
+			return err
+		}
+		key := cache.key(user.Id)
+		pipe.Set(ctx, key, val, cache.expiration)
+	}
+	_, err := pipe.Exec(ctx)
+	return err
 }
 
 func (cache *RedisUserCache) Delete(ctx context.Context, uid int64) error {

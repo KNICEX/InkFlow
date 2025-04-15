@@ -185,7 +185,8 @@ func (repo *CachedLiveInkRepo) FindById(ctx context.Context, id int64, status ..
 	if ink.Status == domain.InkStatusPublished {
 		// 缓存未命中且是已发布的文章，设置缓存
 		go func() {
-			er := repo.cache.Set(context.WithoutCancel(ctx), ink)
+			ctx = context.WithoutCancel(ctx)
+			er := repo.cache.Set(ctx, ink)
 			if er != nil {
 				repo.l.WithCtx(ctx).Error("set ink cache error", logx.Error(er),
 					logx.Int64("inkId", ink.Id),
@@ -253,6 +254,14 @@ func (repo *CachedLiveInkRepo) FindByIds(ctx context.Context, ids []int64, statu
 	for _, ink := range inks {
 		cachedInks[ink.Id] = repo.entityToDomain(ink)
 	}
+	go func() {
+		ctx = context.WithoutCancel(ctx)
+		if err = repo.cache.SetBatch(ctx, lo.MapToSlice(inks, func(key int64, value dao.LiveInk) domain.Ink {
+			return repo.entityToDomain(value)
+		})); err != nil {
+			repo.l.WithCtx(ctx).Error("set ink cache error", logx.Error(err), logx.Any("inkIds", ids))
+		}
+	}()
 	return cachedInks, nil
 }
 

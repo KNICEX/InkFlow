@@ -15,7 +15,7 @@ const bizInk = "ink"
 
 func InkPublish(ctx workflow.Context, inkId int64, uid int64) error {
 	ao := workflow.ActivityOptions{
-		StartToCloseTimeout: time.Minute,
+		StartToCloseTimeout: time.Minute * 3,
 		RetryPolicy: &temporal.RetryPolicy{
 			InitialInterval: time.Second,
 			MaximumAttempts: 5,

@@ -17,6 +17,7 @@ var (
 type InkCache interface {
 	Get(ctx context.Context, id int64) (domain.Ink, error)
 	Set(ctx context.Context, ink domain.Ink) error
+	SetBatch(ctx context.Context, inks []domain.Ink) error
 	SetFirstPage(ctx context.Context, authorId int64, inks []domain.Ink) error
 	GetFirstPage(ctx context.Context, authorId int64) ([]domain.Ink, error)
 	DelFirstPage(ctx context.Context, authorId int64) error
@@ -72,6 +73,26 @@ func (cache *RedisInkCache) Set(ctx context.Context, ink domain.Ink) error {
 		return err
 	}
 	err = cache.cmd.Set(ctx, key, val, cache.expire).Err()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cache *RedisInkCache) SetBatch(ctx context.Context, inks []domain.Ink) error {
+	if len(inks) == 0 {
+		return nil
+	}
+	pipe := cache.cmd.Pipeline()
+	for _, ink := range inks {
+		key := cache.key(ink.Id)
+		val, err := json.Marshal(ink)
+		if err != nil {
+			return err
+		}
+		pipe.Set(ctx, key, val, cache.expire)
+	}
+	_, err := pipe.Exec(ctx)
 	if err != nil {
 		return err
 	}

@@ -113,6 +113,15 @@ func (r *CachedUserRepo) FindByIds(ctx context.Context, ids []int64) (map[int64]
 		users[u.Id] = r.entityToDomain(u)
 	}
 
+	go func() {
+		ctx = context.WithoutCancel(ctx)
+		if err = r.cache.SetBatch(ctx, lo.MapToSlice(us, func(key int64, value dao.User) domain.User {
+			return r.entityToDomain(value)
+		})); err != nil {
+			r.l.WithCtx(ctx).Error("batch set user cache error", logx.Error(err), logx.Any("UserIds", ids))
+		}
+	}()
+
 	return users, nil
 }
 
