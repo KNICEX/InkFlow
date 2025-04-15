@@ -25,6 +25,8 @@ type FollowRepo interface {
 
 	GetFollowingIds(ctx context.Context, uid int64, maxId int64, limit int) ([]int64, error)
 	GetFollowerIds(ctx context.Context, uid int64, maxId int64, limit int) ([]int64, error)
+
+	GetMostPopular(ctx context.Context, offset, limit int, viewUid int64) ([]domain.FollowStatistic, error)
 }
 
 type CachedFollowRepo struct {
@@ -328,6 +330,33 @@ func (repo *CachedFollowRepo) GetFollowerIds(ctx context.Context, uid int64, max
 		return item.FollowerId
 	}), nil
 }
+
+func (repo *CachedFollowRepo) GetMostPopular(ctx context.Context, offset, limit int, viewUid int64) ([]domain.FollowStatistic, error) {
+	followStats, err := repo.dao.FindMostPopular(ctx, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	uids := lo.Map(followStats, func(item dao.FollowStats, index int) int64 {
+		return item.UserId
+	})
+
+	followedMap, err := repo.dao.FollowedBatch(ctx, viewUid, uids)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]domain.FollowStatistic, 0, len(followStats))
+	for _, stat := range followStats {
+		res = append(res, domain.FollowStatistic{
+			Uid:       stat.UserId,
+			Followers: stat.Followers,
+			Following: stat.Following,
+			Followed:  followedMap[stat.UserId],
+		})
+	}
+	return res, nil
+}
+
 func (repo *CachedFollowRepo) statsToDomain(stats dao.FollowStats) domain.FollowStatistic {
 	return domain.FollowStatistic{
 		Uid:       stats.UserId,

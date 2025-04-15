@@ -38,7 +38,9 @@ func (svc *RecommendService) FindSimilarInk(ctx context.Context, inkId int64, of
 	}
 	return lo.Map(scores, func(item client.Score, index int) int64 {
 		id, err := strconv.ParseInt(item.Id, 10, 64)
-		svc.l.WithCtx(ctx).Error("gorse recommend ink parse id error", logx.String("id", item.Id), logx.Error(err))
+		if err != nil {
+			svc.l.WithCtx(ctx).Error("gorse recommend ink parse id error", logx.String("id", item.Id), logx.Error(err))
+		}
 		return id
 	}), nil
 }
@@ -84,6 +86,21 @@ func (svc *RecommendService) FindRecommendAuthor(ctx context.Context, userId int
 	if err != nil {
 		return nil, err
 	}
+
+	if len(similarUids) == 0 {
+		// 随便推荐几个粉丝多的
+		popular, err := svc.followSvc.FindMostPopular(ctx, offset, 100, userId)
+		if err != nil {
+			return nil, err
+		}
+		popular = lo.Reject(popular, func(item relation.FollowStatistic, index int) bool {
+			return item.Followed || item.Uid == userId
+		})
+		return lo.Map(popular, func(item relation.FollowStatistic, index int) int64 {
+			return item.Uid
+		})[:min(limit, len(popular))], nil
+	}
+
 	eg := errgroup.Group{}
 	var following []int64
 	eg.Go(func() error {

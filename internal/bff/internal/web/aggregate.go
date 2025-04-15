@@ -50,6 +50,9 @@ func (u *userAggregate) GetUser(ctx context.Context, uid int64, viewUid int64) (
 }
 
 func (u *userAggregate) GetUserList(ctx context.Context, uids []int64, viewUid int64) (map[int64]UserVO, error) {
+	if len(uids) == 0 {
+		return nil, nil
+	}
 	var users map[int64]user.User
 	var followInfos map[int64]relation.FollowStatistic
 	eg := errgroup.Group{}

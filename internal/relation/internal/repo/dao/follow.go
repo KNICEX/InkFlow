@@ -43,6 +43,8 @@ type FollowRelationDAO interface {
 	FindFollowStatsBatch(ctx context.Context, uids []int64) (map[int64]FollowStats, error)
 	Followed(ctx context.Context, uid, followeeId int64) (bool, error)
 	FollowedBatch(ctx context.Context, uid int64, followeeIds []int64) (map[int64]bool, error)
+
+	FindMostPopular(ctx context.Context, offset, limit int) ([]FollowStats, error)
 }
 
 type GormFollowRelationDAO struct {
@@ -228,6 +230,15 @@ func (dao *GormFollowRelationDAO) FollowedBatch(ctx context.Context, uid int64, 
 		followed[item.FolloweeId] = true
 	}
 	return followed, nil
+}
+
+func (dao *GormFollowRelationDAO) FindMostPopular(ctx context.Context, offset, limit int) ([]FollowStats, error) {
+	var res []FollowStats
+	err := dao.db.WithContext(ctx).Order("followers DESC").Offset(offset).Limit(limit).Find(&res).Error
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 //func (dao *GormFollowRelationDAO) FollowStats(ctx context.Context, uid int64) (FollowStats, error) {
