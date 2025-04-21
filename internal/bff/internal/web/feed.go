@@ -1,13 +1,9 @@
 package web
 
 import (
-	"github.com/KNICEX/InkFlow/internal/comment"
 	"github.com/KNICEX/InkFlow/internal/feed"
 	"github.com/KNICEX/InkFlow/internal/ink"
-	"github.com/KNICEX/InkFlow/internal/interactive"
 	"github.com/KNICEX/InkFlow/internal/recommend"
-	"github.com/KNICEX/InkFlow/internal/relation"
-	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/KNICEX/InkFlow/pkg/ginx"
 	"github.com/KNICEX/InkFlow/pkg/ginx/jwt"
 	"github.com/KNICEX/InkFlow/pkg/ginx/middleware"
@@ -21,32 +17,30 @@ type FeedHandler struct {
 	svc            feed.Service
 	recommendSvc   recommend.Service
 	inkRankService ink.RankingService
-	inkAggregate   *inkAggregate
-	userAggregate  *userAggregate
-	intrAggregate  *interactiveAggregate
+	inkAggregate   *InkAggregate
+	userAggregate  *UserAggregate
+	intrAggregate  *InteractiveAggregate
 	auth           middleware.Authentication
 	l              logx.Logger
 }
 
 func NewFeedHandler(
 	svc feed.Service,
-	inkSvc ink.Service,
 	inkRankService ink.RankingService,
-	intrSvc interactive.Service,
-	userSvc user.Service,
-	followSvc relation.FollowService,
+	inkAggregate *InkAggregate,
+	userAggregate *UserAggregate,
+	intrAggregate *InteractiveAggregate,
 	recommendSvc recommend.Service,
 	auth middleware.Authentication,
-	commentSvc comment.Service,
 	l logx.Logger,
 ) *FeedHandler {
 	return &FeedHandler{
 		svc:            svc,
 		inkRankService: inkRankService,
 		recommendSvc:   recommendSvc,
-		inkAggregate:   newInkAggregate(inkSvc, userSvc, followSvc, intrSvc, commentSvc),
-		userAggregate:  newUserAggregate(userSvc, followSvc),
-		intrAggregate:  newInteractiveAggregate(intrSvc, commentSvc),
+		inkAggregate:   inkAggregate,
+		userAggregate:  userAggregate,
+		intrAggregate:  intrAggregate,
 		auth:           auth,
 		l:              l,
 	}

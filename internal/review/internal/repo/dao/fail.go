@@ -15,12 +15,12 @@ type ReviewFailDAO interface {
 }
 
 type ReviewFail struct {
-	Id         int64
-	WorkflowId string
-	Event      string
-	Error      string
-	CreatedAt  time.Time `gorm:"index"`
-	UpdatedAt  time.Time `gorm:"index"`
+	Id        int64
+	Type      string `gorm:"index"`
+	Event     string
+	Error     string
+	CreatedAt time.Time `gorm:"index"`
+	UpdatedAt time.Time `gorm:"index"`
 	// DeletedAt 软删除做为错误分析
 	DeletedAt sql.NullTime
 }

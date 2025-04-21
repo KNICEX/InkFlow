@@ -12,9 +12,10 @@ import (
 )
 
 const (
-	inkPubQueue  = "ink-pub-queue"
-	rankInkQueue = "rank-ink-queue"
-	rankTagQueue = "rank-tag-queue"
+	inkPubQueue      = "ink-pub-queue"
+	rankInkQueue     = "rank-ink-queue"
+	rankTagQueue     = "rank-tag-queue"
+	retryReviewQueue = "retry-review-queue"
 )
 
 func InitTemporalClient() client.Client {
@@ -55,6 +56,10 @@ type RankTagWorker struct {
 	worker.Worker
 }
 
+type RetryReviewWorker struct {
+	worker.Worker
+}
+
 func InitRankInkWorker(cli client.Client, activities *schedule.RankActivities) *RankInkWorker {
 	w := worker.New(cli, rankInkQueue, worker.Options{})
 	w.RegisterWorkflow(schedule.RankHotInk)
@@ -73,11 +78,21 @@ func InitRankTagWorker(cli client.Client, activities *schedule.RankActivities) *
 	}
 }
 
-func InitWorkers(inkPub *InkPubWorker, rankTag *RankTagWorker, rankInk *RankInkWorker) []worker.Worker {
+func InitRetryReviewWorker(cli client.Client, activities *schedule.ReviewFailoverActivity) *RetryReviewWorker {
+	w := worker.New(cli, retryReviewQueue, worker.Options{})
+	w.RegisterWorkflow(schedule.ReviewRetryFail)
+	w.RegisterActivity(activities)
+	return &RetryReviewWorker{
+		Worker: w,
+	}
+}
+
+func InitWorkers(inkPub *InkPubWorker, rankTag *RankTagWorker, rankInk *RankInkWorker, retryReview *RetryReviewWorker) []worker.Worker {
 	return []worker.Worker{
 		inkPub.Worker,
 		rankTag.Worker,
 		rankInk.Worker,
+		retryReview.Worker,
 	}
 }
 
@@ -92,7 +107,7 @@ func InitRankInkScheduler(cli client.Client) RankInkScheduler {
 		return temporalx.UpsertSchedule(context.Background(), cli, client.ScheduleOptions{
 			ID: "rank-ink-scheduler",
 			Spec: client.ScheduleSpec{
-				CronExpressions: []string{"@every 5m"},
+				CronExpressions: []string{"@every 10m"},
 			},
 			Action: &client.ScheduleWorkflowAction{
 				ID:        "rank-ink-scheduler-action",
@@ -114,7 +129,7 @@ func InitRankTagScheduler(cli client.Client) RankTagScheduler {
 		return temporalx.UpsertSchedule(context.Background(), cli, client.ScheduleOptions{
 			ID: "rank-tag-scheduler",
 			Spec: client.ScheduleSpec{
-				CronExpressions: []string{"@every 5m"},
+				CronExpressions: []string{"@every 30m"},
 			},
 			Action: &client.ScheduleWorkflowAction{
 				ID:        "rank-tag-scheduler-action",
@@ -125,9 +140,32 @@ func InitRankTagScheduler(cli client.Client) RankTagScheduler {
 	}
 }
 
-func InitSchedulers(rankInk RankInkScheduler, rankTag RankTagScheduler) []schedulex.Scheduler {
+type ReviewFailRetryScheduler func() error
+
+func (r ReviewFailRetryScheduler) Start() error {
+	return r()
+}
+
+func InitReviewRetryScheduler(cli client.Client) ReviewFailRetryScheduler {
+	return func() error {
+		return temporalx.UpsertSchedule(context.Background(), cli, client.ScheduleOptions{
+			ID: "review-fail-retry-scheduler",
+			Spec: client.ScheduleSpec{
+				CronExpressions: []string{"@every 5m"},
+			},
+			Action: &client.ScheduleWorkflowAction{
+				ID:        "review-fail-retry-scheduler-action",
+				Workflow:  schedule.ReviewRetryFail,
+				TaskQueue: retryReviewQueue,
+			},
+		})
+	}
+}
+
+func InitSchedulers(rankInk RankInkScheduler, rankTag RankTagScheduler, reviewRetry ReviewFailRetryScheduler) []schedulex.Scheduler {
 	return []schedulex.Scheduler{
 		rankInk,
 		rankTag,
+		reviewRetry,
 	}
 }

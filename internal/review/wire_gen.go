@@ -10,10 +10,15 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/KNICEX/InkFlow/internal/ai"
 	"github.com/KNICEX/InkFlow/internal/review/internal/event"
+	"github.com/KNICEX/InkFlow/internal/review/internal/repo"
+	"github.com/KNICEX/InkFlow/internal/review/internal/repo/dao"
 	"github.com/KNICEX/InkFlow/internal/review/internal/service"
+	"github.com/KNICEX/InkFlow/internal/review/internal/service/failover"
 	"github.com/KNICEX/InkFlow/internal/review/internal/service/llm"
 	"github.com/KNICEX/InkFlow/pkg/logx"
+	"github.com/KNICEX/InkFlow/pkg/snowflakex"
 	"go.temporal.io/sdk/client"
+	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
@@ -24,8 +29,32 @@ func InitAsyncService(producer sarama.SyncProducer, l logx.Logger) service.Async
 	return asyncService
 }
 
-func InitReviewConsumer(workflowCli client.Client, saramaCli sarama.Client, service3 ai.LLMService, l logx.Logger) *event.ReviewConsumer {
-	serviceService := llm.NewLLMService(service3)
-	reviewConsumer := event.NewReviewConsumer(workflowCli, serviceService, saramaCli, l)
+func InitReviewConsumer(workflowCli client.Client, saramaCli sarama.Client, service2 service.Service, l logx.Logger) *event.ReviewConsumer {
+	reviewConsumer := event.NewReviewConsumer(workflowCli, service2, saramaCli, l)
 	return reviewConsumer
+}
+
+func InitFailoverService(workflowCli client.Client, svc service.Service, db *gorm.DB, l logx.Logger) service.FailoverService {
+	reviewFailDAO := initFailoverDao(db)
+	reviewFailRepo := repo.NewReviewFailRepo(reviewFailDAO)
+	failoverService := failover.NewReviewService(reviewFailRepo, svc, l)
+	return failoverService
+}
+
+// wire.go:
+
+func InitService(llmSvc ai.LLMService) Service {
+	return llm.NewLLMService(llmSvc)
+}
+
+func initSnowflakeNode() snowflakex.Node {
+	return snowflakex.NewNode(snowflakex.DefaultStartTime, 0)
+}
+
+func initFailoverDao(db *gorm.DB) dao.ReviewFailDAO {
+	if err := dao.InitTables(db); err != nil {
+		panic(err)
+	}
+
+	return dao.NewGormReviewFailDAO(db, initSnowflakeNode())
 }

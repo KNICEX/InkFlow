@@ -2,11 +2,8 @@ package web
 
 import (
 	"errors"
-	"github.com/KNICEX/InkFlow/internal/comment"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/interactive"
-	"github.com/KNICEX/InkFlow/internal/relation"
-	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/KNICEX/InkFlow/internal/workflow/inkpub"
 	"github.com/KNICEX/InkFlow/pkg/ginx"
 	"github.com/KNICEX/InkFlow/pkg/ginx/jwt"
@@ -29,29 +26,27 @@ const (
 type InkHandler struct {
 	svc            ink.Service
 	inkRankService ink.RankingService
-	userSvc        user.Service
 	workflowCli    client.Client
 	interactiveSvc interactive.Service
 	auth           middleware.Authentication
-	userAggregate  *userAggregate
-	inkAggregate   *inkAggregate
-	intrAggregate  *interactiveAggregate
+	userAggregate  *UserAggregate
+	inkAggregate   *InkAggregate
+	intrAggregate  *InteractiveAggregate
 	l              logx.Logger
 }
 
-func NewInkHandler(svc ink.Service, userSvc user.Service, interactiveSvc interactive.Service,
-	followService relation.FollowService, auth middleware.Authentication,
-	commentSvc comment.Service,
+func NewInkHandler(svc ink.Service, userAggregate *UserAggregate, intrAggregate *InteractiveAggregate,
+	intrSvc interactive.Service,
+	auth middleware.Authentication,
 	workflowCli client.Client, l logx.Logger) *InkHandler {
 	return &InkHandler{
 		svc:            svc,
-		userSvc:        userSvc,
 		workflowCli:    workflowCli,
-		interactiveSvc: interactiveSvc,
+		interactiveSvc: intrSvc,
 		auth:           auth,
-		userAggregate:  newUserAggregate(userSvc, followService),
-		inkAggregate:   newInkAggregate(svc, userSvc, followService, interactiveSvc, commentSvc),
-		intrAggregate:  newInteractiveAggregate(interactiveSvc, commentSvc),
+		userAggregate:  userAggregate,
+		inkAggregate:   NewInkAggregate(svc, userAggregate, intrAggregate),
+		intrAggregate:  intrAggregate,
 		l:              l,
 	}
 }

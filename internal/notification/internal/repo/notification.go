@@ -136,8 +136,8 @@ func (repo *NoCacheNotificationRepo) toEntity(n domain.Notification) (dao.Notifi
 
 func (repo *NoCacheNotificationRepo) toDomain(n dao.Notification) (domain.Notification, error) {
 	var content any
-	switch n.SubjectType {
-	case domain.SubjectTypeComment.ToString():
+	switch n.NotificationType {
+	case domain.NotificationTypeReply.ToString():
 		content = domain.ReplyContent{}
 		if err := json.Unmarshal([]byte(n.Content), &content); err != nil {
 			return domain.Notification{}, err

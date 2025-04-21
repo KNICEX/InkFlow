@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/IBM/sarama"
+	"github.com/KNICEX/InkFlow/internal/review/internal/consts"
 	"github.com/KNICEX/InkFlow/internal/review/internal/domain"
 	"github.com/KNICEX/InkFlow/internal/review/internal/service"
 	"github.com/KNICEX/InkFlow/pkg/logx"
@@ -13,15 +14,14 @@ import (
 
 const inkReviewTopic = "ink-review"
 const inkReviewGroup = "ink-review-group"
-const reviewSignal = "review-signal"
 
-type ReviewEvent struct {
+type ReviewInkEvent struct {
 	WorkflowId string
 	Ink        domain.Ink
 }
 
 type ReviewProducer interface {
-	Produce(ctx context.Context, event ReviewEvent) error
+	Produce(ctx context.Context, event ReviewInkEvent) error
 }
 
 type KafkaReviewProducer struct {
@@ -34,7 +34,7 @@ func NewKafkaReviewProducer(producer sarama.SyncProducer) ReviewProducer {
 	}
 }
 
-func (p *KafkaReviewProducer) Produce(ctx context.Context, event ReviewEvent) error {
+func (p *KafkaReviewProducer) Produce(ctx context.Context, event ReviewInkEvent) error {
 	data, err := json.Marshal(event)
 	if err != nil {
 		return err
@@ -49,7 +49,7 @@ func (p *KafkaReviewProducer) Produce(ctx context.Context, event ReviewEvent) er
 type ReviewConsumer struct {
 	workflowCli client.Client
 	svc         service.Service
-	retrySvc    service.ReviewRetryService
+	retrySvc    service.FailoverService
 	saramaCli   sarama.Client
 	l           logx.Logger
 }
@@ -77,7 +77,7 @@ func (c *ReviewConsumer) Start() error {
 	return nil
 }
 
-func (c *ReviewConsumer) Consume(msg *sarama.ConsumerMessage, event ReviewEvent) error {
+func (c *ReviewConsumer) Consume(msg *sarama.ConsumerMessage, event ReviewInkEvent) error {
 	ctx := context.Background()
 	var result domain.ReviewResult
 	var err error
@@ -95,14 +95,11 @@ func (c *ReviewConsumer) Consume(msg *sarama.ConsumerMessage, event ReviewEvent)
 		c.l.Error("review ink failed after retries, storing to fallback queue",
 			logx.Error(err), logx.String("workflowId", event.WorkflowId), logx.Any("ink", event.Ink))
 
-		saveErr := c.retrySvc.Create(ctx, domain.ReviewEvent{
-			Ink:        event.Ink,
-			WorkflowId: event.WorkflowId,
-		}, err)
+		saveErr := c.retrySvc.Create(ctx, domain.ReviewTypeInk, event, err)
 		if saveErr != nil {
 			c.l.Error("failed to store failed review", logx.Error(saveErr))
 		}
 		return err
 	}
-	return c.workflowCli.SignalWorkflow(ctx, event.WorkflowId, "", reviewSignal, result)
+	return c.workflowCli.SignalWorkflow(ctx, event.WorkflowId, "", consts.ReviewSignal, result)
 }

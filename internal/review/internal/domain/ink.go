@@ -18,8 +18,3 @@ type ReviewResult struct {
 	ReviewScore int64    `json:"reviewScore"`
 	ReviewTags  []string `json:"reviewTags"`
 }
-type ReviewEvent struct {
-	Id         int64
-	Ink        Ink
-	WorkflowId string
-}

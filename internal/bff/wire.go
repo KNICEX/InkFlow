@@ -28,6 +28,19 @@ func InitHandlers(uh *web.UserHandler, ih *web.InkHandler, fh *web.FileHandler,
 	return []ginx.Handler{uh, ih, fh, ch, nh, sh, feedH, statsH, intrH, rh}
 }
 
+func initUserAggregate(userSvc user.Service, followSvc relation.FollowService) *web.UserAggregate {
+	return web.NewUserAggregate(userSvc, followSvc)
+}
+
+func initInkAggregate(inkSvc ink.Service, userAggregate *web.UserAggregate,
+	interactiveAggregate *web.InteractiveAggregate,
+	intrSvc interactive.Service, commentSvc comment.Service) *web.InkAggregate {
+	return web.NewInkAggregate(inkSvc, userAggregate, interactiveAggregate)
+}
+func initInteractiveAggregate(intrSvc interactive.Service, commentSvc comment.Service) *web.InteractiveAggregate {
+	return web.NewInteractiveAggregate(intrSvc, commentSvc)
+}
+
 func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
 	inkRankService ink.RankingService,
 	followService relation.FollowService,
@@ -40,6 +53,9 @@ func InitBff(userSvc user.Service, codeSvc code.Service, inkService ink.Service,
 	workflowCli client.Client,
 	jwtHandler jwt.Handler, auth middleware.Authentication, log logx.Logger) []ginx.Handler {
 	wire.Build(
+		web.NewUserAggregate,
+		web.NewInkAggregate,
+		web.NewInteractiveAggregate,
 		web.NewUserHandler,
 		web.NewInkHandler,
 		web.NewCommentHandler,

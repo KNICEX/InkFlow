@@ -11,19 +11,19 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type userAggregate struct {
+type UserAggregate struct {
 	userSvc   user.Service
 	followSvc relation.FollowService
 }
 
-func newUserAggregate(userSvc user.Service, followSvc relation.FollowService) *userAggregate {
-	return &userAggregate{
+func NewUserAggregate(userSvc user.Service, followSvc relation.FollowService) *UserAggregate {
+	return &UserAggregate{
 		userSvc:   userSvc,
 		followSvc: followSvc,
 	}
 }
 
-func (u *userAggregate) GetUser(ctx context.Context, uid int64, viewUid int64) (UserVO, error) {
+func (u *UserAggregate) GetUser(ctx context.Context, uid int64, viewUid int64) (UserVO, error) {
 	var userInfo user.User
 	var followInfo relation.FollowStatistic
 
@@ -49,7 +49,7 @@ func (u *userAggregate) GetUser(ctx context.Context, uid int64, viewUid int64) (
 	return vo, nil
 }
 
-func (u *userAggregate) GetUserList(ctx context.Context, uids []int64, viewUid int64) (map[int64]UserVO, error) {
+func (u *UserAggregate) GetUserList(ctx context.Context, uids []int64, viewUid int64) (map[int64]UserVO, error) {
 	if len(uids) == 0 {
 		return nil, nil
 	}
@@ -83,22 +83,22 @@ func (u *userAggregate) GetUserList(ctx context.Context, uids []int64, viewUid i
 	return vos, nil
 }
 
-type inkAggregate struct {
+type InkAggregate struct {
 	inkSvc        ink.Service
-	userAggregate *userAggregate
-	intrAggregate *interactiveAggregate
+	userAggregate *UserAggregate
+	intrAggregate *InteractiveAggregate
 }
 
-func newInkAggregate(inkSvc ink.Service, userSvc user.Service, followSvc relation.FollowService,
-	intrSvc interactive.Service, commentSvc comment.Service) *inkAggregate {
-	return &inkAggregate{
+func NewInkAggregate(inkSvc ink.Service, userAggregate *UserAggregate,
+	intrAggregate *InteractiveAggregate) *InkAggregate {
+	return &InkAggregate{
 		inkSvc:        inkSvc,
-		userAggregate: newUserAggregate(userSvc, followSvc),
-		intrAggregate: newInteractiveAggregate(intrSvc, commentSvc),
+		userAggregate: userAggregate,
+		intrAggregate: intrAggregate,
 	}
 }
 
-func (i *inkAggregate) GetInk(ctx context.Context, id int64, viewUid int64) (InkVO, error) {
+func (i *InkAggregate) GetInk(ctx context.Context, id int64, viewUid int64) (InkVO, error) {
 	var author UserVO
 	var intr InteractiveVO
 	inkInfo, err := i.inkSvc.FindLiveInk(ctx, id)
@@ -130,7 +130,7 @@ func (i *inkAggregate) GetInk(ctx context.Context, id int64, viewUid int64) (Ink
 	return vo, nil
 }
 
-func (i *inkAggregate) GetInkList(ctx context.Context, ids []int64, viewUid int64) (map[int64]InkVO, error) {
+func (i *InkAggregate) GetInkList(ctx context.Context, ids []int64, viewUid int64) (map[int64]InkVO, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -172,19 +172,19 @@ func (i *inkAggregate) GetInkList(ctx context.Context, ids []int64, viewUid int6
 	return vos, nil
 }
 
-type interactiveAggregate struct {
+type InteractiveAggregate struct {
 	intrSvc    interactive.Service
 	commentSvc comment.Service
 }
 
-func newInteractiveAggregate(intrSvc interactive.Service, commentSvc comment.Service) *interactiveAggregate {
-	return &interactiveAggregate{
+func NewInteractiveAggregate(intrSvc interactive.Service, commentSvc comment.Service) *InteractiveAggregate {
+	return &InteractiveAggregate{
 		intrSvc:    intrSvc,
 		commentSvc: commentSvc,
 	}
 }
 
-func (i *interactiveAggregate) GetInteractive(ctx context.Context, biz string, id int64, uid int64) (InteractiveVO, error) {
+func (i *InteractiveAggregate) GetInteractive(ctx context.Context, biz string, id int64, uid int64) (InteractiveVO, error) {
 	var intr interactive.Interactive
 	var commentCounts map[int64]int64
 	eg := errgroup.Group{}
@@ -207,7 +207,7 @@ func (i *interactiveAggregate) GetInteractive(ctx context.Context, biz string, i
 	return vo, nil
 }
 
-func (i *interactiveAggregate) GetInteractiveList(ctx context.Context, biz string, ids []int64, uid int64) (map[int64]InteractiveVO, error) {
+func (i *InteractiveAggregate) GetInteractiveList(ctx context.Context, biz string, ids []int64, uid int64) (map[int64]InteractiveVO, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}

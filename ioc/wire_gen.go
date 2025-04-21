@@ -57,30 +57,35 @@ func InitApp() *App {
 	v := bff.InitBff(userService, serviceService, inkService, rankingService, followService, interactiveService, commentService, notificationService, recommendService, feedService, searchService, clientClient, handler, authentication, logger)
 	engine := InitGin(v, logger)
 	inkViewConsumer := interactive.InitInteractiveInkReadConsumer(client, logger)
-	genaiClient := InitGeminiClient()
-	llmService := ai.InitLLMService(genaiClient)
-	reviewConsumer := review.InitReviewConsumer(clientClient, client, llmService, logger)
+	v2 := InitGeminiClient()
+	llmService := ai.InitLLMService(v2)
+	service2 := review.InitService(llmService)
+	reviewConsumer := review.InitReviewConsumer(clientClient, client, service2, logger)
 	syncService := search.InitSyncService(serviceManager)
 	syncConsumer := search.InitSyncConsumer(syncService, client, logger)
 	notificationConsumer := notification.InitNotificationConsumer(client, notificationService, inkService, commentService, logger)
 	recommendSyncService := recommend.InitSyncService(gorsexClient)
 	eventSyncConsumer := recommend.InitSyncConsumer(client, recommendSyncService, logger)
-	v2 := InitConsumers(inkViewConsumer, reviewConsumer, syncConsumer, notificationConsumer, eventSyncConsumer)
+	v3 := InitConsumers(inkViewConsumer, reviewConsumer, syncConsumer, notificationConsumer, eventSyncConsumer)
 	asyncService := review.InitAsyncService(syncProducer, logger)
 	activities := inkpub.NewActivities(inkService, interactiveService, asyncService, syncService, recommendSyncService, notificationService, feedService)
 	inkPubWorker := InitInkPubWorker(clientClient, activities)
 	rankActivities := schedule.NewRankActivities(rankingService)
 	rankTagWorker := InitRankTagWorker(clientClient, rankActivities)
 	rankInkWorker := InitRankInkWorker(clientClient, rankActivities)
-	v3 := InitWorkers(inkPubWorker, rankTagWorker, rankInkWorker)
+	failoverService := review.InitFailoverService(clientClient, service2, db, logger)
+	reviewFailoverActivity := schedule.NewReviewFailoverActivity(failoverService)
+	retryReviewWorker := InitRetryReviewWorker(clientClient, reviewFailoverActivity)
+	v4 := InitWorkers(inkPubWorker, rankTagWorker, rankInkWorker, retryReviewWorker)
 	rankInkScheduler := InitRankInkScheduler(clientClient)
 	rankTagScheduler := InitRankTagScheduler(clientClient)
-	v4 := InitSchedulers(rankInkScheduler, rankTagScheduler)
+	reviewFailRetryScheduler := InitReviewRetryScheduler(clientClient)
+	v5 := InitSchedulers(rankInkScheduler, rankTagScheduler, reviewFailRetryScheduler)
 	app := &App{
 		Server:     engine,
-		Consumers:  v2,
-		Workers:    v3,
-		Schedulers: v4,
+		Consumers:  v3,
+		Workers:    v4,
+		Schedulers: v5,
 	}
 	return app
 }

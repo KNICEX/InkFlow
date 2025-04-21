@@ -52,14 +52,14 @@ func SubjectTypeFromStr(s string) SubjectType {
 }
 
 type ReplyContent struct {
-	CommentId     int64
-	SourceContent ReplyPayload
-	TargetContent ReplyPayload
+	CommentId     int64        `json:"commentId"`
+	SourceContent ReplyPayload `json:"source"`
+	TargetContent ReplyPayload `json:"target"`
 }
 
 type ReplyPayload struct {
-	Content string
-	Images  []string
+	Content string   `json:"content"`
+	Images  []string `json:"images"`
 }
 
 // TODO 好像暂时不需要冗余

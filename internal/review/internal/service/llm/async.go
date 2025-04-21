@@ -19,7 +19,7 @@ func NewAsyncWorkflowService(producer event.ReviewProducer) service.AsyncService
 }
 
 func (a *AsyncWorkflowService) SubmitInk(ctx context.Context, ink domain.Ink) error {
-	return a.producer.Produce(ctx, event.ReviewEvent{
+	return a.producer.Produce(ctx, event.ReviewInkEvent{
 		Ink:        ink,
 		WorkflowId: activity.GetInfo(ctx).WorkflowExecution.ID,
 	})

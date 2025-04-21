@@ -10,6 +10,8 @@ type Service = service.Service
 
 type AsyncService = service.AsyncService
 
+type FailoverService = service.FailoverService
+
 type Consumer = event.ReviewConsumer
 
 type Ink = domain.Ink

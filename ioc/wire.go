@@ -73,21 +73,26 @@ func InitApp() *App {
 
 
 		ai.InitLLMService,
+		review.InitService,
 		review.InitAsyncService,
 		review.InitReviewConsumer,
+		review.InitFailoverService,
 
 		action.InitService,
 		feed.InitService,
 
 		inkpub.NewActivities,
 		schedule.NewRankActivities,
+		schedule.NewReviewFailoverActivity,
 
 		InitRankTagWorker,
 		InitRankInkWorker,
 		InitInkPubWorker,
+		InitRetryReviewWorker,
 
 		InitRankInkScheduler,
 		InitRankTagScheduler,
+		InitReviewRetryScheduler,
 		InitSchedulers,
 
 		bff.InitBff,

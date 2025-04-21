@@ -1,12 +1,8 @@
 package web
 
 import (
-	"github.com/KNICEX/InkFlow/internal/comment"
 	"github.com/KNICEX/InkFlow/internal/ink"
-	"github.com/KNICEX/InkFlow/internal/interactive"
 	"github.com/KNICEX/InkFlow/internal/recommend"
-	"github.com/KNICEX/InkFlow/internal/relation"
-	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/KNICEX/InkFlow/pkg/ginx"
 	"github.com/KNICEX/InkFlow/pkg/ginx/jwt"
 	"github.com/KNICEX/InkFlow/pkg/ginx/middleware"
@@ -17,19 +13,18 @@ import (
 
 type RecommendHandler struct {
 	svc           recommend.Service
-	inkAggregate  *inkAggregate
-	userAggregate *userAggregate
+	inkAggregate  *InkAggregate
+	userAggregate *UserAggregate
 	auth          middleware.Authentication
 	l             logx.Logger
 }
 
-func NewRecommendHandler(svc recommend.Service, inkSvc ink.Service, userSvc user.Service,
-	followSvc relation.FollowService, intrSvc interactive.Service, commentSvc comment.Service,
+func NewRecommendHandler(svc recommend.Service, inkSvc ink.Service, userAggregate *UserAggregate, intrAggregate *InteractiveAggregate,
 	auth middleware.Authentication, l logx.Logger) *RecommendHandler {
 	return &RecommendHandler{
 		svc:           svc,
-		inkAggregate:  newInkAggregate(inkSvc, userSvc, followSvc, intrSvc, commentSvc),
-		userAggregate: newUserAggregate(userSvc, followSvc),
+		inkAggregate:  NewInkAggregate(inkSvc, userAggregate, intrAggregate),
+		userAggregate: userAggregate,
 		auth:          auth,
 		l:             l,
 	}

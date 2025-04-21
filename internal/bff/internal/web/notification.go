@@ -6,7 +6,6 @@ import (
 	"github.com/KNICEX/InkFlow/internal/comment"
 	"github.com/KNICEX/InkFlow/internal/ink"
 	"github.com/KNICEX/InkFlow/internal/notification"
-	"github.com/KNICEX/InkFlow/internal/user"
 	"github.com/KNICEX/InkFlow/pkg/ginx"
 	"github.com/KNICEX/InkFlow/pkg/ginx/jwt"
 	"github.com/KNICEX/InkFlow/pkg/ginx/middleware"
@@ -19,24 +18,24 @@ import (
 )
 
 type NotificationHandler struct {
-	svc        notification.Service
-	userSvc    user.Service
-	inkSvc     ink.Service
-	commentSvc comment.Service
+	svc           notification.Service
+	inkSvc        ink.Service
+	commentSvc    comment.Service
+	userAggregate *UserAggregate
 
 	auth middleware.Authentication
 	l    logx.Logger
 }
 
-func NewNotificationHandler(svc notification.Service, userSvc user.Service, inkSvc ink.Service,
+func NewNotificationHandler(svc notification.Service, userAggregate *UserAggregate, inkSvc ink.Service,
 	commentSvc comment.Service, auth middleware.Authentication, l logx.Logger) *NotificationHandler {
 	return &NotificationHandler{
-		svc:        svc,
-		userSvc:    userSvc,
-		inkSvc:     inkSvc,
-		commentSvc: commentSvc,
-		auth:       auth,
-		l:          l,
+		svc:           svc,
+		userAggregate: userAggregate,
+		inkSvc:        inkSvc,
+		commentSvc:    commentSvc,
+		auth:          auth,
+		l:             l,
 	}
 }
 
@@ -55,6 +54,15 @@ func (handler *NotificationHandler) RegisterRoutes(server *gin.RouterGroup) {
 		notificationGroup.DELETE("/:id", ginx.Wrap(handler.l, handler.Delete))
 		notificationGroup.DELETE("/like", ginx.WrapBody(handler.l, handler.DeleteMergedLike))
 	}
+}
+
+func (handler *NotificationHandler) readAll(ctx context.Context, userId int64, typ notification.Type) {
+	go func() {
+		err := handler.svc.ReadAll(ctx, userId, typ)
+		if err != nil {
+			handler.l.Error("failed to mark notification as read", logx.Int64("userId", userId), logx.String("type", typ.ToString()), logx.Error(err))
+		}
+	}()
 }
 
 func (handler *NotificationHandler) ListMergedLike(ctx *gin.Context, req OffsetPagedReq) (ginx.Result, error) {
@@ -81,12 +89,12 @@ func (handler *NotificationHandler) ListMergedLike(ctx *gin.Context, req OffsetP
 		subjectIdMap[like.SubjectType] = append(subjectIdMap[like.SubjectType], like.SubjectId)
 	}
 
-	var users map[int64]user.User
+	var users map[int64]UserVO
 	var subjects map[notification.SubjectType]map[int64]any
 	eg := errgroup.Group{}
 	eg.Go(func() error {
 		var er error
-		users, er = handler.userSvc.FindByIds(ctx, lo.Keys(uids))
+		users, er = handler.userAggregate.GetUserList(ctx, lo.Keys(uids), uc.UserId)
 		return er
 	})
 	eg.Go(func() error {
@@ -103,11 +111,14 @@ func (handler *NotificationHandler) ListMergedLike(ctx *gin.Context, req OffsetP
 		vo := mergedLikeToVO(like)
 		for _, uid := range like.UserIds {
 			if u, ok := users[uid]; ok {
-				vo.Users = append(vo.Users, userToVO(u))
+				vo.Users = append(vo.Users, u)
 			}
 		}
 		vo.Subject = subjects[like.SubjectType][like.SubjectId]
+		likesVO = append(likesVO, vo)
 	}
+
+	handler.readAll(context.WithoutCancel(ctx), uc.UserId, notification.TypeLike)
 	return ginx.SuccessWithData(likesVO), nil
 }
 
@@ -181,12 +192,12 @@ func (handler *NotificationHandler) ListReply(ctx *gin.Context, req MaxIdPagedRe
 	uids := lo.UniqMap(notifications, func(item notification.Notification, index int) int64 {
 		return item.SenderId
 	})
-	var users map[int64]user.User
+	var users map[int64]UserVO
 	var subjects map[notification.SubjectType]map[int64]any
 	eg := errgroup.Group{}
 	eg.Go(func() error {
 		var er error
-		users, er = handler.userSvc.FindByIds(ctx, uids)
+		users, er = handler.userAggregate.GetUserList(ctx, uids, uc.UserId)
 		return er
 	})
 	eg.Go(func() error {
@@ -202,13 +213,13 @@ func (handler *NotificationHandler) ListReply(ctx *gin.Context, req MaxIdPagedRe
 	for _, no := range notifications {
 		vo := notificationToVO(no)
 		if u, ok := users[no.SenderId]; ok {
-			userVO := userToVO(u)
-			vo.User = &userVO
+			vo.User = &u
 		}
 		vo.Subject = subjects[no.SubjectType][no.SubjectId]
 		notificationsVO = append(notificationsVO, vo)
 	}
 
+	handler.readAll(context.WithoutCancel(ctx), uc.UserId, notification.TypeReply)
 	return ginx.SuccessWithData(notificationsVO), nil
 }
 
@@ -226,7 +237,7 @@ func (handler *NotificationHandler) ListFollow(ctx *gin.Context, req MaxIdPagedR
 		return item.SenderId
 	})
 
-	users, err := handler.userSvc.FindByIds(ctx, uids)
+	users, err := handler.userAggregate.GetUserList(ctx, uids, uc.UserId)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
@@ -235,12 +246,12 @@ func (handler *NotificationHandler) ListFollow(ctx *gin.Context, req MaxIdPagedR
 	for _, no := range notifications {
 		vo := notificationToVO(no)
 		if u, ok := users[no.SenderId]; ok {
-			userVO := userToVO(u)
-			vo.User = &userVO
+			vo.User = &u
 		}
 		followVOs = append(followVOs, vo)
 	}
 
+	handler.readAll(context.WithoutCancel(ctx), uc.UserId, notification.TypeFollow)
 	return ginx.SuccessWithData(followVOs), nil
 }
 
@@ -260,12 +271,12 @@ func (handler *NotificationHandler) ListMention(ctx *gin.Context, req MaxIdPaged
 
 	subjectIds := handler.subjectIds(notifications)
 
-	var users map[int64]user.User
+	var users map[int64]UserVO
 	var subjects map[notification.SubjectType]map[int64]any
 	eg := errgroup.Group{}
 	eg.Go(func() error {
 		var er error
-		users, er = handler.userSvc.FindByIds(ctx, uids)
+		users, er = handler.userAggregate.GetUserList(ctx, uids, uc.UserId)
 		return er
 	})
 	eg.Go(func() error {
@@ -281,13 +292,13 @@ func (handler *NotificationHandler) ListMention(ctx *gin.Context, req MaxIdPaged
 	for _, no := range notifications {
 		vo := notificationToVO(no)
 		if u, ok := users[no.SenderId]; ok {
-			userVO := userToVO(u)
-			vo.User = &userVO
+			vo.User = &u
 		}
 		vo.Subject = subjects[no.SubjectType][no.SubjectId]
 		mentionsVOs = append(mentionsVOs, vo)
 	}
 
+	handler.readAll(context.WithoutCancel(ctx), uc.UserId, notification.TypeMention)
 	return ginx.SuccessWithData(mentionsVOs), nil
 }
 
@@ -315,6 +326,7 @@ func (handler *NotificationHandler) ListSystem(ctx *gin.Context, req MaxIdPagedR
 		systemVOs = append(systemVOs, vo)
 	}
 
+	handler.readAll(context.WithoutCancel(ctx), uc.UserId, notification.TypeSystem)
 	return ginx.SuccessWithData(systemVOs), nil
 }
 

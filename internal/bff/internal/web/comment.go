@@ -17,7 +17,7 @@ import (
 type CommentHandler struct {
 	svc     comment.Service
 	userSvc user.Service
-	*userAggregate
+	*UserAggregate
 	auth middleware.Authentication
 
 	l logx.Logger
@@ -27,7 +27,7 @@ func NewCommentHandler(svc comment.Service, followSvc relation.FollowService, us
 	return &CommentHandler{
 		svc:           svc,
 		userSvc:       userSvc,
-		userAggregate: newUserAggregate(userSvc, followSvc),
+		UserAggregate: NewUserAggregate(userSvc, followSvc),
 		auth:          auth,
 		l:             l,
 	}
@@ -102,7 +102,7 @@ func (h *CommentHandler) List(ctx *gin.Context, req BizCommentReq) (ginx.Result,
 			uidSet.Add(child.Commentator.Id)
 		}
 	}
-	users, err := h.userAggregate.GetUserList(ctx, uidSet.Values(), uc.UserId)
+	users, err := h.UserAggregate.GetUserList(ctx, uidSet.Values(), uc.UserId)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
@@ -137,7 +137,7 @@ func (h *CommentHandler) LoadMoreChild(ctx *gin.Context, req ChildCommentReq) (g
 	uids := lo.UniqMap(coms, func(item comment.Comment, index int) int64 {
 		return item.Commentator.Id
 	})
-	users, err := h.userAggregate.GetUserList(ctx, uids, uc.UserId)
+	users, err := h.UserAggregate.GetUserList(ctx, uids, uc.UserId)
 	if err != nil {
 		return ginx.InternalError(), err
 	}
