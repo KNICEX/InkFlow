@@ -41,6 +41,9 @@ type InkService interface {
 	ListReviewRejectedByAuthorId(ctx context.Context, authorId int64, offset int, limit int) ([]domain.Ink, error)
 	ListDraftByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error)
 	ListPrivateByAuthorId(ctx context.Context, authorId int64, offset, limit int) ([]domain.Ink, error)
+
+	FirstPageByAuthorIds(ctx context.Context, authorIds []int64, n int) (map[int64][]domain.Ink, error)
+
 	ListAllLive(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
 	ListAllReviewRejected(ctx context.Context, maxId int64, limit int) ([]domain.Ink, error)
 	CountUserInks(ctx context.Context, authorId int64) (int64, error)
@@ -258,6 +261,10 @@ func (svc *inkService) ListAllReviewRejected(ctx context.Context, maxId int64, l
 
 func (svc *inkService) CountUserInks(ctx context.Context, authorId int64) (int64, error) {
 	return svc.liveRepo.CountByAuthorId(ctx, authorId, domain.InkStatusPublished)
+}
+
+func (svc *inkService) FirstPageByAuthorIds(ctx context.Context, authorIds []int64, n int) (map[int64][]domain.Ink, error) {
+	return svc.liveRepo.FindFirstPageByAuthorIds(ctx, authorIds, n, domain.InkStatusPublished)
 }
 
 type InkServiceV1 interface {

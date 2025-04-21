@@ -26,6 +26,7 @@ type LiveInkRepo interface {
 	FindByAuthorId(ctx context.Context, authorId int64, offset, limit int, status ...domain.Status) ([]domain.Ink, error)
 	FindAll(ctx context.Context, maxId int64, limit int, status ...domain.Status) ([]domain.Ink, error)
 	FindByIds(ctx context.Context, ids []int64, status ...domain.Status) (map[int64]domain.Ink, error)
+	FindFirstPageByAuthorIds(ctx context.Context, authorIds []int64, n int, status ...domain.Status) (map[int64][]domain.Ink, error)
 	CountByAuthorId(ctx context.Context, authorId int64, status ...domain.Status) (int64, error)
 }
 
@@ -276,6 +277,21 @@ func (repo *CachedLiveInkRepo) parseStatus(status []domain.Status) []int {
 
 func (repo *CachedLiveInkRepo) CountByAuthorId(ctx context.Context, authorId int64, status ...domain.Status) (int64, error) {
 	return repo.dao.CountByAuthorId(ctx, authorId, repo.parseStatus(status)...)
+}
+
+func (repo *CachedLiveInkRepo) FindFirstPageByAuthorIds(ctx context.Context, authorIds []int64, n int, status ...domain.Status) (map[int64][]domain.Ink, error) {
+	inksMap, err := repo.dao.FindFirstPageByAuthorIds(ctx, authorIds, n, repo.parseStatus(status)...)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[int64][]domain.Ink, len(inksMap))
+	for aid, inks := range inksMap {
+		result[aid] = make([]domain.Ink, 0, len(inks))
+		for _, ink := range inks {
+			result[aid] = append(result[aid], repo.entityToDomain(ink))
+		}
+	}
+	return result, nil
 }
 
 func (repo *CachedLiveInkRepo) domainToEntity(ink domain.Ink) dao.LiveInk {

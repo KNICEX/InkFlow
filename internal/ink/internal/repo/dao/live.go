@@ -19,6 +19,7 @@ type LiveDAO interface {
 	FindById(ctx context.Context, id int64, status ...int) (LiveInk, error)
 	FindByAuthorId(ctx context.Context, authorId int64, offset, limit int, status ...int) ([]LiveInk, error)
 	FindAll(ctx context.Context, maxId int64, limit int, status ...int) ([]LiveInk, error)
+	FindFirstPageByAuthorIds(ctx context.Context, authorIds []int64, n int, status ...int) (map[int64][]LiveInk, error)
 	FindByIds(ctx context.Context, ids []int64, status ...int) (map[int64]LiveInk, error)
 	CountByAuthorId(ctx context.Context, authorId int64, status ...int) (int64, error)
 }
@@ -156,6 +157,26 @@ func (dao *liveDAO) FindByIds(ctx context.Context, ids []int64, status ...int) (
 		idMap[ink.Id] = ink
 	}
 	return idMap, nil
+}
+
+func (dao *liveDAO) FindFirstPageByAuthorIds(ctx context.Context, authorIds []int64, n int, status ...int) (map[int64][]LiveInk, error) {
+	var inks []LiveInk
+	var err error
+	if len(status) > 0 {
+		err = dao.db.WithContext(ctx).Where("author_id IN ? AND status IN ?", authorIds, status).
+			Order("updated_at DESC").Limit(n).Find(&inks).Error
+	} else {
+		err = dao.db.WithContext(ctx).Where("author_id IN ?", authorIds).
+			Order("updated_at DESC").Limit(n).Find(&inks).Error
+	}
+	if err != nil {
+		return nil, err
+	}
+	inkMap := make(map[int64][]LiveInk)
+	for _, ink := range inks {
+		inkMap[ink.AuthorId] = append(inkMap[ink.AuthorId], ink)
+	}
+	return inkMap, nil
 }
 
 func (dao *liveDAO) CountByAuthorId(ctx context.Context, authorId int64, status ...int) (int64, error) {

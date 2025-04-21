@@ -87,6 +87,11 @@ type UserVO struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+type UserFollowVO struct {
+	UserVO
+	Inks []InkVO `json:"inks"`
+}
+
 type FollowInfo struct {
 	Followers int64 `json:"followers"`
 	Following int64 `json:"following"`

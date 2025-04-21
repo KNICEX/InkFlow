@@ -507,7 +507,7 @@ func (h *UserHandler) followList(ctx *gin.Context, req FollowListReq, following 
 		return ginx.InternalError(), err
 	}
 	if len(follows) == 0 {
-		return ginx.SuccessWithData([]UserVO{}), nil
+		return ginx.SuccessWithData([]UserFollowVO{}), nil
 	}
 
 	uids := lo.Map(follows, func(item relation.FollowStatistic, index int) int64 {
@@ -517,14 +517,23 @@ func (h *UserHandler) followList(ctx *gin.Context, req FollowListReq, following 
 	if err != nil {
 		return ginx.InternalError(), err
 	}
-	res := make([]UserVO, 0, len(users))
+	userInks, err := h.inkSvc.FirstPageByAuthorIds(ctx, uids, 4)
+	if err != nil {
+		return ginx.InternalError(), err
+	}
+	res := make([]UserFollowVO, 0, len(users))
 	for _, v := range follows {
 		if u, ok := users[v.Uid]; ok {
 			profile := userToVO(u)
 			profile.Followers = v.Followers
 			profile.Following = v.Following
 			profile.Followed = v.Followed
-			res = append(res, profile)
+			res = append(res, UserFollowVO{
+				UserVO: profile,
+				Inks: lo.Map(userInks[v.Uid], func(item ink.Ink, index int) InkVO {
+					return inkToVO(item)
+				}),
+			})
 		}
 	}
 	return ginx.SuccessWithData(res), nil
