@@ -161,14 +161,15 @@ func (dao *liveDAO) FindByIds(ctx context.Context, ids []int64, status ...int) (
 
 func (dao *liveDAO) FindFirstPageByAuthorIds(ctx context.Context, authorIds []int64, n int, status ...int) (map[int64][]LiveInk, error) {
 	var inks []LiveInk
-	var err error
+
+	subQuery := dao.db.WithContext(ctx).Model(&LiveInk{}).Where("author_id IN ?", authorIds)
 	if len(status) > 0 {
-		err = dao.db.WithContext(ctx).Where("author_id IN ? AND status IN ?", authorIds, status).
-			Order("updated_at DESC").Limit(n).Find(&inks).Error
-	} else {
-		err = dao.db.WithContext(ctx).Where("author_id IN ?", authorIds).
-			Order("updated_at DESC").Limit(n).Find(&inks).Error
+		subQuery = subQuery.Where("status IN ?", status)
 	}
+	subQuery = subQuery.Select("*, ROW_NUMBER() OVER (PARTITION BY author_id ORDER BY updated_at DESC) AS row_num")
+
+	err := dao.db.WithContext(ctx).Table("(?) as t", subQuery).
+		Where("t.row_num <= ?", n).Find(&inks).Error
 	if err != nil {
 		return nil, err
 	}

@@ -8,7 +8,7 @@ import (
 
 func RankHotInk(ctx workflow.Context) error {
 	ao := workflow.ActivityOptions{
-		StartToCloseTimeout: time.Minute * 10,
+		StartToCloseTimeout: time.Minute * 30,
 		RetryPolicy: &temporal.RetryPolicy{
 			InitialInterval: time.Second * 5,
 			MaximumAttempts: 3,

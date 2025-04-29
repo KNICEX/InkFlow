@@ -53,7 +53,7 @@ func NewBatchRankingService(inkRepo repo.LiveInkRepo, rankRepo repo.RankingRepo,
 }
 func (b *BatchRankingService) TopNInk(ctx context.Context, n int) error {
 	b.l.Info("start calc topN ink", logx.Int64("n", int64(n)))
-	ids, err := b.rankTopN(ctx, n, time.Now().Add(-time.Hour*24*7))
+	ids, err := b.rankTopN(ctx, n, time.Now().Add(-time.Hour*24*30))
 	if err != nil {
 		b.l.Error("calc topN ink error", logx.Error(err))
 		return err
@@ -124,7 +124,7 @@ func (b *BatchRankingService) rankTopN(ctx context.Context, n int, startTime tim
 
 func (b *BatchRankingService) TopNTag(ctx context.Context, n int) error {
 	b.l.Info("start calc topN tag")
-	tags, err := b.rankTopNTag(ctx, n, time.Now().Add(-time.Hour*24))
+	tags, err := b.rankTopNTag(ctx, n, time.Now().Add(-time.Hour*24*30))
 	if err != nil {
 		b.l.Error("calc topN tag error", logx.Error(err))
 		return err
