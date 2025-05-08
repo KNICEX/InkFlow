@@ -47,7 +47,7 @@ func InitApp() *App {
 		webSet,
 		user.InitUserService,
 		//email.InitService,
-		email.InitMemoryService,
+		email.InitService,
 		code.InitEmailCodeService,
 
 		relation.InitFollowService,
@@ -70,7 +70,6 @@ func InitApp() *App {
 		recommend.InitService,
 
 		comment.InitCommentService,
-
 
 		ai.InitLLMService,
 		review.InitService,
