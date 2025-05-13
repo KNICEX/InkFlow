@@ -69,7 +69,7 @@ func (h *CommentHandler) Reply(ctx *gin.Context, req PostReplyReq) (ginx.Result,
 	if err != nil {
 		return ginx.InternalError(), err
 	}
-	return ginx.SuccessWithData(id), nil
+	return ginx.SuccessWithData(strconv.FormatInt(id, 10)), nil
 }
 
 func (h *CommentHandler) DelComment(ctx *gin.Context) (ginx.Result, error) {

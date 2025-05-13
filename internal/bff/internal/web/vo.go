@@ -1,7 +1,7 @@
 package web
 
 type UriIdReq struct {
-	Id int64 `json:"id" form:"id" uri:"id" binding:"required"` // uri id
+	Id int64 `json:"id,string" form:"id" uri:"id" binding:"required"` // uri id
 }
 
 type OffsetPagedReq struct {
@@ -10,6 +10,6 @@ type OffsetPagedReq struct {
 }
 
 type MaxIdPagedReq struct {
-	MaxId int64 `json:"maxId" form:"maxId"`
+	MaxId int64 `json:"maxId,string" form:"maxId"`
 	Limit int   `json:"limit" form:"limit"`
 }

@@ -1,12 +1,13 @@
 package web
 
 import (
-	"github.com/KNICEX/InkFlow/internal/ink"
 	"time"
+
+	"github.com/KNICEX/InkFlow/internal/ink"
 )
 
 type SaveInkReq struct {
-	Id          int64    `json:"id"`
+	Id          int64    `json:"id,string"`
 	Title       string   `json:"title" binding:"required,max=100"`
 	Cover       string   `json:"cover"`
 	Summary     string   `json:"summary"`
@@ -16,7 +17,7 @@ type SaveInkReq struct {
 }
 
 type InkVO struct {
-	Id          int64         `json:"id"`
+	Id          int64         `json:"id,string"`
 	Title       string        `json:"title"`
 	Author      UserVO        `json:"author"`
 	Cover       string        `json:"cover"`
@@ -33,7 +34,7 @@ type InkVO struct {
 }
 
 type InkCategory struct {
-	Id   int64  `json:"id"`
+	Id   int64  `json:"id,string"`
 	Name string `json:"name"`
 }
 
@@ -58,35 +59,35 @@ type LikeReq struct {
 }
 
 type ListReq struct {
-	AuthorId int64 `json:"authorId" form:"authorId" binding:"required"`
-	Category int64 `json:"category" form:"category"`
+	AuthorId int64 `json:"authorId,string" form:"authorId" binding:"required"`
+	Category int64 `json:"category,string" form:"category"`
 	Offset   int   `json:"offset" form:"offset"`
 	Limit    int   `json:"limit" form:"limit" binding:"required,max=500"`
 }
 
 type ListSelfReq struct {
-	Category int64 `json:"category" form:"category"`
+	Category int64 `json:"category,string" form:"category"`
 	Offset   int   `json:"offset" form:"offset"`
 	Limit    int   `json:"limit" form:"limit"`
 }
 
 type ListDraftReq struct {
-	Category int64 `json:"category" form:"category"`
+	Category int64 `json:"category,string" form:"category"`
 	Offset   int   `json:"offset" form:"offset"`
 	Limit    int   `json:"limit" form:"limit"`
 }
 
 type ListMaxIdReq struct {
-	MaxId int64 `json:"maxId" form:"maxId"`
+	MaxId int64 `json:"maxId,string" form:"maxId"`
 	Limit int   `json:"limit" form:"limit"`
 }
 
 type ListFavoriteReq struct {
-	Fid   int64 `json:"fid" form:"fid"`
-	MaxId int64 `json:"maxId" form:"maxId"`
+	Fid   int64 `json:"fid,string" form:"fid"`
+	MaxId int64 `json:"maxId,string" form:"maxId"`
 	Limit int   `json:"limit" form:"limit"`
 }
 
 type FavoriteReq struct {
-	FavoriteId int64 `json:"favoriteId" from:"favoriteId"`
+	FavoriteId int64 `json:"favoriteId,string" from:"favoriteId"`
 }

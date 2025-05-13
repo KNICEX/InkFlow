@@ -1,14 +1,15 @@
 package web
 
 import (
-	"github.com/KNICEX/InkFlow/internal/comment"
 	"time"
+
+	"github.com/KNICEX/InkFlow/internal/comment"
 )
 
 type CommentVO struct {
-	Id          int64        `json:"id"`
+	Id          int64        `json:"id,string"`
 	Biz         string       `json:"biz"`
-	BizId       int64        `json:"bizId"`
+	BizId       int64        `json:"bizId,string"`
 	Commentator UserVO       `json:"commentator"`
 	IsAuthor    bool         `json:"isAuthor"`
 	Payload     Payload      `json:"payload"`
@@ -79,21 +80,21 @@ func commentStatsToVO(stats comment.Stats) CommentStats {
 
 type BizCommentReq struct {
 	Biz   string `json:"biz" form:"biz"`
-	BizId int64  `json:"bizId" form:"bizId"`
-	MaxId int64  `json:"maxId" form:"maxId"`
+	BizId int64  `json:"bizId,string" form:"bizId"`
+	MaxId int64  `json:"maxId,string" form:"maxId"`
 	Limit int    `json:"limit" form:"limit"`
 }
 
 type ChildCommentReq struct {
-	RootId int64 `json:"rootId" form:"rootId"`
-	MaxId  int64 `json:"maxId" form:"maxId"`
+	RootId int64 `json:"rootId,string" form:"rootId"`
+	MaxId  int64 `json:"maxId,string" form:"maxId"`
 	Limit  int   `json:"limit" form:"limit" binding:"required"`
 }
 
 type PostReplyReq struct {
 	Biz      string  `json:"biz" binding:"required"`
-	BizId    int64   `json:"bizId" binding:"required"`
-	RootId   int64   `json:"rootId"`
-	ParentId int64   `json:"parentId"`
+	BizId    int64   `json:"bizId,string" binding:"required"`
+	RootId   int64   `json:"rootId,string"`
+	ParentId int64   `json:"parentId,string"`
 	Payload  Payload `json:"payload" binding:"required"`
 }

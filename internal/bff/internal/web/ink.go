@@ -66,6 +66,7 @@ func (h *InkHandler) RegisterRoutes(server *gin.RouterGroup) {
 		checkGroup.GET("/pending", ginx.WrapBody(h.l, h.ListPending))
 		checkGroup.GET("/private", ginx.WrapBody(h.l, h.ListPrivate))
 		checkGroup.GET("/rejected", ginx.WrapBody(h.l, h.ListReviewRejected))
+		checkGroup.GET("/rejected/:id", ginx.Wrap(h.l, h.DetailRejected))
 
 		checkGroup.GET("/draft/:id", ginx.Wrap(h.l, h.DetailDraft))
 		checkGroup.GET("/pending/:id", ginx.Wrap(h.l, h.DetailPending))

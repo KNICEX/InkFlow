@@ -1,8 +1,9 @@
 package web
 
 import (
-	"github.com/KNICEX/InkFlow/internal/user"
 	"time"
+
+	"github.com/KNICEX/InkFlow/internal/user"
 )
 
 // SendCodeReq 发送验证码请求
@@ -46,7 +47,7 @@ type EditProfileReq struct {
 }
 
 type ProfileReq struct {
-	Uid     int64  `json:"uid" form:"uid"`
+	Uid     int64  `json:"uid,string" form:"uid"`
 	Account string `json:"account" form:"account" binding:"max=30"`
 }
 
@@ -71,7 +72,7 @@ type Oauth2Callback struct {
 }
 
 type UserVO struct {
-	Id int64 `json:"id"`
+	Id int64 `json:"id,string"`
 	//Email     string    `json:"email"`
 	//Phone     string    `json:"phone"`
 	Account   string    `json:"account"`
@@ -120,7 +121,7 @@ func userToVO(u user.User) UserVO {
 }
 
 type FollowListReq struct {
-	MaxId int64 `json:"maxId" form:"maxId"`
+	MaxId int64 `json:"maxId,string" form:"maxId"`
 	Limit int   `json:"limit" form:"limit" binding:"required"`
 }
 

@@ -1,15 +1,16 @@
 package web
 
 import (
-	"github.com/KNICEX/InkFlow/internal/notification"
 	"time"
+
+	"github.com/KNICEX/InkFlow/internal/notification"
 )
 
 type NotificationVO struct {
-	Id               int64     `json:"id"`
+	Id               int64     `json:"id,string"`
 	User             *UserVO   `json:"user"`
 	SubjectType      string    `json:"subjectType"`
-	SubjectId        int64     `json:"subjectId"`
+	SubjectId        int64     `json:"subjectId,string"`
 	Subject          any       `json:"subject"`
 	NotificationType string    `json:"notificationType"`
 	Content          any       `json:"content"`
@@ -52,9 +53,9 @@ func mergedLikeToVO(ml notification.MergedLike) MergedLikeVO {
 
 type SubjectReq struct {
 	SubjectType string `json:"subjectType" form:"subjectType"`
-	SubjectId   int64  `json:"subjectId" form:"subjectId"`
+	SubjectId   int64  `json:"subjectId,string" form:"subjectId"`
 }
 
 type ReadBatchReq struct {
-	Ids []int64 `json:"ids" form:"ids"`
+	Ids []int64 `json:"ids,string" form:"ids"`
 }

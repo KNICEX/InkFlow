@@ -3,8 +3,8 @@ package web
 import "github.com/KNICEX/InkFlow/internal/feed"
 
 type FeedFollowReq struct {
-	MaxId     int64 `json:"maxId" form:"maxId"`
-	Timestamp int64 `json:"timestamp" form:"timestamp"`
+	MaxId     int64 `json:"maxId,string" form:"maxId"`
+	Timestamp int64 `json:"timestamp,string" form:"timestamp"`
 	Limit     int   `json:"limit" form:"limit"`
 }
 
