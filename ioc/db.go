@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm/schema"
 	"gorm.io/plugin/opentelemetry/tracing"
 	"gorm.io/plugin/prometheus"
+	"strings"
 	"time"
 )
 
@@ -84,5 +85,9 @@ func InitDB(l logx.Logger) *gorm.DB {
 type gormLogFunc func(msg string, fields ...logx.Field)
 
 func (g gormLogFunc) Printf(format string, args ...any) {
-	g("GORM: ", logx.Any("log", fmt.Sprintf(format, args...)))
+	sql := fmt.Sprintf(format, args...)
+	if strings.Contains(sql, "pg_") || strings.Contains(sql, "information_schema") {
+		return
+	}
+	g("GORM: ", logx.Any("log", sql))
 }
