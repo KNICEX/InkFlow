@@ -106,7 +106,7 @@ func (h *InkHandler) SaveDraft(ctx *gin.Context, req SaveInkReq) (ginx.Result, e
 		return ginx.InternalError(), err
 	}
 	type SaveResp struct {
-		Id int64 `json:"id"`
+		Id int64 `json:"id,string"`
 	}
 	return ginx.SuccessWithData(SaveResp{
 		Id: id,
@@ -139,7 +139,7 @@ func (h *InkHandler) Publish(ctx *gin.Context) (ginx.Result, error) {
 	}
 
 	type PublishResp struct {
-		Id int64 `json:"id"`
+		Id int64 `json:"id,string"`
 	}
 	return ginx.SuccessWithData(PublishResp{
 		Id: id,
