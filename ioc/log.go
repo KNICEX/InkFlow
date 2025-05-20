@@ -19,20 +19,30 @@ import (
 //		return logger
 //	}
 func InitLogger() logx.Logger {
-	v := viper.Sub("log")
+
+	type Config struct {
+		Level    string `mapstructure:"level"`
+		Filename string `mapstructure:"filename"`
+		MaxSize  int    `mapstructure:"maxsize"`
+		MaxAge   int    `mapstructure:"maxage"`
+	}
+	var config Config
+	if err := viper.UnmarshalKey("log", &config); err != nil {
+		panic(err)
+	}
 	writers := []io.Writer{
 		os.Stdout,
 		&lumberjack.Logger{
-			Filename:  v.GetString("filename"),
-			MaxSize:   v.GetInt("maxsize"),
-			MaxAge:    v.GetInt("maxage"),
+			Filename:  config.Filename,
+			MaxSize:   config.MaxSize,
+			MaxAge:    config.MaxAge,
 			LocalTime: true,
 			Compress:  false,
 		},
 	}
 	logrus.SetOutput(io.MultiWriter(writers...))
 
-	if level, err := logrus.ParseLevel(v.GetString("level")); err == nil {
+	if level, err := logrus.ParseLevel(config.Level); err == nil {
 		logrus.SetLevel(level)
 	} else {
 		logrus.SetLevel(logrus.InfoLevel)
