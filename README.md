@@ -30,7 +30,7 @@ InkFlow 项目前后端分离，前端代码请访问以下仓库：
 
 InkFlow 项目前后端测试数据分离，测试数据生成代码请访问以下仓库：
 
-👉 **前端仓库地址**： [https://github.com/KNICEX/InkFlow-TestData](https://github.com/KNICEX/InkFlow-TestData)
+👉 **测试数据生成仓库地址**： [https://github.com/KNICEX/InkFlow-TestData](https://github.com/KNICEX/InkFlow-TestData)
 
 ---
 
