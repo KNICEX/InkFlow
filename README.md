@@ -54,7 +54,7 @@ InkFlow 提供简洁直观的前端界面，支持内容创作、发布、审核
 
 #### 📬 通知中心与评论互动
 
-![通知与评论](./docs/images/notification_comment.png)
+![系统通知](./docs/images/notification_system.png)
 
 > 💡 如果你在本地运行前端项目，可通过 `http://localhost:5173` 或指定端口访问 UI 页面。
 
