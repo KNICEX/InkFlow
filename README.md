@@ -82,7 +82,7 @@ InkFlow 提供简洁直观的前端界面，支持内容创作、发布、审核
 
 ## 🛠️ 技术栈
 
-- 语言：Go 1.21+
+- 语言：Go 1.24.0+
 - Web 框架：[Gin](https://gin-gonic.com/)
 - ORM：GORM + PostgreSQL
 - 缓存：Redis
