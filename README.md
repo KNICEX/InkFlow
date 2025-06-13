@@ -26,6 +26,14 @@ InkFlow 项目前后端分离，前端代码请访问以下仓库：
 
 ---
 
+### 🔗 数据库测试数据生成仓库地址
+
+InkFlow 项目前后端测试数据分离，测试数据生成代码请访问以下仓库：
+
+👉 **前端仓库地址**： [https://github.com/KNICEX/InkFlow-TestData](https://github.com/KNICEX/InkFlow-TestData)
+
+---
+
 ### 🖼️ Web 端 UI 展示
 
 InkFlow 提供简洁直观的前端界面，支持内容创作、发布、审核、互动、搜索等完整社区功能。
@@ -42,7 +50,7 @@ InkFlow 提供简洁直观的前端界面，支持内容创作、发布、审核
 
 #### 🔍 搜索与标签浏览
 
-![搜索界面](./docs/images/search.png)
+![内容关系](./docs/images/content_relation.png)
 
 #### 📬 通知中心与评论互动
 
