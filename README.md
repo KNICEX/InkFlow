@@ -34,6 +34,14 @@ InkFlow 项目前后端测试数据分离，测试数据生成代码请访问以
 
 ---
 
+### 📚 项目 Wiki 文档
+
+InkFlow 项目详细的技术文档、架构设计、API 接口说明等请访问以下 Wiki：
+
+👉 **Wiki 文档地址**： [https://deepwiki.com/KNICEX/InkFlow](https://deepwiki.com/KNICEX/InkFlow)
+
+---
+
 ### 🖼️ Web 端 UI 展示
 
 InkFlow 提供简洁直观的前端界面，支持内容创作、发布、审核、互动、搜索等完整社区功能。
