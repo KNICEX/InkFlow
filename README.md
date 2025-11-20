@@ -2,18 +2,193 @@
 
 
 
-# InkFlow ✒️ - 基于 Go 的内容分享社区平台
+# InkFlow ✒️ - 内容分享社区平台
 
-InkFlow 是一个使用 **Go + Gin + GORM** 构建的模块化内容分享社区平台，支持内容创作、AI 审核、评论互动、标签搜索、通知提醒等完整的内容分发闭环。项目采用模块化架构，具备良好的可扩展性和高并发支持能力，适合作为中型后端项目学习参考或二次开发基础。
+<div align="center">
 
-## ✨ 项目特色
+**现代化的内容分享社区 | Go + Vue 3 实践**
 
-- 🧱 **模块化设计**：各业务独立封装，领域清晰，便于维护和扩展
-- 🖊️ **草稿发布流程**：草稿编辑、审核、发布分离，支持 AI 内容审核
-- 🔎 **全文搜索系统**：接入 Meilisearch，支持 Kafka 异步索引同步
-- 📊 **交互与热度排名**：点赞、收藏、浏览行为实时记录，热度动态排行
-- 🔔 **事件驱动通知**：基于事件总线的系统通知提醒机制
-- 🧠 **审核接入 AI**：对用户上传内容自动进行智能审核过滤
+[![Go Version](https://img.shields.io/badge/Go-1.24.0+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Vue Version](https://img.shields.io/badge/Vue-3.x-4FC08D?style=flat&logo=vue.js)](https://vuejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+</div>
+
+## 📖 项目简介
+
+InkFlow 是一个使用 **Go + Gin + GORM** 构建的模块化内容分享社区平台，支持内容创作、AI 审核、评论互动、标签搜索、通知提醒等完整的内容分发闭环。项目采用领域驱动设计（DDD）和事件驱动架构，集成 Vue 3 前端、Temporal 工作流编排、Gorse 推荐引擎、Kafka 消息队列、Meilisearch 全文搜索等现代技术栈，具备良好的可扩展性和高并发支持能力。
+
+---
+
+## 🏗️ 架构设计
+
+### 核心设计理念
+
+#### 后端架构
+- **DDD 分层**：Domain（领域模型）→ Service（业务逻辑）→ Repo（数据访问）→ DAO/Cache
+- **模块化**：17+ 独立业务模块，各司其职，低耦合高内聚
+- **事件驱动**：Kafka 消息队列实现模块间异步通信
+- **工作流编排**：Temporal 管理复杂业务流程（发布、审核、分发）
+- **多级缓存**：Redis 缓存 + Lua 脚本保证性能和一致性
+
+#### 前端架构
+- **组件化**：50+ 可复用 Vue 组件，统一设计规范
+- **响应式**：移动端/桌面端自适应布局
+- **状态管理**：Pinia 全局状态，模块化 Store
+- **类型安全**：TypeScript 全面类型定义
+- **性能优化**：虚拟滚动、懒加载、图片优化
+
+---
+
+## ✨ 功能特色
+
+### 🎨 前端功能
+
+#### 📝 内容创作
+- **Markdown 编辑器**：所见即所得的编辑体验（基于 Milkdown）
+- **草稿自动保存**：防止内容丢失
+- **图片上传**：拖拽上传 + 裁剪功能
+- **封面设置**：自动提取/手动上传封面
+- **标签管理**：热门标签推荐 + 自定义标签
+
+#### 🏠 内容浏览
+- **多种 Feed 流**：
+  - 关注 Feed：关注作者的最新内容
+  - 推荐 Feed：基于 Gorse 的个性化推荐
+  - 热门 Feed：按热度排序的热门内容
+- **多种布局**：瀑布流布局 / Twitter 风格 / 长文布局
+- **无限滚动**：流畅的分页加载体验
+- **实时互动**：点赞、收藏、评论实时更新
+
+#### 🔍 搜索与发现
+- **全文搜索**：内容、用户、标签全面检索
+- **搜索高亮**：关键词匹配高亮显示
+- **热门标签**：发现热门话题
+- **相似推荐**：内容/作者相似推荐
+
+#### 👤 用户系统
+- **个人主页**：
+  - 用户资料展示
+  - 内容列表（发布/点赞/收藏）
+  - 关注/粉丝列表
+- **个人中心**：
+  - 资料编辑
+  - 头像/Banner 裁剪上传
+  - 草稿管理
+- **通知中心**：
+  - 点赞通知
+  - 评论/回复通知
+  - 关注通知
+  - 系统通知
+
+#### 💬 社交互动
+- **多级评论**：支持评论和回复
+- **热评排序**：智能展示热门评论
+- **表情支持**：Emoji 表情输入
+- **图片评论**：评论可附带图片
+- **实时通知**：互动实时推送
+
+---
+
+### ⚙️ 后端功能
+
+#### 🔐 认证授权
+- **JWT 认证**：Access Token + Refresh Token
+- **OAuth2 登录**：GitHub 第三方登录
+- **会话管理**：Redis 会话存储
+- **权限控制**：中间件级别的权限验证
+
+#### 🖊️ 内容管理
+- **草稿系统**：草稿库独立存储
+- **内容审核**：AI 智能审核 + 人工复审
+- **发布流程**：Temporal 工作流编排
+  ```
+  草稿提交 → AI 审核 → 审核通过 → 同步线上库 → 索引同步 → 推荐同步 → Feed 推送
+  ```
+- **内容分发**：多渠道内容分发（搜索/推荐/Feed）
+
+#### 🤖 AI 智能审核
+- **内容安全**：检测违规、敏感内容
+- **标签生成**：AI 自动提取关键词
+- **失败重试**：Temporal 自动重试机制
+- **Failover**：多模型容错切换
+
+#### 🎯 推荐系统 (Gorse)
+- **协同过滤**：基于用户行为的推荐算法
+- **实时推荐**：用户行为实时反馈
+- **多维推荐**：
+  - 个性化内容推荐
+  - 相似内容推荐（基于标签）
+  - 相似作者推荐（基于用户画像）
+
+#### 🔍 搜索系统 (Meilisearch)
+- **全文索引**：内容、标题、标签全面索引
+- **异步同步**：Kafka 消息驱动索引更新
+- **高性能**：毫秒级搜索响应
+- **相关度排序**：智能相关度算法
+
+#### 📊 Feed 流系统
+- **推拉结合**：
+  - **推模式**：内容发布时推送给活跃粉丝（30 天活跃）
+  - **拉模式**：用户请求时拉取关注列表最新内容
+  - **混合策略**：推拉结果合并，保证实时性
+- **多种排序**：时间倒序 / 热度排序
+
+#### 📈 热度排名
+- **实时计算**：基于浏览、点赞、收藏、评论的加权计算
+- **定时刷新**：Temporal 定时任务更新排行榜
+- **多维度榜单**：内容热度榜 / 标签热度榜
+
+#### 🔔 通知系统
+- **事件驱动**：Kafka 消息驱动通知生成
+- **多类型通知**：点赞、评论、关注、系统通知
+- **合并通知**：相同类型通知智能合并
+- **已读管理**：批量已读 / 单个已读
+
+#### 📊 可观测性
+- **Prometheus 监控**：QPS、延迟、错误率等核心指标
+- **Jaeger 追踪**：分布式链路追踪
+- **结构化日志**：Zap 高性能日志
+- **GORM 监控**：SQL 查询性能监控
+
+---
+
+## 🎯 技术亮点
+
+### 1. Temporal 工作流编排
+- 可视化业务流程：内容发布全流程可视化管理
+- 自动容错重试：失败自动重试，保证最终一致性
+- 长时流程支持：支持异步等待（AI 审核结果）
+- 任务调度：定时任务（热度计算、审核重试）
+
+### 2. Gorse 推荐引擎
+- 基于协同过滤的推荐算法
+- 实时用户行为追踪（点赞、收藏、浏览）
+- 多策略推荐（个性化、相似内容、相似作者、热门）
+- 与 PostgreSQL/Redis 无缝集成
+
+### 3. DDD 领域驱动设计
+- 清晰的分层架构（Domain → Service → Repo → DAO/Cache）
+- 模块独立部署能力
+- 领域事件驱动模块通信
+
+### 4. 推拉结合的 Feed 流
+- 推模式：发布时推送给活跃粉丝，降低读延迟
+- 拉模式：保证内容实时性
+- 智能判断：基于用户活跃度选择推送策略
+
+### 5. 前端工程化
+- TypeScript 全面类型安全
+- 组件化设计，可复用性高
+- Pinia 模块化状态管理
+- 虚拟滚动、懒加载等性能优化
+
+### 6. 完整的可观测性
+- Prometheus + Grafana：实时监控
+- Jaeger：分布式链路追踪
+- 结构化日志：统一日志格式
+- 性能指标：GORM 查询监控
 
 ---
 
@@ -52,21 +227,39 @@ InkFlow 提供简洁直观的前端界面，支持内容创作、发布、审核
 ---
 
 
-## 🧩 功能模块
+## 🧩 后端模块说明
 
-| 模块          | 描述                                                         |
-|---------------|--------------------------------------------------------------|
-| `user`        | 用户注册、登录、资料维护、JWT 鉴权                          |
-| `ink`         | 内容创作、草稿管理、发布审核、Feed 推送                    |
-| `review`      | AI 审核模块，异步处理内容合规性审查                         |
-| `comment`     | 评论与回复、分页查询、敏感词过滤                             |
-| `relation`    | 用户关注/粉丝、关注事件发送                                  |
-| `interactive` | 点赞、收藏、浏览行为统计                                     |
-| `ranking`     | 内容热度评分与热门榜单                                       |
-| `search`      | Meilisearch 搜索接入，Kafka 消息同步                         |
-| `notification`| 系统通知模块，处理审核/关注/互动等事件消息                 |
-| `recommend`   | 推荐模块，基于 Gorse 实现个性化内容推荐                      |
-| `bff`         | Backend for Frontend，整合所有模块 API，基于 Gin 实现       |
+| 模块          | 描述                                                         | 关键特性 |
+|---------------|--------------------------------------------------------------|----------|
+| `bff`         | Backend for Frontend，统一 API 网关                           | Gin 路由、JWT 中间件、请求聚合 |
+| `user`        | 用户管理与认证                                               | 注册登录、OAuth2（GitHub）、用户资料 |
+| `ink`         | 内容创作与管理                                               | 草稿编辑、Markdown 支持、热度排名 |
+| `review`      | AI 审核系统                                                  | Gemini AI 审核、失败重试、智能标签生成 |
+| `comment`     | 评论系统                                                     | 多级评论、热评排序、敏感词过滤 |
+| `relation`    | 社交关系                                                     | 关注/取关、粉丝列表、事件推送 |
+| `interactive` | 互动统计                                                     | 点赞、收藏、浏览计数、行为记录 |
+| `feed`        | Feed 流服务                                                  | 推拉结合、关注流、推荐流、热门流 |
+| `search`      | 全文搜索                                                     | Meilisearch 索引、Kafka 同步 |
+| `notification`| 通知中心                                                     | 多类型通知、已读管理、批量操作 |
+| `recommend`   | 推荐引擎                                                     | Gorse 集成、相似推荐、个性化推荐 |
+| `workflow`    | 工作流编排                                                   | Temporal 工作流、定时任务、重试 |
+| `poll`        | 投票系统                                                     | 问卷创建、投票统计 |
+| `action`      | 用户行为追踪                                                 | 活跃度分析、推送策略优化 |
+| `email`       | 邮件服务                                                     | 验证码发送、通知邮件 |
+| `code`        | 验证码管理                                                   | Redis 缓存、过期控制 |
+| `ai`          | AI 服务封装                                                  | LLM 多模型支持、Failover 容错 |
+
+## 🎨 前端页面说明
+
+| 页面/模块 | 功能说明 | 主要组件 |
+|----------|---------|---------|
+| **首页** | Feed 流浏览（关注/推荐/热门） | `HomeView`, `HomeList`, `InkCard` |
+| **内容详情** | 内容查看、评论互动 | `InkDetail`, `CommentList`, `CommentItem` |
+| **编辑器** | Markdown 编辑、草稿管理 | `InkEditor`, `MilkdownEditor`, `InkForm` |
+| **搜索** | 全文搜索（内容/用户/标签） | `SearchView`, `SearchInk`, `SearchUser` |
+| **用户主页** | 个人资料、内容列表、关注列表 | `UserView`, `UserInkList`, `FollowUserList` |
+| **个人中心** | 草稿管理、资料编辑、通知中心 | `DashboardLayout`, `DashboardContent` |
+| **通知中心** | 点赞/评论/关注/系统通知 | `NotificationPop`, `LikeList`, `ReplyList` |
 
 
 ---
@@ -87,22 +280,288 @@ InkFlow 提供简洁直观的前端界面，支持内容创作、发布、审核
 
 ## 🧾 项目结构
 
+### 📁 后端目录结构（Go）
+
 ```bash
-inkflow/
-├── config/             # 配置文件（数据库、Redis、Kafka 等）
-├── pkg/                # 通用工具库（JWT、中间件、日志封装等）
-├── internal/
-│   ├── bff/            # API 层，Gin 路由入口，整合所有模块服务
-│   ├── user/           # 用户模块（含 service/domain/events/repo）
-│   ├── ink/            # 内容模块（草稿/发布/审核/Feed流）
-│   ├── review/         # 审核模块
-│   ├── comment/        # 评论模块
-│   ├── search/         # 搜索模块（Kafka 同步 Meilisearch）
-│   ├── relation/       # 关注模块
-│   ├── ranking/        # 热度排名模块
-│   ├── notification/   # 通知模块
-│   └── interactive/    # 点赞浏览收藏模块
-├── main.go             # 应用程序入口
+InkFlow/
+├── main.go                      # 应用入口，启动 Web 服务、Kafka 消费者、Temporal Worker
+├── go.mod / go.sum              # Go 依赖管理
+│
+├── config/                      # 配置文件
+│   ├── config.temp.yaml         # 配置模板
+│   ├── gorse/                   # Gorse 推荐引擎配置
+│   └── nginx/                   # Nginx 配置（可选）
+│
+├── ioc/                         # IoC 容器（依赖注入）
+│   ├── app.go                   # 应用初始化入口
+│   ├── db.go                    # 数据库初始化（PostgreSQL + GORM）
+│   ├── redis.go                 # Redis 初始化
+│   ├── kafka.go                 # Kafka 生产者/消费者初始化
+│   ├── meili.go                 # Meilisearch 客户端
+│   ├── gorse.go                 # Gorse 推荐引擎客户端
+│   ├── temporal.go              # Temporal 工作流引擎
+│   ├── llm.go                   # AI/LLM 服务（Gemini）
+│   ├── email.go                 # 邮件服务
+│   ├── web.go                   # Web 服务器（Gin）
+│   ├── otel.go                  # OpenTelemetry 链路追踪
+│   ├── wire.go                  # Wire 依赖注入配置
+│   └── wire_gen.go              # Wire 自动生成的代码
+│
+├── pkg/                         # 通用工具库（可复用）
+│   ├── ginx/                    # Gin 扩展
+│   │   ├── handler.go           # 统一响应处理
+│   │   ├── wrap.go              # Handler 包装器
+│   │   ├── jwt/                 # JWT 认证
+│   │   ├── middleware/          # 中间件（限流、日志、CORS）
+│   │   └── session/             # Session 管理
+│   ├── gormx/                   # GORM 扩展（错误处理、Prometheus 监控）
+│   ├── gorsex/                  # Gorse 客户端封装
+│   ├── logx/                    # 日志封装（Zap/Logrus）
+│   ├── saramax/                 # Kafka 消息处理封装
+│   ├── temporalx/               # Temporal 工具封装
+│   ├── ratelimit/               # 限流器
+│   ├── snowflakex/              # 雪花 ID 生成器
+│   └── ...                      # 其他工具包
+│
+├── internal/                    # 业务模块（DDD 分层架构）
+│   │
+│   ├── bff/                     # Backend for Frontend（API 网关层）
+│   │   ├── internal/
+│   │   │   ├── web/             # HTTP 处理器
+│   │   │   │   ├── user.go      # 用户相关 API
+│   │   │   │   ├── ink.go       # 内容相关 API
+│   │   │   │   ├── feed.go      # Feed 流 API
+│   │   │   │   ├── search.go    # 搜索 API
+│   │   │   │   ├── recommend.go # 推荐 API
+│   │   │   │   ├── aggregate.go # 聚合服务（多模块数据聚合）
+│   │   │   │   └── ...
+│   │   │   └── service/         # BFF 业务逻辑
+│   │   ├── init.go              # 模块初始化
+│   │   ├── wire.go              # 依赖注入配置
+│   │   └── wire_gen.go          # Wire 生成代码
+│   │
+│   ├── user/                    # 用户模块
+│   │   ├── internal/
+│   │   │   ├── domain/          # 领域模型（User 实体）
+│   │   │   ├── service/         # 业务逻辑
+│   │   │   │   ├── user.go      # 用户服务
+│   │   │   │   └── oauth2/      # OAuth2 登录（GitHub）
+│   │   │   ├── repo/            # 数据仓储
+│   │   │   │   ├── user.go      # 仓储接口实现
+│   │   │   │   ├── dao/         # 数据访问对象（GORM）
+│   │   │   │   └── cache/       # Redis 缓存层
+│   │   │   └── event/           # 领域事件（Kafka 发布）
+│   │   ├── types.go             # 对外暴露的类型和接口
+│   │   └── wire.go              # 模块依赖注入
+│   │
+│   ├── ink/                     # 内容模块（结构同 user 模块）
+│   │   ├── internal/
+│   │   │   ├── domain/          # Ink 领域模型
+│   │   │   ├── service/         # 草稿管理、发布、排名
+│   │   │   ├── repo/            # 仓储（草稿库、线上库分离）
+│   │   │   └── events/          # 发布事件
+│   │   └── ...
+│   │
+│   ├── review/                  # AI 审核模块
+│   ├── comment/                 # 评论模块
+│   ├── search/                  # 搜索模块（Meilisearch）
+│   ├── relation/                # 关注关系模块
+│   ├── interactive/             # 互动统计模块
+│   ├── feed/                    # Feed 流模块
+│   ├── notification/            # 通知模块
+│   ├── recommend/               # 推荐模块（Gorse）
+│   ├── poll/                    # 投票模块
+│   ├── action/                  # 用户行为追踪
+│   ├── email/                   # 邮件服务
+│   ├── code/                    # 验证码服务
+│   ├── ai/                      # AI 服务封装
+│   │
+│   └── workflow/                # Temporal 工作流
+│       ├── inkpub/              # 内容发布工作流
+│       │   ├── workflow.go      # 工作流定义
+│       │   └── activities.go    # 活动（Activity）实现
+│       └── schedule/            # 定时任务工作流
+│           ├── ranking.go       # 热度排名定时任务
+│           ├── rank_activities.go
+│           └── review_failover.go # 审核失败重试
+│
+├── script/                      # 脚本
+│   └── postgres/
+│       └── init.sql             # 数据库初始化 SQL
+│
+├── docs/                        # 文档和截图
+│   └── images/
+│
+├── docker-compose.yaml          # Docker 容器编排
+└── prometheus.yaml              # Prometheus 监控配置
+```
+
+### 🎨 前端目录结构（Vue 3）
+
+```bash
+ink-flow-web/
+├── index.html                   # HTML 入口
+├── package.json                 # npm 依赖配置
+├── pnpm-lock.yaml               # pnpm 锁文件
+├── vite.config.ts               # Vite 构建配置
+├── tsconfig.json                # TypeScript 配置
+├── eslint.config.ts             # ESLint 代码规范
+│
+├── public/                      # 静态资源
+│   └── favicon.ico
+│
+└── src/                         # 源代码
+    ├── main.ts                  # 应用入口
+    ├── App.vue                  # 根组件
+    │
+    ├── router/                  # Vue Router 路由配置
+    │   └── index.ts             # 路由定义
+    │
+    ├── stores/                  # Pinia 状态管理
+    │   ├── user.ts              # 用户状态（登录信息、个人资料）
+    │   ├── theme.ts             # 主题状态（暗黑模式）
+    │   ├── notification.ts      # 通知状态
+    │   └── search.ts            # 搜索状态
+    │
+    ├── service/                 # API 服务封装
+    │   ├── axios.ts             # Axios 配置（拦截器、统一错误处理）
+    │   ├── user.ts              # 用户相关 API
+    │   ├── ink.ts               # 内容相关 API
+    │   ├── feed.ts              # Feed 流 API
+    │   ├── search.ts            # 搜索 API
+    │   ├── recommend.ts         # 推荐 API
+    │   ├── comment.ts           # 评论 API
+    │   ├── interactive.ts       # 互动（点赞/收藏）API
+    │   ├── relation.ts          # 关注关系 API
+    │   ├── notification.ts      # 通知 API
+    │   ├── stats.ts             # 统计 API
+    │   └── file.ts              # 文件上传 API
+    │
+    ├── types/                   # TypeScript 类型定义
+    │   ├── user.ts              # User 类型
+    │   ├── ink.ts               # Ink 类型
+    │   ├── comment.ts           # Comment 类型
+    │   ├── notification.ts      # Notification 类型
+    │   ├── interactive.ts       # Interactive 类型
+    │   └── stats.ts             # Stats 类型
+    │
+    ├── components/              # Vue 组件（50+ 可复用组件）
+    │   ├── editor/              # Markdown 编辑器
+    │   │   └── milkdown/        # Milkdown 编辑器封装
+    │   ├── list/                # 列表组件
+    │   │   ├── ink/             # 内容列表（多种布局）
+    │   │   ├── user/            # 用户列表
+    │   │   └── comment/         # 评论列表
+    │   ├── notification/        # 通知组件
+    │   │   ├── LikeList.vue     # 点赞通知列表
+    │   │   ├── ReplyList.vue    # 回复通知列表
+    │   │   ├── FollowList.vue   # 关注通知列表
+    │   │   └── SystemList.vue   # 系统通知列表
+    │   ├── card/                # 卡片组件
+    │   ├── form/                # 表单组件
+    │   ├── image/               # 图片组件（裁剪、上传）
+    │   ├── upload/              # 上传组件
+    │   ├── tags/                # 标签组件
+    │   ├── nav/                 # 导航组件
+    │   ├── menu/                # 菜单组件
+    │   ├── popover/             # 弹出框组件
+    │   ├── loading/             # 加载动画
+    │   ├── empty/               # 空状态
+    │   └── ...                  # 其他通用组件
+    │
+    ├── views/                   # 页面级组件
+    │   ├── LayoutView.vue       # 整体布局
+    │   ├── header/              # 顶部导航
+    │   │   ├── HeaderView.vue   # 顶部导航栏
+    │   │   ├── NotificationPop.vue # 通知弹窗
+    │   │   └── UserPop.vue      # 用户菜单
+    │   ├── home/                # 首页
+    │   │   ├── HomeView.vue     # 首页容器
+    │   │   ├── HomeList.vue     # Feed 流列表
+    │   │   └── HomeAside.vue    # 侧边栏（热门标签、推荐用户）
+    │   ├── ink/                 # 内容详情页
+    │   │   ├── InkDetail.vue    # 内容详情
+    │   │   └── CommentView.vue  # 评论区
+    │   ├── user/                # 用户主页
+    │   │   ├── UserView.vue     # 用户主页容器
+    │   │   ├── UserInkList.vue  # 用户发布的内容
+    │   │   ├── InkLiked.vue     # 用户点赞的内容
+    │   │   ├── InkViewed.vue    # 浏览历史
+    │   │   ├── UserFavorites.vue # 收藏列表
+    │   │   ├── UserFollowing.vue # 关注列表
+    │   │   └── UserFollowers.vue # 粉丝列表
+    │   ├── dashboard/           # 个人中心（创作者中心）
+    │   │   ├── DashboardLayout.vue   # 个人中心布局
+    │   │   ├── DashboardHome.vue     # 个人中心首页
+    │   │   ├── DashboardContent.vue  # 内容管理
+    │   │   ├── InkEditor.vue         # Markdown 编辑器页面
+    │   │   ├── InkView.vue           # 草稿预览
+    │   │   ├── UserInfoEditor.vue    # 个人资料编辑
+    │   │   └── notification/         # 通知中心
+    │   │       ├── LikeView.vue      # 点赞通知
+    │   │       ├── ReplyView.vue     # 回复通知
+    │   │       ├── FollowView.vue    # 关注通知
+    │   │       └── SystemView.vue    # 系统通知
+    │   ├── search/              # 搜索页
+    │   │   ├── SearchView.vue   # 搜索容器
+    │   │   ├── SearchInk.vue    # 内容搜索结果
+    │   │   ├── SearchUser.vue   # 用户搜索结果
+    │   │   └── SearchReply.vue  # 评论搜索结果
+    │   └── login/               # 登录/注册页
+    │       ├── LoginView.vue    # 登录页容器
+    │       ├── EmailPwd.vue     # 邮箱密码登录
+    │       ├── EmailCode.vue    # 邮箱验证码登录
+    │       └── EmailRegister.vue # 邮箱注册
+    │
+    ├── utils/                   # 工具函数
+    │   ├── date.ts              # 日期格式化
+    │   ├── message.ts           # 消息提示封装
+    │   ├── notification.ts      # 通知工具
+    │   ├── parse.ts             # 数据解析
+    │   └── ...
+    │
+    ├── hook/                    # 组合式函数（Composables）
+    │   ├── active.ts            # 活跃状态检测
+    │   ├── follow.ts            # 关注逻辑复用
+    │   ├── interactive.ts       # 互动逻辑复用
+    │   └── ...
+    │
+    ├── assets/                  # 样式和静态资源
+    │   ├── main.scss            # 全局样式
+    │   ├── base.scss            # 基础样式
+    │   ├── element.scss         # Element Plus 样式覆盖
+    │   └── logo.svg
+    │
+    └── consts/                  # 常量定义
+        └── default.ts           # 默认值常量
+```
+
+### 🎯 模块结构说明（DDD 分层）
+
+每个后端业务模块都遵循相同的 DDD 分层结构：
+
+```
+module/                    # 业务模块（如 user、ink 等）
+├── internal/              # 内部实现（不对外暴露）
+│   ├── domain/            # 领域层
+│   │   └── *.go           # 领域模型、实体、值对象
+│   ├── service/           # 应用服务层
+│   │   └── *.go           # 业务逻辑编排
+│   ├── repo/              # 仓储层（数据访问抽象）
+│   │   ├── *.go           # 仓储接口实现
+│   │   ├── dao/           # 数据访问对象（GORM 操作）
+│   │   │   ├── init.go    # GORM 表定义
+│   │   │   └── *.go       # 数据库操作
+│   │   └── cache/         # 缓存层（Redis 操作）
+│   │       ├── *.go       # 缓存逻辑
+│   │       └── lua/       # Lua 脚本（原子操作）
+│   └── event/             # 事件层（领域事件）
+│       ├── event.go       # 事件定义
+│       ├── producer.go    # Kafka 事件发布
+│       └── consumer.go    # Kafka 事件消费（可选）
+├── types.go               # 对外暴露的类型定义和接口
+├── wire.go                # Wire 依赖注入配置
+└── wire_gen.go            # Wire 自动生成的代码（不要手动修改）
 ```
 
 ## 🚀 快速启动
