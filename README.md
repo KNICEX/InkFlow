@@ -16,23 +16,6 @@ InkFlow 是一个使用 **Go + Gin + GORM** 构建的模块化内容分享社区
 - 🧠 **审核接入 AI**：对用户上传内容自动进行智能审核过滤
 
 ---
-### 🔗 前端仓库地址
-
-InkFlow 项目前后端分离，前端代码请访问以下仓库：
-
-👉 **前端仓库地址**： [https://github.com/KNICEX/ink-flow-web](https://github.com/KNICEX/ink-flow-web)
-
-请按照前端项目中的 `README.md` 启动指引进行部署。
-
----
-
-### 🔗 数据库测试数据生成仓库地址
-
-InkFlow 项目前后端测试数据分离，测试数据生成代码请访问以下仓库：
-
-👉 **测试数据生成仓库地址**： [https://github.com/KNICEX/InkFlow-TestData](https://github.com/KNICEX/InkFlow-TestData)
-
----
 
 ### 📚 项目 Wiki 文档
 
@@ -126,8 +109,9 @@ inkflow/
 
 ### ✅ 环境依赖
 
-- Go 1.21+
-- Docker（用于启动 PostgreSQL、Redis、Kafka、Meilisearch）
+- Go 1.24.0+
+- Node.js 18+ 和 pnpm（用于前端开发）
+- Docker（用于启动所有依赖服务）
 - Git
 
 ---
