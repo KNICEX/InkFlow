@@ -1,0 +1,179 @@
+@use 'tailwindcss' as *;
+@use './base.scss' as *;
+@plugin '@tailwindcss/typography';
+
+
+
+@custom-variant dark (&:where(.dark, .dark *));
+#app {
+  height: 100vh;
+}
+
+.max-screen-w {
+  width: min(100%, 1280px);
+}
+
+.line-padding {
+  padding: 0 1rem;
+}
+
+.semibold-text {
+  @apply font-semibold;
+  @apply text-gray-800;
+  @apply dark:text-gray-300;
+}
+
+.lg-semibold-text {
+  @apply font-semibold;
+  @apply text-lg;
+  @apply text-gray-900;
+  @apply dark:text-gray-300;
+}
+
+.nav-text {
+  @apply text-base;
+  @apply text-gray-600;
+  @apply dark:text-gray-300;
+}
+
+.label-text-color {
+  @apply text-gray-800;
+  @apply dark:text-gray-300;
+}
+
+.label-text {
+  @apply text-xl;
+  @extend .label-text-color;
+}
+
+.bg-light-gray {
+  @apply bg-gray-600;
+}
+
+.white-bg {
+  background-color: var(--white-background);
+}
+
+.popover-button {
+  @apply flex;
+  @apply items-center;
+  @apply pl-10;
+  @apply h-12;
+  @apply hover:bg-gray-100;
+  @apply cursor-pointer;
+}
+
+.milkdown-no-padding {
+  .milkdown .ProseMirror {
+    padding: 0 !important;
+  }
+
+}
+
+.milkdown {
+  .img {
+    border-radius: 2rem !important;
+  }
+
+}
+
+.header-height {
+  height: var(--header-height);
+}
+.sticky-top {
+  position: sticky;
+  top: var(--header-height);
+}
+
+.rounded-image {
+  img{
+    border-radius: 0.8rem;
+  }
+}
+
+
+.blur-bg {
+    @apply backdrop-blur-2xl;
+}
+
+.rounded-border {
+  @apply border;
+  @apply border-gray-200;
+  @apply dark:border-gray-700;
+  @apply rounded-xl;
+  @apply overflow-hidden;
+}
+
+.hover-bg {
+  @apply hover:bg-gray-50;
+  @apply dark:hover:bg-gray-900;
+  @apply transition;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+
+.hidden-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer and Edge */
+}

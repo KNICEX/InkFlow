@@ -1,0 +1,106 @@
+///* just override what you need */
+//@forward 'element-plus/theme-chalk/src/common/var.scss' with (
+//  $colors: (
+//    'primary': (
+//      'base': #4ec7e6,
+//
+//    ),
+//  )
+//);
+//
+////@forward 'element-plus/theme-chalk/src/dark/var.scss' with (
+////  $colors: (
+////    'primary': (
+////      'base': #4ec7e6,
+////    ),
+////  )
+////);
+
+:root{
+  --primary-color: #4ec7e6;
+  --el-color-primary: #4ec7e6;
+}
+
+html.dark {
+  --el-color-primary: #4ec7e6;
+}
+
+.input-radius .el-input-group__prepend {
+  border-radius: 2rem;
+}
+
+.rounded-input {
+  .el-input__wrapper {
+    border-radius: 2rem ;
+
+  }
+  border-radius: 2rem ;
+  font-size: 1.1rem;
+}
+
+.rounded-sm-input {
+  &:deep(.el-input__wrapper) {
+    border-radius: 1rem;
+  }
+
+  &:deep(.el-textarea__inner) {
+    border-radius: 1rem;
+  }
+
+  border-radius: 1rem;
+  font-size: 1rem;
+
+}
+
+.rounded-dialog {
+  border-radius: 2rem;
+  // 尺寸平滑变化
+
+}
+
+.el-dialog {
+  transition: all 0.3s;
+}
+
+.el-overlay-dialog {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.ellipse-button {
+  border-radius: 1rem;
+  font-size: 1.1rem;
+}
+
+.el-tabs__item {
+  font-size: 1.2rem;
+  height: 3rem;
+}
+
+.el-tabs {
+  z-index: 0;
+}
+
+.el-tabs--top {
+  z-index: 0;
+}
+
+.el-message-box {
+  border-radius: 1rem;
+  padding: 1.2rem;
+  .el-message-box__content {
+    font-size: 1rem;
+  }
+}
+
+.el-image {
+  img{
+    margin: 0;
+  }
+}
+.el-image-viewer__canvas {
+  img{
+    border-radius: 0 !important;
+  }
+}
