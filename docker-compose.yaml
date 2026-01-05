@@ -113,3 +113,31 @@ services:
     ports:
       - "7233:7233" # temporal server
       - "8233:8233" # temporal web
+
+  # Application Backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ink-flow-backend
+    ports:
+      - "8080:8080" # App Server
+      - "8081:8081" # Prometheus Metrics
+    volumes:
+      - ./config:/app/config
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - meilisearch
+
+  # Application Frontend
+  frontend:
+    build:
+      context: ./ink-flow-web
+      dockerfile: Dockerfile
+    container_name: ink-flow-frontend
+    ports:
+      - "80:80" # Host port 80 maps to container port 80
+    depends_on:
+      - backend
