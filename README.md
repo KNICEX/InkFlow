@@ -37,8 +37,8 @@ cp config/config.temp.yaml config/config.yaml
 # 3. 修改配置（Docker 环境地址）
 # 将 localhost 改为服务名，端口改为内部端口，详见下方配置说明
 
-# 4. 一键启动所有服务
-docker compose up -d
+# 4. 一键构建并启动所有服务 docker compose up --build 查看编译流程 资源不足情况时间很长 可以看下文分开编译
+docker compose up --build -d
 
 # 5. 查看服务状态
 docker compose ps
