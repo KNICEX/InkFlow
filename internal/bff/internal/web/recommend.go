@@ -64,7 +64,7 @@ func (h *RecommendHandler) ListSimilarInk(ctx *gin.Context, req OffsetPagedReq) 
 }
 
 func (h *RecommendHandler) ListRecommendAuthor(ctx *gin.Context, req OffsetPagedReq) (ginx.Result, error) {
-	uc := jwt.MustGetUserClaims(ctx)
+	uc, _ := jwt.GetUserClaims(ctx)
 	userIds, err := h.svc.FindRecommendAuthor(ctx, uc.UserId, req.Offset, req.Limit)
 	if err != nil {
 		return ginx.InternalError(), err
