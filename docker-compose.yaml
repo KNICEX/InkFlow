@@ -37,6 +37,11 @@ services:
       - "7700:7700"
     volumes:
       - meilisearch_data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   meilisearch-ui:
     image: riccoxie/meilisearch-ui:latest
@@ -74,6 +79,12 @@ services:
       - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
       - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
       - CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: ink-flow-kafka-ui
@@ -135,6 +146,12 @@ services:
     ports:
       - "7233:7233" # temporal server
       - "8233:8233" # temporal web
+    healthcheck:
+      test: ["CMD", "temporal", "operator", "cluster", "health"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
   # Application Backend
   backend:
@@ -142,16 +159,23 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: ink-flow-backend
+    restart: on-failure
     ports:
       - "8080:8080" # App Server
       - "8081:8081" # Prometheus Metrics
     volumes:
       - ./config:/app/config
     depends_on:
-      - postgres
-      - redis
-      - kafka
-      - meilisearch
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
 
   # Application Frontend
   frontend:
@@ -162,7 +186,8 @@ services:
     ports:
       - "80:80" # Host port 80 maps to container port 80
     depends_on:
-      - backend
+      backend:
+        condition: service_started
 
 volumes:
   postgres_data:
