@@ -10,14 +10,24 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "15432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
-    image: redis:7
+    image: redis/redis-stack-server:latest
     container_name: ink-flow-redis
     volumes:
       - redis_data:/data
     ports:
       - "16379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 
   meilisearch:
@@ -110,9 +120,12 @@ services:
       # Mount the configuration file.
       - ./config/gorse/config.toml:/etc/gorse/config.toml
     depends_on:
-      - redis
-      - postgres
-      - jeager
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      jeager:
+        condition: service_started
 
   temporal:
     build:
