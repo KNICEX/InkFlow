@@ -29,7 +29,7 @@ func InitService(llmSvc ai.LLMService) Service {
 	return llm.NewLLMService(llmSvc)
 }
 
-func InitReviewConsumer(workflowCli client.Client, saramaCli sarama.Client, service Service, l logx.Logger) *event.ReviewConsumer {
+func InitReviewConsumer(workflowCli client.Client, saramaCli sarama.Client, service Service, failoverSvc FailoverService, l logx.Logger) *event.ReviewConsumer {
 	wire.Build(
 		event.NewReviewConsumer,
 	)

@@ -3,6 +3,7 @@ package event
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/IBM/sarama"
 	"github.com/KNICEX/InkFlow/internal/review/internal/consts"
 	"github.com/KNICEX/InkFlow/internal/review/internal/domain"
@@ -54,11 +55,12 @@ type ReviewConsumer struct {
 	l           logx.Logger
 }
 
-func NewReviewConsumer(workflowCli client.Client, svc service.Service, saramaCli sarama.Client, l logx.Logger) *ReviewConsumer {
+func NewReviewConsumer(workflowCli client.Client, svc service.Service, retrySvc service.FailoverService, saramaCli sarama.Client, l logx.Logger) *ReviewConsumer {
 	return &ReviewConsumer{
 		workflowCli: workflowCli,
 		svc:         svc,
 		saramaCli:   saramaCli,
+		retrySvc:    retrySvc,
 		l:           l,
 	}
 }

@@ -29,8 +29,8 @@ func InitAsyncService(producer sarama.SyncProducer, l logx.Logger) service.Async
 	return asyncService
 }
 
-func InitReviewConsumer(workflowCli client.Client, saramaCli sarama.Client, service2 service.Service, l logx.Logger) *event.ReviewConsumer {
-	reviewConsumer := event.NewReviewConsumer(workflowCli, service2, saramaCli, l)
+func InitReviewConsumer(workflowCli client.Client, saramaCli sarama.Client, service2 service.Service, failoverSvc service.FailoverService, l logx.Logger) *event.ReviewConsumer {
+	reviewConsumer := event.NewReviewConsumer(workflowCli, service2, failoverSvc, saramaCli, l)
 	return reviewConsumer
 }
 

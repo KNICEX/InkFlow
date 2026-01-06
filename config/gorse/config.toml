@@ -8,7 +8,7 @@
 #   postgresql://bob:secret@1.2.3.4:5432/mydb?sslmode=verify-full
 #   mongodb://[username:password@]host1[:port1][,...hostN[:portN]][/[defaultauthdb][?options]]
 #   mongodb+srv://[username:password@]host1[:port1][,...hostN[:portN]][/[defaultauthdb][?options]]
-cache_store = "redis://localhost:6379/0"
+cache_store = "redis://redis:6379/0"
 
 # The database for persist data, support MySQL, Postgres, ClickHouse and MongoDB:
 #   mysql://[username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]
@@ -19,7 +19,7 @@ cache_store = "redis://localhost:6379/0"
 #   chhttps://user:password@host[:port]/database?param1=value1&...&paramN=valueN
 #   mongodb://[username:password@]host1[:port1][,...hostN[:portN]][/[defaultauthdb][?options]]
 #   mongodb+srv://[username:password@]host1[:port1][,...hostN[:portN]][/[defaultauthdb][?options]]
-data_store = "mysql://gorse:gorse_pass@tcp(localhost:3306)/gorse"
+data_store = "postgres://gorse:gorse_pass@tcp(postgres:5432)/gorse"
 
 # The naming prefix for tables (collections, keys) in databases. The default value is empty.
 table_prefix = "gorse"
@@ -65,7 +65,7 @@ dashboard_user_name = ""
 dashboard_password = ""
 
 # Secret key for admin APIs (SSL required).
-admin_api_key = ""
+admin_api_key = "inkflow"
 
 [server]
 
@@ -73,7 +73,7 @@ admin_api_key = ""
 default_n = 10
 
 # Secret key for RESTful APIs (SSL required).
-api_key = ""
+api_key = "inkflow"
 
 # Clock error in the cluster. The default value is 5s.
 clock_error = "5s"

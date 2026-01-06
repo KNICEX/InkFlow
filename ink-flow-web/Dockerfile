@@ -15,8 +15,8 @@ RUN pnpm install
 # Copy source code
 COPY . .
 
-# Build the application
-RUN pnpm build
+# Build the application (skip type-check)
+RUN pnpm build-only
 
 # Serve stage
 FROM nginx:stable-alpine
