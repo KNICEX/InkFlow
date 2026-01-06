@@ -7,12 +7,15 @@ services:
       POSTGRES_PASSWORD: root
     volumes:
       - ./script/postgres/:/docker-entrypoint-initdb.d/
+      - postgres_data:/var/lib/postgresql/data
     ports:
       - "15432:5432"
 
   redis:
     image: redis:7
     container_name: ink-flow-redis
+    volumes:
+      - redis_data:/data
     ports:
       - "16379:6379"
 
@@ -23,7 +26,7 @@ services:
     ports:
       - "7700:7700"
     volumes:
-      - ./script/meilisearch:/data.ms
+      - meilisearch_data:/meili_data
 
   meilisearch-ui:
     image: riccoxie/meilisearch-ui:latest
@@ -38,6 +41,7 @@ services:
     container_name: ink-flow-prometheus
     volumes:
       - ./prometheus.yaml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
     ports:
       - "9090:9090"
 
@@ -47,6 +51,8 @@ services:
     ports:
       - "9092:9092"
       - "9094:9094"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
     environment:
       - KAFKA_NODE_ID=0
       - KAFKA_PROCESS_ROLES=controller,broker
@@ -79,6 +85,8 @@ services:
   grafana:
     image: grafana/grafana:11.5.2
     container_name: ink-flow-grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
     ports:
       - "3000:3000"
 
@@ -142,3 +150,11 @@ services:
       - "80:80" # Host port 80 maps to container port 80
     depends_on:
       - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+  meilisearch_data:
+  prometheus_data:
+  kafka_data:
+  grafana_data:
